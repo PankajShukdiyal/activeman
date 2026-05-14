@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ACTIVEMAN - Biometric Attendance</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --primary-amber: #ffb300;
+            --primary-amber-dark: #cc8f00;
+            --primary-glow: rgba(255, 179, 0, 0.4);
+            --bg-dark: #0a0a0a;
+            --panel-bg: rgba(18, 18, 18, 0.85);
+            --text-primary: #ffffff;
+            --text-secondary: #aaaaaa;
+        }
+
+        body { 
+            background-color: var(--bg-dark); 
+            color: var(--text-primary); 
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(255, 179, 0, 0.03), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(255, 179, 0, 0.03), transparent 25%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            overflow-x: hidden;
+        }
+        
+        .glass-panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 179, 0, 0.1);
+        }
+
+        .scanner-container { 
+            position: relative; 
+            width: 100%; 
+            max-width: 640px; 
+            margin: 0 auto; 
+            overflow: hidden; 
+            border-radius: 16px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5), 0 0 20px var(--primary-glow);
+            border: 2px solid rgba(255, 179, 0, 0.2);
+            background: #000;
+        }
+
+        video, canvas { 
+            width: 100%; 
+            height: auto; 
+            display: block; 
+        }
+        
+        canvas { 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            z-index: 5;
+        }
+
+        .scanner-overlay {
+            position: absolute; 
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 10; 
+            pointer-events: none;
+        }
+        
+        /* Corner Brackets */
+        .scanner-corners::before, .scanner-corners::after,
+        .scanner-corners span::before, .scanner-corners span::after {
+            content: '';
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border-color: var(--primary-amber);
+            border-style: solid;
+            transition: all 0.3s ease;
+            opacity: 0.7;
+        }
+        
+        .scanner-corners::before { top: 20px; left: 20px; border-width: 3px 0 0 3px; border-radius: 8px 0 0 0; }
+        .scanner-corners::after { top: 20px; right: 20px; border-width: 3px 3px 0 0; border-radius: 0 8px 0 0; }
+        .scanner-corners span::before { bottom: 20px; left: 20px; border-width: 0 0 3px 3px; border-radius: 0 0 0 8px; }
+        .scanner-corners span::after { bottom: 20px; right: 20px; border-width: 0 3px 3px 0; border-radius: 0 0 8px 0; }
+
+        .scan-line {
+            position: absolute; 
+            width: 100%; 
+            height: 2px; 
+            background: var(--primary-amber);
+            box-shadow: 0 0 15px 2px var(--primary-amber); 
+            animation: scan 2.5s infinite ease-in-out alternate;
+            opacity: 0.8;
+        }
+        
+        @keyframes scan {
+            0% { top: 10%; }
+            100% { top: 90%; }
+        }
+
+        /* SVG Animations */
+        @keyframes breathe {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+        }
+        @keyframes blink {
+            0%, 48%, 52%, 100% { transform: scaleY(1); opacity: 1; }
+            50% { transform: scaleY(0.1); opacity: 0; }
+        }
+        @keyframes scan-beam {
+            0% { transform: translateY(-5px); opacity: 0; }
+            10% { opacity: 0.5; }
+            90% { opacity: 0.5; }
+            100% { transform: translateY(30px); opacity: 0; }
+        }
+        
+        .face-svg { animation: breathe 4s ease-in-out infinite; }
+        .eye-svg { animation: blink 4s infinite; transform-origin: center; }
+        .beam-svg { animation: scan-beam 2s infinite linear; }
+
+        /* Custom Button */
+        .btn-amber {
+            background: linear-gradient(135deg, var(--primary-amber), var(--primary-amber-dark));
+            color: #000;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 800;
+            border: none;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .btn-amber:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px var(--primary-glow);
+        }
+        .btn-amber::after {
+            content: '';
+            position: absolute;
+            top: -50%; left: -50%; width: 200%; height: 200%;
+            background: rgba(255,255,255,0.2);
+            transform: rotate(45deg);
+            transition: all 0.3s ease;
+            opacity: 0;
+        }
+        .btn-amber:hover::after {
+            left: 100%; top: 100%; opacity: 1; transition: all 0.8s ease;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px);
+            background: var(--primary-amber); color: #000; padding: 10px 20px;
+            border-radius: 30px; font-weight: bold; opacity: 0; transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            z-index: 100; box-shadow: 0 4px 15px rgba(255,179,0,0.4);
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen font-sans antialiased">
+
+    <header class="glass-panel border-b border-yellow-500/30 p-4 shadow-lg flex justify-between items-center sticky top-0 z-40">
+        <div class="flex items-center gap-3">
+            <!-- Animated SVG Logo -->
+            <svg class="face-svg w-10 h-10 text-yellow-500" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="3">
+                <rect x="20" y="15" width="60" height="70" rx="15" stroke-dasharray="10 5" stroke="rgba(255,179,0,0.5)"/>
+                <path d="M30 40 Q50 20 70 40" stroke="rgba(255,255,255,0.2)"/>
+                <circle class="eye-svg" cx="35" cy="45" r="3" fill="currentColor"/>
+                <circle class="eye-svg" cx="65" cy="45" r="3" fill="currentColor"/>
+                <path d="M45 55 L50 60 L55 55" stroke-linecap="round"/>
+                <path d="M40 70 Q50 75 60 70" stroke-linecap="round"/>
+                <line class="beam-svg" x1="25" y1="45" x2="75" y2="45" stroke="#ffb300" stroke-width="2" filter="blur(1px)"/>
+            </svg>
+            <div>
+                <h1 class="text-2xl font-black text-yellow-500 tracking-widest uppercase drop-shadow-[0_0_8px_rgba(255,179,0,0.5)]">ACTIVEMAN</h1>
+                <p class="text-[10px] text-gray-400 tracking-widest uppercase mt-1">Biometric Attendance</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <!-- Animated Status Icon -->
+            <div id="statusIcon" class="w-3 h-3 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]"></div>
+            <div id="statusIndicator" class="hidden sm:block px-3 py-1 rounded-full bg-red-900/50 text-red-300 text-xs font-semibold border border-red-700/50 backdrop-blur-sm">
+                Offline
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow p-4 flex flex-col items-center justify-center">
+        
+        <div class="w-full max-w-2xl glass-panel rounded-2xl p-5 relative">
+            
+            <div class="scanner-container" id="scannerContainer">
+                <video id="video" autoplay muted playsinline class="transform scale-x-[-1]"></video>
+                <div class="scanner-overlay hidden" id="scannerOverlay">
+                    <div class="scanner-corners"><span></span></div>
+                    <div class="scan-line"></div>
+                </div>
+                <!-- GPS Pill -->
+                <div id="gpsPill" class="absolute bottom-3 right-3 bg-black/60 backdrop-blur border border-yellow-500/30 text-[10px] text-yellow-500 px-2 py-1 rounded flex items-center gap-1 z-20">
+                    <svg class="w-3 h-3 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    <span id="gpsText">GPS SEARCH...</span>
+                </div>
+            </div>
+
+            <div class="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+                <button id="startBtn" class="btn-amber w-full sm:w-auto py-3 px-8 rounded-xl shadow-lg flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                    START SCANNER
+                </button>
+                <div id="systemMessage" class="text-center sm:text-right flex-1 text-sm text-gray-400 font-medium">
+                    Initializing Core Systems...
+                </div>
+            </div>
+        </div>
+
+        <div id="idCardModal" class="hidden fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-all duration-300">
+            <div class="bg-gradient-to-br from-gray-900 to-black rounded-3xl w-full max-w-sm border border-yellow-500/50 shadow-[0_0_40px_rgba(255,179,0,0.2)] overflow-hidden transform scale-95 transition-transform duration-300" id="idCardInner">
+                <div class="bg-yellow-500 text-black text-center py-3 font-black tracking-[0.2em] text-lg shadow-md">
+                    VERIFIED
+                </div>
+                <div class="p-6 flex flex-col items-center relative">
+                    <!-- Tech background lines -->
+                    <div class="absolute inset-0 opacity-10 pointer-events-none" style="background-image: repeating-linear-gradient(45deg, #ffb300 0, #ffb300 1px, transparent 1px, transparent 10px);"></div>
+                    
+                    <div class="w-28 h-28 rounded-full border-4 border-yellow-500 overflow-hidden mb-5 bg-gray-800 flex items-center justify-center relative shadow-[0_0_20px_rgba(255,179,0,0.4)] z-10">
+                        <img id="userSnapshot" src="" alt="User" class="w-full h-full object-cover hidden transform scale-x-[-1]">
+                        <svg id="defaultAvatar" class="w-16 h-16 text-gray-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg>
+                    </div>
+                    
+                    <h2 id="empName" class="text-2xl font-bold text-white mb-1 uppercase tracking-wide z-10 text-center">---</h2>
+                    <p id="empDesig" class="text-yellow-400 font-medium mb-5 text-sm uppercase tracking-wider z-10 text-center">---</p>
+                    
+                    <div class="w-full glass-panel rounded-xl p-4 text-sm grid grid-cols-2 gap-y-3 gap-x-2 z-10">
+                        <div class="text-gray-500 text-xs uppercase tracking-wider">ID CODE</div>
+                        <div id="empCode" class="text-white font-mono text-right font-bold">---</div>
+                        
+                        <div class="text-gray-500 text-xs uppercase tracking-wider">DEPT</div>
+                        <div id="empDept" class="text-white text-right">---</div>
+                        
+                        <div class="text-gray-500 text-xs uppercase tracking-wider">PUNCH TIME</div>
+                        <div id="punchTime" class="text-green-400 font-mono text-lg font-bold text-right drop-shadow-[0_0_5px_rgba(74,222,128,0.5)]">--:--</div>
+                        
+                        <div class="text-gray-500 text-xs uppercase tracking-wider">STATUS</div>
+                        <div id="punchType" class="text-yellow-500 font-bold text-right">---</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">Action Successful</div>
+
+    <footer class="bg-black border-t border-yellow-500/20 p-4 text-center text-xs text-gray-600 font-medium tracking-widest uppercase">
+        &copy; 2026 ACTIVEMAN &bull; SUPABASE SECURED
+    </footer>
+
+    <script>
+        // --- SUPABASE SETUP ---
+        const supabaseUrl = 'https://qetbmdibqnbpjbkiozxx.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFldGJtZGlicW5icGpia2lvenh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MjA1NTEsImV4cCI6MjA5NDI5NjU1MX0.TXBg-O77tDIUdFhMZBUU3-6vIUUDNcfWVjsF4f6Wkzc';
+        const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        // --- VARIABLES ---
+        const video = document.getElementById('video');
+        const startBtn = document.getElementById('startBtn');
+        const systemMessage = document.getElementById('systemMessage');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const scannerContainer = document.getElementById('scannerContainer');
+        const scannerOverlay = document.getElementById('scannerOverlay');
+        const idCardModal = document.getElementById('idCardModal');
+        
+        let modelsLoaded = false;
+        let isProcessing = false;
+        let labeledFaceDescriptors = [];
+        let faceMatcher = null;
+        let employeeDataMap = new Map(); // Store employee details for quick lookup
+        let lastPunchTime = new Map(); // Cooldown logic map (empCode -> timestamp)
+        
+        // High Accuracy Variables
+        let consecutiveMatches = 0;
+        let lastMatchedLabel = null;
+
+        // --- HELPER: Base64 to Blob ---
+        function dataURItoBlob(dataURI) {
+            const byteString = atob(dataURI.split(',')[1]);
+            const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
+            const ab = new ArrayBuffer(byteString.length);
+            const ia = new Uint8Array(ab);
+            for (let i = 0; i < byteString.length; i++) {
+                ia[i] = byteString.charCodeAt(i);
+            }
+            return new Blob([ab], {type: mimeString});
+        }
+
+        const statusIcon = document.getElementById('statusIcon');
+        const gpsText = document.getElementById('gpsText');
+        const toast = document.getElementById('toast');
+        
+        let currentLocation = "Unknown Location";
+
+        // --- GEOLOCATION ---
+        function getLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const lat = position.coords.latitude.toFixed(4);
+                        const lon = position.coords.longitude.toFixed(4);
+                        currentLocation = `${lat}, ${lon}`;
+                        gpsText.innerText = `GPS: ${currentLocation}`;
+                        gpsText.previousElementSibling.classList.remove('animate-pulse');
+                        gpsText.previousElementSibling.classList.add('text-green-500');
+                    },
+                    (error) => {
+                        console.warn("GPS Error:", error);
+                        gpsText.innerText = "GPS DENIED";
+                        gpsText.previousElementSibling.classList.remove('animate-pulse');
+                        gpsText.previousElementSibling.classList.add('text-red-500');
+                    }
+                );
+            }
+        }
+
+        // --- UI UPDATES ---
+        function showToast(message) {
+            toast.innerText = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        function updateStatus(text, type) {
+            systemMessage.innerText = text;
+            if(type === 'success') {
+                statusIndicator.innerText = "Ready";
+                statusIndicator.className = "hidden sm:block px-3 py-1 rounded-full bg-green-900/50 text-green-300 text-xs font-bold border border-green-700/50 backdrop-blur-sm tracking-wider";
+                statusIcon.className = "w-3 h-3 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]";
+            } else if(type === 'error') {
+                statusIndicator.innerText = "Error";
+                statusIndicator.className = "hidden sm:block px-3 py-1 rounded-full bg-red-900/50 text-red-300 text-xs font-bold border border-red-700/50 backdrop-blur-sm tracking-wider";
+                statusIcon.className = "w-3 h-3 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]";
+            } else if(type === 'processing') {
+                statusIndicator.innerText = "Syncing...";
+                statusIndicator.className = "hidden sm:block px-3 py-1 rounded-full bg-yellow-900/50 text-yellow-300 text-xs font-bold border border-yellow-700/50 backdrop-blur-sm tracking-wider";
+                statusIcon.className = "w-3 h-3 rounded-full bg-yellow-500 animate-spin shadow-[0_0_8px_rgba(234,179,8,0.8)]";
+            }
+        }
+
+        // --- LOAD MODELS ---
+        async function loadModels() {
+            updateStatus("Hardware GPU initialize ho raha hai...", "processing");
+            try {
+                // Force WebGL Backend for 10x Faster Processing in Browser
+                await faceapi.tf.setBackend('webgl');
+                await faceapi.tf.ready();
+
+                updateStatus("AI Models load ho rahe hain...", "processing");
+                // Loading models directly from github raw content to avoid local path issues
+                const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights';
+                await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
+                await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+                await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+                modelsLoaded = true;
+                updateStatus("Models loaded. Employee data laa rahe hain...", "processing");
+                await fetchEmployeesFromSupabase();
+            } catch (err) {
+                console.error("Model Loading Error:", err);
+                updateStatus("Model load fail. Internet check karein.", "error");
+            }
+        }
+
+        // --- FETCH DATA FROM SUPABASE ---
+        async function fetchEmployeesFromSupabase() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('employees')
+                    .select('*')
+                    .eq('Status', 'Active');
+
+                if (error) throw error;
+
+                if (!data || data.length === 0) {
+                    updateStatus("Koi active employee nahi mila.", "error");
+                    return;
+                }
+
+                labeledFaceDescriptors = [];
+                employeeDataMap.clear();
+
+                data.forEach(emp => {
+                    try {
+                        if (emp.Descriptor && emp.Descriptor !== "") {
+                            // Parse the array string back to Float32Array
+                            const descArray = JSON.parse(emp.Descriptor);
+                            const float32Desc = new Float32Array(descArray);
+                            
+                            labeledFaceDescriptors.push(
+                                new faceapi.LabeledFaceDescriptors(emp['Employee code'], [float32Desc])
+                            );
+                            
+                            employeeDataMap.set(emp['Employee code'], emp);
+                        }
+                    } catch(e) {
+                        console.warn("Descriptor parse error for", emp['Employee code']);
+                    }
+                });
+
+                if(labeledFaceDescriptors.length > 0) {
+                    // Changed threshold to 0.42 for HIGH STRICTNESS (Reduces false positives to near zero)
+                    faceMatcher = new faceapi.FaceMatcher(labeledFaceDescriptors, 0.42); 
+                    updateStatus(`System Ready! (${employeeDataMap.size} faces loaded)`, "success");
+                    startBtn.disabled = false;
+                } else {
+                    updateStatus("Face data nahi mila.", "error");
+                }
+
+            } catch (err) {
+                console.error("Supabase Fetch Error:", err);
+                updateStatus("Data load fail: " + err.message, "error");
+            }
+        }
+
+        // --- START CAMERA ---
+        startBtn.addEventListener('click', async () => {
+            if (!modelsLoaded || !faceMatcher) {
+                alert("Please wait for system to initialize.");
+                return;
+            }
+            try {
+                // Added better video constraints for compatibility
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } });
+                video.srcObject = stream;
+                startBtn.classList.add('hidden');
+                scannerOverlay.classList.remove('hidden');
+            } catch (err) {
+                console.error("Camera Error:", err);
+                if (err.name === 'NotAllowedError' || String(err).includes('Permission denied')) {
+                    alert("CAMERA BLOCKED BY GOOGLE EDITOR!\n\nAap isey App Script ke Preview mein dekh rahe hain. Camera sirf naye tab mein chalega.\n\nSolution:\n1. 'Deploy' > 'Test deployments' par click karein.\n2. Web App ke URL ko COPY karein.\n3. Us URL ko ek NAYE TAB mein open karein.");
+                }
+                updateStatus("Camera blocked. Naye tab mein URL open karein.", "error");
+            }
+        });
+
+        // --- FACE DETECTION LOOP ---
+        video.addEventListener('play', () => {
+            const canvas = faceapi.createCanvasFromMedia(video);
+            scannerContainer.append(canvas);
+            const displaySize = { width: video.clientWidth, height: video.clientHeight };
+            faceapi.matchDimensions(canvas, displaySize);
+
+            setInterval(async () => {
+                if (isProcessing) return;
+
+                const detections = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
+                
+                // Clear previous drawings
+                canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+
+                if (detections) {
+                    const resizedDetections = faceapi.resizeResults(detections, displaySize);
+                    
+                    // Custom Box Drawing (Like old UI)
+                    const box = resizedDetections.detection.box;
+                    const drawBox = new faceapi.draw.DrawBox(box, { 
+                        boxColor: 'rgba(255, 179, 0, 0.8)', 
+                        lineWidth: 2,
+                        drawLabelOptions: {
+                            backgroundColor: 'rgba(0,0,0,0.8)',
+                            fontColor: '#ffb300'
+                        }
+                    });
+                    drawBox.draw(canvas);
+                    
+                    const match = faceMatcher.findBestMatch(detections.descriptor);
+                    
+                    // distance < 0.42 means extremely confident match
+                    if (match.label !== 'unknown' && match.distance < 0.42) {
+                        if (lastMatchedLabel === match.label) {
+                            consecutiveMatches++;
+                        } else {
+                            lastMatchedLabel = match.label;
+                            consecutiveMatches = 1;
+                        }
+
+                        // Require 3 consecutive frames to be 100% sure it's the right person
+                        if (consecutiveMatches >= 3) {
+                            isProcessing = true;
+                            consecutiveMatches = 0; // reset
+                            lastMatchedLabel = null;
+                            await processAttendance(match.label, video);
+                        } else {
+                            // UI Feedback for verification progress
+                            const box = resizedDetections.detection.box;
+                            canvas.getContext('2d').fillText(`Verifying... ${Math.round((consecutiveMatches/3)*100)}%`, box.x, box.y - 10);
+                        }
+                    } else {
+                        consecutiveMatches = 0; // reset if unknown face or lost track
+                        lastMatchedLabel = null;
+                    }
+                } else {
+                    consecutiveMatches = 0;
+                    lastMatchedLabel = null;
+                }
+            }, 300); // Check faster (every 300ms) for smoother loop
+        });
+
+        // --- PROCESS PUNCH ---
+        async function processAttendance(empCode, videoElement) {
+            scannerOverlay.classList.add('hidden');
+            updateStatus("Processing match...", "processing");
+
+            // Cooldown check (2 mins for testing, change to 20 mins later)
+            const now = Date.now();
+            if (lastPunchTime.has(empCode)) {
+                const timeDiff = (now - lastPunchTime.get(empCode)) / 1000 / 60; // in minutes
+                if (timeDiff < 2) {
+                    updateStatus(`Cooldown active for ${empCode}. Wait 2 mins.`, "error");
+                    setTimeout(() => { isProcessing = false; scannerOverlay.classList.remove('hidden'); updateStatus("System Ready", "success"); }, 3000);
+                    return;
+                }
+            }
+
+            const empData = employeeDataMap.get(empCode);
+            
+            // Capture Image Snapshot with Custom Overlay
+            const snapCanvas = document.createElement('canvas');
+            snapCanvas.width = videoElement.videoWidth;
+            snapCanvas.height = videoElement.videoHeight;
+            const ctx = snapCanvas.getContext('2d');
+            
+            // Draw video frame
+            ctx.drawImage(videoElement, 0, 0);
+            
+            // Add custom overlay (Dark gradient at bottom)
+            const gradient = ctx.createLinearGradient(0, snapCanvas.height - 80, 0, snapCanvas.height);
+            gradient.addColorStop(0, 'transparent');
+            gradient.addColorStop(1, 'rgba(0, 0, 0, 0.9)');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, snapCanvas.height - 80, snapCanvas.width, 80);
+            
+            // Add Timestamp and Info
+            ctx.fillStyle = '#ffb300';
+            ctx.font = 'bold 16px Courier New';
+            const timestampText = new Date().toLocaleString();
+            ctx.fillText(`ACTIVEMAN SECURE | ${empData['Name']} | ${empCode}`, 10, snapCanvas.height - 30);
+            
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '12px Courier New';
+            ctx.fillText(`TIME: ${timestampText} | LOC: ${currentLocation}`, 10, snapCanvas.height - 10);
+            
+            const imageBase64 = snapCanvas.toDataURL('image/jpeg', 0.8);
+
+            try {
+                // 1. Upload Photo to Supabase Storage (Safe Block)
+                let photoUrl = null;
+                try {
+                    const fileName = `photos/${empCode}_${now}.jpg`;
+                    const blob = dataURItoBlob(imageBase64);
+                    
+                    const { data: uploadData, error: uploadError } = await supabaseClient.storage
+                        .from('attendance-photos')
+                        .upload(fileName, blob, { contentType: 'image/jpeg', upsert: true });
+
+                    if (uploadError) {
+                        console.warn("Storage RLS Error (Photo upload skipped):", uploadError.message);
+                        showToast("Warning: Photo Save Failed (Check Supabase SQL)");
+                    } else {
+                        photoUrl = supabaseUrl + '/storage/v1/object/public/attendance-photos/' + fileName;
+                    }
+                } catch (storageErr) {
+                    console.warn("Storage API Exception:", storageErr);
+                }
+
+                // 2. Check Database for today's IN (Fixed Local Timezone Bug)
+                const localNow = new Date();
+                const year = localNow.getFullYear();
+                const month = String(localNow.getMonth() + 1).padStart(2, '0');
+                const day = String(localNow.getDate()).padStart(2, '0');
+                const todayDate = `${year}-${month}-${day}`; // Accurate Local Date
+                
+                const hours = String(localNow.getHours()).padStart(2, '0');
+                const mins = String(localNow.getMinutes()).padStart(2, '0');
+                const secs = String(localNow.getSeconds()).padStart(2, '0');
+                const nowTime = `${hours}:${mins}:${secs}`; // Accurate Local Time
+                
+                console.log(`[DB CHECK] Finding attendance for ${empCode} on ${todayDate}`);
+                const { data: records, error: fetchErr } = await supabaseClient
+                    .from('attendance')
+                    .select('*')
+                    .eq('employee_code', empCode)
+                    .eq('date', todayDate)
+                    .order('created_at', { ascending: false });
+
+                if (fetchErr) throw new Error(`Select Error: ${fetchErr.message}`);
+                console.log("[DB CHECK] Records found:", records);
+
+                let punchType = "IN";
+
+                if (records && records.length > 0) {
+                    // Record exists for today
+                    let record = records[0];
+                    if (!record.out_time) {
+                        punchType = "OUT";
+                        console.log("[DB UPDATE] Punching OUT for ID:", record.id);
+                        
+                        // --- CALCULATE OT AND TOTAL HOURS ---
+                        let inTimeObj = new Date(`${todayDate}T${record.in_time}`);
+                        let outTimeObj = new Date(`${todayDate}T${nowTime}`);
+                        let durationMs = outTimeObj - inTimeObj;
+                        
+                        let shift = empData['Shift'] || empData['shift'] || 'G';
+                        let shiftMinutes = 0;
+                        switch(String(shift).toUpperCase()) {
+                            case 'A': shiftMinutes = 11 * 60 + 30; break;
+                            case 'G': shiftMinutes = 8 * 60 + 30; break;
+                            case 'C': shiftMinutes = 8 * 60; break;
+                            default: shiftMinutes = 8 * 60 + 30;
+                        }
+                        
+                        let totalMinutes = durationMs / (1000 * 60);
+                        let otMinutes = totalMinutes - shiftMinutes;
+                        let otMs = otMinutes > 0 ? otMinutes * 60 * 1000 : 0;
+                        
+                        function formatDuration(ms) {
+                            if (ms < 0) ms = 0;
+                            let h = Math.floor(ms / (1000 * 60 * 60));
+                            let m = Math.floor((ms / (1000 * 60)) % 60);
+                            let s = Math.floor((ms / 1000) % 60);
+                            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+                        }
+                        
+                        let totalHoursStr = formatDuration(durationMs);
+                        let otStr = formatDuration(otMs);
+
+                        const { error: updateErr } = await supabaseClient.from('attendance')
+                            .update({ 
+                                out_time: nowTime, 
+                                out_photo_url: photoUrl,
+                                total_hours: totalHoursStr,
+                                ot: otStr
+                            })
+                            .eq('id', record.id);
+                            
+                        if (updateErr) throw new Error(`Update Error: ${updateErr.message}`);
+                    } else {
+                        // Already punched in and out today
+                        updateStatus("Already completed shift today.", "error");
+                        setTimeout(() => { isProcessing = false; scannerOverlay.classList.remove('hidden'); }, 3000);
+                        return;
+                    }
+                } else {
+                    // No record for today, definitely Punch IN
+                    punchType = "IN";
+                    console.log("[DB INSERT] Punching IN for:", empCode);
+                    
+                    const { error: insertErr } = await supabaseClient.from('attendance').insert([{
+                        employee_code: empCode,
+                        date: todayDate,
+                        in_time: nowTime,
+                        in_photo_url: photoUrl
+                    }]);
+                    
+                    if (insertErr) throw new Error(`Insert Error: ${insertErr.message}`);
+                }
+
+                console.log(`[SUCCESS] Data saved to database successfully as ${punchType}`);
+                lastPunchTime.set(empCode, now);
+                showIDCard(empData, imageBase64, nowTime, punchType);
+
+            } catch(error) {
+                console.error("Punch Error:", error);
+                alert(`🚨 DATABASE ERROR 🚨\n\nDatabase ne data save karne se rok diya hai.\nKaran: ${error.message}\n\nKripya Supabase mein 'attendance' table ki RLS policy check karein!`);
+                updateStatus("Database Error: " + error.message, "error");
+                setTimeout(() => { isProcessing = false; scannerOverlay.classList.remove('hidden'); }, 3000);
+            }
+        }
+
+        // --- SHOW ID CARD MODAL ---
+        function showIDCard(empData, imgSrc, timeStr, punchType) {
+            document.getElementById('empName').innerText = empData['Name'] || 'Unknown';
+            document.getElementById('empDesig').innerText = empData['DESIGNATION'] || 'Staff';
+            document.getElementById('empCode').innerText = empData['Employee code'] || '---';
+            document.getElementById('empDept').innerText = empData['DEPARTMENT'] || '---';
+            document.getElementById('punchTime').innerText = timeStr;
+            document.getElementById('punchType').innerText = punchType;
+            
+            const imgEl = document.getElementById('userSnapshot');
+            const svgEl = document.getElementById('defaultAvatar');
+            imgEl.src = imgSrc;
+            imgEl.classList.remove('hidden');
+            svgEl.classList.add('hidden');
+
+            idCardModal.classList.remove('hidden');
+            
+            // Trigger popup animation
+            setTimeout(() => {
+                document.getElementById('idCardInner').classList.remove('scale-95');
+                document.getElementById('idCardInner').classList.add('scale-100');
+            }, 50);
+            
+            updateStatus("Attendance Verified", "success");
+            showToast(`${empData['Name']} - Punch ${punchType} Successful`);
+
+            // Auto close after 4 seconds
+            setTimeout(() => {
+                document.getElementById('idCardInner').classList.remove('scale-100');
+                document.getElementById('idCardInner').classList.add('scale-95');
+                
+                setTimeout(() => {
+                    idCardModal.classList.add('hidden');
+                    isProcessing = false;
+                    scannerOverlay.classList.remove('hidden');
+                    imgEl.classList.add('hidden');
+                    svgEl.classList.remove('hidden');
+                }, 300); // Wait for scale down animation
+            }, 4000);
+        }
+
+        // Initialize
+        startBtn.disabled = true;
+        getLocation();
+        loadModels();
+    </script>
+</body>
+</html>
