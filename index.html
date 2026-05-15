@@ -76,9 +76,24 @@
         .status-out { background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid #f59e0b; }
 
         .admin-modal {
-            display: none; position: fixed; inset: 0; z-index: 100;
+            display: none; 
+            position: fixed; 
+            inset: 0; 
+            z-index: 100;
             background: rgba(2, 6, 23, 0.95);
+            overflow-y: auto;
         }
+        .custom-input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 12px;
+            width: 100%;
+            outline: none;
+            transition: all 0.3s;
+        }
+        .custom-input:focus { border-color: var(--primary); background: rgba(255, 255, 255, 0.08); }
     </style>
 </head>
 <body class="flex flex-col items-center">
@@ -103,114 +118,115 @@
         </button>
     </header>
 
-    <main class="flex-grow flex flex-col items-center justify-center w-full max-w-md px-6 gap-8">
+    <main class="flex-grow flex flex-col items-center justify-center w-full max-w-md px-6 gap-8 mb-12">
         <div id="systemTip" class="w-full py-3 px-5 glass-panel rounded-2xl border-l-4 border-cyan-400 text-sm text-cyan-50 font-medium">
             Initializing neural networks...
         </div>
 
-        <div class="scanner-frame shadow-2xl shadow-cyan-500/10">
+        <div id="setupView" class="w-full aspect-[3/4] glass-panel rounded-[30px] flex flex-col items-center justify-center gap-6 p-8 text-center">
+            <div class="w-20 h-20 bg-cyan-500/10 rounded-full flex items-center justify-center border border-cyan-500/30">
+                <svg class="w-10 h-10 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                </svg>
+            </div>
+            <div>
+                <h3 class="text-xl font-bold text-white mb-2">Camera Access Required</h3>
+                <p class="text-slate-400 text-sm">To start the biometric attendance system, please grant camera permissions.</p>
+            </div>
+            <button id="startScanBtn" disabled class="w-full py-4 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-2xl font-bold shadow-lg shadow-cyan-500/20 transition-all">
+                START SYSTEM
+            </button>
+        </div>
+
+        <div id="scannerOverlay" class="hidden scanner-frame shadow-2xl shadow-cyan-500/10">
             <video id="video" autoplay muted playsinline class="w-full h-full object-cover scale-x-[-1]"></video>
-            <div id="scannerOverlay" class="hidden absolute inset-0">
+            <div class="absolute inset-0 pointer-events-none">
                 <div class="scan-laser"></div>
                 <div class="absolute inset-0 border-[30px] border-black/30"></div>
-            </div>
-            
-            <div id="setupView" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/90 z-20 px-8 text-center">
-                <div class="w-16 h-16 mb-6 rounded-full bg-cyan-500/10 flex items-center justify-center border border-cyan-500/30">
-                    <svg class="w-8 h-8 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                <div id="scanStatus" class="absolute bottom-10 left-0 right-0 text-center text-cyan-400 text-xs font-bold tracking-widest uppercase animate-pulse">
+                    Position your face
                 </div>
-                <h3 class="text-xl font-bold mb-2">Ready to Start</h3>
-                <p class="text-slate-400 text-sm mb-8">Align your face clearly in front of the camera for high-accuracy recognition.</p>
-                <button id="startScanBtn" disabled class="w-full py-4 bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-2xl font-bold transition-all shadow-lg shadow-cyan-500/25">
-                    ENABLE AI CAMERA
-                </button>
             </div>
         </div>
     </main>
 
-    <div id="idCardModal" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
+    <div id="idCardModal" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md">
         <div id="idCard" class="id-card overflow-hidden">
-            <!-- Card Header -->
-            <div class="p-6 pb-0 flex flex-col items-center">
-                <div id="idBadge" class="status-badge mb-4">PUNCH IN</div>
-                <div class="w-32 h-32 rounded-3xl overflow-hidden border-2 border-cyan-500/30 bg-slate-800 shadow-xl mb-4">
-                    <img id="captureImg" src="" alt="Capture" class="w-full h-full object-cover">
-                </div>
-                <h2 id="idName" class="text-xl font-bold text-white text-center">---</h2>
-                <p id="idCode" class="text-cyan-400 text-xs font-mono tracking-widest mt-1 uppercase">---</p>
-            </div>
-
-            <!-- Card Info -->
-            <div class="p-6 space-y-4">
-                <div class="grid grid-cols-2 gap-3">
-                    <div class="bg-slate-900/50 p-3 rounded-2xl border border-white/5">
-                        <p class="text-[9px] text-slate-500 uppercase font-bold tracking-wider mb-1">Time</p>
-                        <p id="idTime" class="text-sm font-bold text-slate-200">--:--</p>
+            <div class="p-8 flex flex-col items-center">
+                <div id="idBadge" class="status-badge mb-4 status-in">PUNCH IN</div>
+                
+                <div class="relative mb-6">
+                    <div class="w-32 h-32 rounded-3xl overflow-hidden border-2 border-cyan-500/50 shadow-xl">
+                        <img id="captureImg" src="" class="w-full h-full object-cover">
                     </div>
-                    <div class="bg-slate-900/50 p-3 rounded-2xl border border-white/5">
-                        <p class="text-[9px] text-slate-500 uppercase font-bold tracking-wider mb-1">Date</p>
-                        <p id="idDate" class="text-sm font-bold text-slate-200">--/--/--</p>
+                    <div class="absolute -bottom-2 -right-2 bg-cyan-500 p-1.5 rounded-lg">
+                        <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"></path></svg>
                     </div>
                 </div>
-                <div class="bg-slate-900/50 p-3 rounded-2xl border border-white/5">
-                    <p class="text-[9px] text-slate-500 uppercase font-bold tracking-wider mb-1">Position</p>
-                    <p id="idPos" class="text-sm font-bold text-slate-200">---</p>
+
+                <h3 id="idName" class="text-xl font-bold text-white mb-1">---</h3>
+                <p id="idCode" class="text-cyan-400 font-mono text-sm mb-4 tracking-tighter">EMP-000</p>
+                
+                <div class="w-full grid grid-cols-2 gap-4 border-t border-white/10 pt-6 mt-2">
+                    <div class="text-center">
+                        <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">Position</p>
+                        <p id="idPos" class="text-xs text-slate-300 font-medium truncate">---</p>
+                    </div>
+                    <div class="text-center border-l border-white/10">
+                        <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">Time</p>
+                        <p id="idTime" class="text-xs text-cyan-400 font-bold">00:00</p>
+                    </div>
                 </div>
             </div>
-
-            <!-- Card Footer -->
+            
             <div class="bg-cyan-500/10 py-3 px-6 text-center border-t border-white/5">
-                <p class="text-[10px] text-cyan-400 font-bold uppercase tracking-widest">Attendance Verified ✓</p>
+                <p id="idDate" class="text-[10px] text-cyan-400 font-bold uppercase tracking-widest">DD/MM/YYYY</p>
             </div>
         </div>
     </div>
 
-    <div id="adminModal" class="admin-modal overflow-y-auto">
-        <div class="max-w-xl mx-auto p-8">
+    <div id="adminModal" class="admin-modal">
+        <div class="max-w-4xl mx-auto p-6 md:p-12">
             <div class="flex justify-between items-center mb-10">
                 <div>
-                    <h2 class="text-3xl font-bold text-white">Enrollment Hub</h2>
-                    <p class="text-slate-400 text-sm">Register new employees into the biometric database.</p>
+                    <h2 class="text-3xl font-bold text-white">Employee Management</h2>
+                    <p class="text-slate-400">Register new staff members to the biometric database</p>
                 </div>
-                <button id="closeAdminBtn" class="p-3 bg-slate-800 rounded-2xl text-slate-400 hover:text-white">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>
+                <button id="closeAdminBtn" class="p-3 bg-white/5 hover:bg-white/10 rounded-full transition-all">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
             </div>
 
-            <div class="grid md:grid-cols-2 gap-8">
-                <!-- Video Enrollment -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div class="space-y-6">
-                    <div class="aspect-video bg-black rounded-3xl overflow-hidden border border-slate-800 shadow-2xl">
-                        <video id="enrollVideo" autoplay muted playsinline class="w-full h-full object-cover"></video>
+                    <div class="glass-panel p-6 rounded-3xl space-y-4">
+                        <h4 class="text-cyan-400 font-bold text-xs uppercase tracking-widest">Profile Details</h4>
+                        <input type="text" id="regName" placeholder="Full Name" class="custom-input">
+                        <input type="text" id="regCode" placeholder="Employee ID (e.g. EMP-101)" class="custom-input">
+                        <div class="grid grid-cols-2 gap-4">
+                            <input type="text" id="regDept" placeholder="Department" class="custom-input">
+                            <input type="text" id="regDes" placeholder="Designation" class="custom-input">
+                        </div>
                     </div>
-                    <div class="bg-slate-900/50 p-4 rounded-2xl border border-slate-800">
-                        <h4 class="text-xs font-bold text-slate-500 uppercase mb-2">Instructions</h4>
-                        <ul class="text-xs text-slate-400 space-y-2">
-                            <li>• Ensure the face is well-lit from the front.</li>
-                            <li>• Look directly into the camera.</li>
-                            <li>• Stay still while "Registering" button is active.</li>
-                        </ul>
+
+                    <div class="glass-panel p-6 rounded-3xl space-y-4">
+                        <h4 class="text-cyan-400 font-bold text-xs uppercase tracking-widest">System Status</h4>
+                        <div id="regStatus" class="text-sm text-slate-400 italic">Ready to enroll...</div>
+                        <button id="enrollSubmitBtn" class="w-full py-4 bg-cyan-600 hover:bg-cyan-500 text-white rounded-2xl font-bold shadow-lg transition-all">
+                            CAPTURE & ENROLL
+                        </button>
                     </div>
                 </div>
 
-                <!-- Form -->
-                <div class="space-y-4">
-                    <input type="text" id="regName" placeholder="Full Employee Name" class="w-full px-5 py-4 bg-slate-900 border border-slate-800 rounded-2xl text-white outline-none focus:border-cyan-500 transition-all">
-                    <input type="text" id="regCode" placeholder="Employee ID Code" class="w-full px-5 py-4 bg-slate-900 border border-slate-800 rounded-2xl text-white outline-none focus:border-cyan-500 transition-all">
-                    <input type="text" id="regDept" placeholder="Department" class="w-full px-5 py-4 bg-slate-900 border border-slate-800 rounded-2xl text-white outline-none focus:border-cyan-500 transition-all">
-                    <input type="text" id="regDes" placeholder="Designation" class="w-full px-5 py-4 bg-slate-900 border border-slate-800 rounded-2xl text-white outline-none focus:border-cyan-500 transition-all">
-                    <button id="enrollSubmitBtn" class="w-full py-5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-bold shadow-lg shadow-emerald-500/20 transition-all">
-                        CAPTURE & REGISTER FACE
-                    </button>
-                    <p id="regStatus" class="text-center text-xs font-medium text-cyan-400 min-h-[1.5rem]"></p>
+                <div class="space-y-6">
+                    <div class="scanner-frame mx-auto border-cyan-500/20">
+                        <video id="enrollVideo" autoplay muted playsinline class="w-full h-full object-cover scale-x-[-1]"></video>
+                        <div class="absolute inset-0 border-[20px] border-black/20"></div>
+                    </div>
+                    <p class="text-center text-[10px] text-slate-500 uppercase font-bold tracking-widest">Ensure clear lighting for registration</p>
                 </div>
             </div>
         </div>
-    </div>
-
-    <div id="toast" class="fixed bottom-10 bg-slate-900 border border-cyan-500/30 px-6 py-4 rounded-2xl shadow-2xl opacity-0 translate-y-10 transition-all duration-500 z-[120] flex items-center gap-3">
-        <div class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></div>
-        <span id="toastText" class="text-sm font-semibold text-white">System ready</span>
     </div>
 
     <script>
@@ -224,19 +240,34 @@
         let employeeMap = new Map();
         let cooldownSet = new Set();
 
+        function notify(msg, type = "info") {
+            const tip = document.getElementById('systemTip');
+            tip.innerText = msg;
+            tip.style.borderColor = type === "error" ? "#ef4444" : "#22d3ee";
+        }
+
+        function updateSystemStatus(label, type) {
+            const dot = document.getElementById('statusDot');
+            const lbl = document.getElementById('statusLabel');
+            lbl.innerText = label;
+            dot.className = `w-2 h-2 rounded-full ${type === 'success' ? 'bg-green-500 shadow-[0_0_8px_#10b981]' : type === 'warning' ? 'bg-amber-500' : 'bg-red-500'}`;
+        }
+
         async function init() {
             try {
-                updateSystemStatus("Loading AI...", "warning");
+                updateSystemStatus("Loading AI Models...", "warning");
                 const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
-                await Promise.all([
-                    faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-                    faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-                    faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
-                ]);
-
+                
+                await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
+                await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+                await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+                await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL); // Added for fallback
+                
                 await syncEmployees();
             } catch (err) {
-                notify("Critical: Model Load Failed", "error");
+                console.error("Initialization error:", err);
+                notify("Critical: AI Models failed to load", "error");
+                updateSystemStatus("Offline", "error");
             }
         }
 
@@ -261,98 +292,102 @@
             });
 
             if (descriptors.length > 0) {
-                faceMatcher = new faceapi.FaceMatcher(descriptors, 0.45);
+                faceMatcher = new faceapi.FaceMatcher(descriptors, 0.55);
                 updateSystemStatus("Ready", "success");
                 document.getElementById('startScanBtn').disabled = false;
-                document.getElementById('systemTip').innerText = `System online. ${data.length} profiles loaded.`;
+                notify(`System online. ${data.length} profiles loaded.`);
             } else {
                 updateSystemStatus("No Profiles", "warning");
-                document.getElementById('systemTip').innerText = "Database empty. Register employees first.";
+                notify("Database empty. Register employees first.");
             }
-        }
-
-        function updateSystemStatus(text, type) {
-            const dot = document.getElementById('statusDot');
-            const label = document.getElementById('statusLabel');
-            label.innerText = `System ${text}`;
-            dot.className = `w-2 h-2 rounded-full ${type === 'success' ? 'bg-emerald-500' : type === 'error' ? 'bg-red-500' : 'bg-amber-500'}`;
-        }
-
-        function notify(msg) {
-            const t = document.getElementById('toast');
-            document.getElementById('toastText').innerText = msg;
-            t.style.opacity = '1';
-            t.style.transform = 'translateY(0)';
-            setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateY(10px)'; }, 3000);
         }
 
         async function startScanning() {
             const video = document.getElementById('video');
-            if (isProcessing) return setTimeout(startScanning, 200);
-
-            const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
-
-            if (detection && faceMatcher) {
-                const match = faceMatcher.findBestMatch(detection.descriptor);
-                if (match.label !== 'unknown' && !cooldownSet.has(match.label)) {
-                    isProcessing = true;
-                    cooldownSet.add(match.label); // Strict immediate lock
-                    await processPunch(match.label);
-                }
+            const scanStatus = document.getElementById('scanStatus');
+            
+            if (video.paused || video.ended || isProcessing) {
+                return setTimeout(startScanning, 300);
             }
-            setTimeout(startScanning, 100);
+
+            try {
+                const detection = await faceapi.detectSingleFace(video)
+                    .withFaceLandmarks()
+                    .withFaceDescriptor();
+
+                if (detection) {
+                    scanStatus.innerText = "Face Detected. Analyzing...";
+                    if (faceMatcher) {
+                        const match = faceMatcher.findBestMatch(detection.descriptor);
+                        
+                        if (match.label !== 'unknown' && !cooldownSet.has(match.label)) {
+                            isProcessing = true;
+                            scanStatus.innerText = "Match Confirmed!";
+                            cooldownSet.add(match.label);
+                            await processPunch(match.label);
+                        } else if (match.label === 'unknown') {
+                            scanStatus.innerText = "Unknown Identity";
+                        } else {
+                            scanStatus.innerText = "Already Punched Recently";
+                        }
+                    }
+                } else {
+                    scanStatus.innerText = "Looking for face...";
+                }
+            } catch (error) {
+                console.error("Scan Error:", error);
+            }
+            
+            setTimeout(startScanning, 200);
         }
 
         async function processPunch(code) {
             const emp = employeeMap.get(code);
             if (!emp) { isProcessing = false; return; }
 
-            const video = document.getElementById('video');
-            const now = new Date();
-            const dateStr = now.toISOString().split('T')[0];
-            const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-
-            // Capture Photo
-            const canvas = document.createElement('canvas');
-            canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-            canvas.getContext('2d').drawImage(video, 0, 0);
-            const photoData = canvas.toDataURL('image/jpeg', 0.6);
-
             try {
-                // Check for existing punch today
-                const { data: record } = await supabaseClient.from('attendance')
+                const video = document.getElementById('video');
+                const now = new Date();
+                const dateStr = now.toISOString().split('T')[0];
+                const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth; 
+                canvas.height = video.videoHeight;
+                canvas.getContext('2d').drawImage(video, 0, 0);
+                const photoData = canvas.toDataURL('image/jpeg', 0.7);
+
+                const { data: record, error: fetchError } = await supabaseClient.from('attendance')
                     .select('*').eq('employee_code', code).eq('date', dateStr).maybeSingle();
+
+                if (fetchError) throw fetchError;
 
                 let punchType = "IN";
                 if (!record) {
-                    // PUNCH IN
                     await supabaseClient.from('attendance').insert([{
                         "Name": emp.Name,
                         "employee_code": code,
                         "in_time": timeStr,
-                        "in_photo_url": photoData
+                        "in_photo_url": photoData,
+                        "date": dateStr
                     }]);
-                } else if (record && !record.out_time) {
-                    // PUNCH OUT
+                } else if (!record.out_time) {
                     punchType = "OUT";
-                    const inTime = new Date(`${dateStr}T${record.in_time}`);
-                    const outTime = new Date(`${dateStr}T${timeStr}`);
-                    const hrs = ((outTime - inTime) / (1000 * 60 * 60)).toFixed(2);
-                    
                     await supabaseClient.from('attendance').update({
                         "out_time": timeStr,
-                        "total_hours": hrs.toString(),
                         "out_photo_url": photoData
                     }).eq('id', record.id);
                 } else {
-                    notify("Attendance already completed for today.");
-                    setTimeout(() => isProcessing = false, 2000);
+                    notify("Day shift already completed.");
+                    isProcessing = false;
+                    setTimeout(() => cooldownSet.delete(code), 5000);
                     return;
                 }
 
                 showIDCard(emp, photoData, punchType, timeStr, dateStr);
             } catch (err) {
-                notify("DB Error: Try again");
+                console.error("Database Error:", err);
+                notify("Connection Error. Trying again...", "error");
                 cooldownSet.delete(code);
                 isProcessing = false;
             }
@@ -376,13 +411,11 @@
             modal.classList.remove('hidden');
             setTimeout(() => card.classList.add('show'), 50);
 
-            // Hide after 5 seconds
             setTimeout(() => {
                 card.classList.remove('show');
                 setTimeout(() => {
                     modal.classList.add('hidden');
                     isProcessing = false;
-                    // Keep cooldown for 60 seconds to prevent re-scanning the same person immediately
                     setTimeout(() => cooldownSet.delete(emp["Employee code"]), 60000);
                 }, 500);
             }, 5000);
@@ -394,18 +427,13 @@
             const status = document.getElementById('regStatus');
             const btn = document.getElementById('enrollSubmitBtn');
 
-            if (!name || !code) return notify("Name and Code are required");
+            if (!name || !code) return notify("Name and Code are required", "error");
 
             btn.disabled = true;
             status.innerText = "Scanning face... please hold still";
 
             try {
-                let detection = null;
-                for (let i = 0; i < 5; i++) {
-                    detection = await faceapi.detectSingleFace(document.getElementById('enrollVideo'), new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
-                    if (detection) break;
-                    await new Promise(r => setTimeout(r, 600));
-                }
+                let detection = await faceapi.detectSingleFace(document.getElementById('enrollVideo'), new faceapi.SsdMobilenetv1Options()).withFaceLandmarks().withFaceDescriptor();
 
                 if (!detection) throw new Error("Face not detected. Improve lighting.");
 
@@ -415,7 +443,8 @@
                     "DEPARTMENT": document.getElementById('regDept').value,
                     "DESIGNATION": document.getElementById('regDes').value,
                     "Descriptor": JSON.stringify(Array.from(detection.descriptor)),
-                    "DOJ": new Date().toISOString().split('T')[0]
+                    "DOJ": new Date().toISOString().split('T')[0],
+                    "Status": "Active"
                 }]);
 
                 if (error) throw error;
@@ -424,13 +453,14 @@
                 status.innerText = "Registration Complete ✓";
                 await syncEmployees();
             } catch (err) {
-                notify(err.message);
+                notify(err.message, "error");
                 status.innerText = "Error: " + err.message;
             } finally {
                 btn.disabled = false;
             }
         }
 
+        // Event Listeners
         document.getElementById('startScanBtn').addEventListener('click', async () => {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -438,7 +468,7 @@
                 document.getElementById('setupView').classList.add('hidden');
                 document.getElementById('scannerOverlay').classList.remove('hidden');
                 startScanning();
-            } catch (e) { notify("Camera access denied"); }
+            } catch (e) { notify("Camera access denied", "error"); }
         });
 
         document.getElementById('adminBtn').addEventListener('click', async () => {
@@ -447,7 +477,7 @@
                 document.getElementById('adminModal').style.display = 'block';
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true });
                 document.getElementById('enrollVideo').srcObject = stream;
-            } else if (pin !== null) { notify("Incorrect PIN"); }
+            } else if (pin !== null) { notify("Incorrect PIN", "error"); }
         });
 
         document.getElementById('closeAdminBtn').addEventListener('click', () => {
