@@ -1,851 +1,464 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ACTIVEMAN - NextGen Biometric</title>
+    <title>ACTIVEMAN Biometric AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <style>
         :root {
-            --primary: #06b6d4; /* Cyan 500 */
-            --primary-dark: #0891b2; /* Cyan 600 */
-            --primary-glow: rgba(6, 182, 212, 0.4);
-            --success: #10b981; /* Emerald 500 */
-            --danger: #ef4444; /* Red 500 */
-            --bg-base: #0f172a; /* Slate 900 */
-            --surface: rgba(30, 41, 59, 0.6);
-            --surface-border: rgba(148, 163, 184, 0.1);
+            --primary: #06b6d4;
+            --secondary: #10b981;
+            --warning: #f59e0b;
+            --bg-dark: #020617;
+            --glass: rgba(15, 23, 42, 0.8);
         }
-
         body {
-            background-color: var(--bg-base);
-            color: #f8fafc;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            margin: 0;
-            overflow-x: hidden;
+            background-color: var(--bg-dark);
+            color: #f1f5f9;
+            font-family: 'Space+Grotesk', sans-serif;
             background-image: 
-                radial-gradient(circle at 0% 0%, rgba(6, 182, 212, 0.15), transparent 40%),
-                radial-gradient(circle at 100% 100%, rgba(6, 182, 212, 0.1), transparent 40%);
-            background-attachment: fixed;
+                radial-gradient(circle at 10% 20%, rgba(6, 182, 212, 0.1), transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.15), transparent 40%);
+            min-height: 100vh;
+            overflow-x: hidden;
         }
 
         .glass-panel {
-            background: var(--surface);
+            background: var(--glass);
             backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid var(--surface-border);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
         }
-
-        .scanner-container {
+        .scanner-frame {
             position: relative;
             width: 100%;
-            max-width: 500px;
-            margin: 0 auto;
+            max-width: 420px;
             aspect-ratio: 3/4;
+            border-radius: 30px;
             overflow: hidden;
-            border-radius: 24px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.4), inset 0 0 0 2px rgba(6, 182, 212, 0.2);
+            border: 2px solid rgba(6, 182, 212, 0.3);
             background: #000;
         }
-
-        video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            display: block;
-            transform: scaleX(-1);
-        }
-        
-        canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            z-index: 5;
-            width: 100%;
-            height: 100%;
-        }
-
-        .scanner-overlay {
-            position: absolute;
-            inset: 0;
-            z-index: 10;
-            pointer-events: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .scanner-frame {
-            width: 70%;
-            height: 60%;
-            position: relative;
-            border-radius: 20px;
-        }
-
-        /* Modern Corner Brackets */
-        .scanner-frame::before, .scanner-frame::after,
-        .scanner-frame span::before, .scanner-frame span::after {
-            content: '';
-            position: absolute;
-            width: 30px;
-            height: 30px;
-            border-color: var(--primary);
-            border-style: solid;
-            transition: all 0.3s ease;
-        }
-
-        .scanner-frame::before { top: 0; left: 0; border-width: 3px 0 0 3px; border-radius: 12px 0 0 0; }
-        .scanner-frame::after { top: 0; right: 0; border-width: 3px 3px 0 0; border-radius: 0 12px 0 0; }
-        .scanner-frame span::before { bottom: 0; left: 0; border-width: 0 0 3px 3px; border-radius: 0 0 0 12px; }
-        .scanner-frame span::after { bottom: 0; right: 0; border-width: 0 3px 3px 0; border-radius: 0 0 12px 0; }
-
         .scan-laser {
-            position: absolute;
-            width: 100%;
-            height: 2px;
-            background: var(--primary);
-            box-shadow: 0 0 20px 3px var(--primary-glow);
-            animation: laserScan 3s infinite ease-in-out alternate;
-            opacity: 0.8;
-            border-radius: 50%;
+            position: absolute; width: 100%; height: 4px; 
+            background: linear-gradient(to bottom, transparent, var(--primary), transparent);
+            box-shadow: 0 0 20px var(--primary);
+            animation: scanMove 3s infinite ease-in-out;
+            z-index: 10;
         }
+        @keyframes scanMove { 0%, 100% { top: 10%; } 50% { top: 90%; } }
 
-        @keyframes laserScan {
-            0% { top: 5%; opacity: 0; }
-            10% { opacity: 1; }
-            90% { opacity: 1; }
-            100% { top: 95%; opacity: 0; }
+        .id-card {
+            width: 320px;
+            border-radius: 24px;
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transform: translateY(20px);
+            opacity: 0;
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
-
-        .pulse-ring {
-            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        .id-card.show { transform: translateY(0); opacity: 1; }
+        
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 99px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
         }
+        .status-in { background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid #10b981; }
+        .status-out { background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid #f59e0b; }
 
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: .5; }
+        .admin-modal {
+            display: none; position: fixed; inset: 0; z-index: 100;
+            background: rgba(2, 6, 23, 0.95);
         }
-
-        /* Toast & Modals */
-        .toast {
-            position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(100px);
-            background: var(--primary); color: #000; padding: 12px 24px;
-            border-radius: 99px; font-weight: 600; opacity: 0; transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-            z-index: 100; box-shadow: 0 10px 25px var(--primary-glow);
-            display: flex; align-items: center; gap: 8px;
-        }
-        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
-
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: var(--bg-base); }
-        ::-webkit-scrollbar-thumb { background: var(--primary-dark); border-radius: 10px; }
-
-        /* New Enrollment UI Styles */
-        .admin-panel {
-            display: none;
-            position: fixed;
-            inset: 0;
-            z-index: 60;
-            background: var(--bg-base);
-            overflow-y: auto;
-        }
-        .admin-panel.active { display: block; }
     </style>
 </head>
-<body class="flex flex-col min-h-screen">
+<body class="flex flex-col items-center">
 
-    <!-- Header -->
-    <header class="glass-panel border-b border-cyan-500/20 px-6 py-4 shadow-lg flex justify-between items-center sticky top-0 z-40">
-        <div class="flex items-center gap-3">
-            <div class="relative w-10 h-10 flex items-center justify-center bg-cyan-500/10 rounded-xl border border-cyan-500/30">
-                <svg class="w-6 h-6 text-cyan-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"></path>
+    <header class="w-full max-w-5xl px-6 py-6 flex justify-between items-center">
+        <div class="flex items-center gap-4">
+            <div class="p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-2xl">
+                <svg class="w-8 h-8 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"></path>
                 </svg>
             </div>
             <div>
-                <h1 class="text-xl font-bold text-white tracking-wide">ACTIVEMAN</h1>
-                <p class="text-[11px] text-cyan-400 font-medium tracking-wider uppercase">Biometric Secure</p>
+                <h1 class="text-2xl font-bold tracking-tight text-white">ACTIVEMAN <span class="text-cyan-400">BIOMETRIC</span></h1>
+                <div class="flex items-center gap-2">
+                    <div id="statusDot" class="w-2 h-2 rounded-full bg-red-500"></div>
+                    <span id="statusLabel" class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">System Offline</span>
+                </div>
             </div>
         </div>
-        <div class="flex items-center gap-3">
-            <div id="statusIndicator" class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800 border border-slate-700">
-                <div id="statusIcon" class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
-                <span id="statusText" class="text-xs font-semibold text-slate-300">Offline</span>
-            </div>
-            <button id="adminLoginBtn" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl text-xs font-bold text-cyan-400 transition-all">
-                ADMIN ACCESS
-            </button>
-        </div>
+        <button id="adminBtn" class="px-5 py-2.5 glass-panel rounded-xl text-sm font-semibold text-cyan-400 hover:bg-cyan-400/10 transition-all">
+            ADMIN PANEL
+        </button>
     </header>
 
-    <main class="flex-grow p-4 sm:p-6 flex flex-col items-center justify-center">
-        
-        <div class="w-full max-w-md flex flex-col gap-6">
+    <main class="flex-grow flex flex-col items-center justify-center w-full max-w-md px-6 gap-8">
+        <div id="systemTip" class="w-full py-3 px-5 glass-panel rounded-2xl border-l-4 border-cyan-400 text-sm text-cyan-50 font-medium">
+            Initializing neural networks...
+        </div>
+
+        <div class="scanner-frame shadow-2xl shadow-cyan-500/10">
+            <video id="video" autoplay muted playsinline class="w-full h-full object-cover scale-x-[-1]"></video>
+            <div id="scannerOverlay" class="hidden absolute inset-0">
+                <div class="scan-laser"></div>
+                <div class="absolute inset-0 border-[30px] border-black/30"></div>
+            </div>
             
-            <!-- Message Area -->
-            <div class="glass-panel rounded-2xl p-4 text-center border-l-4 border-l-cyan-500">
-                <p id="systemMessage" class="text-sm text-cyan-50 font-medium">Initializing Lightweight AI Models...</p>
-            </div>
-
-            <!-- Main Scanner UI -->
-            <div id="scannerContainer" class="scanner-container">
-                <video id="video" autoplay muted playsinline></video>
-                <div id="scannerOverlay" class="scanner-overlay hidden">
-                    <div class="scanner-frame">
-                        <span></span>
-                        <div class="scan-laser"></div>
-                    </div>
+            <div id="setupView" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/90 z-20 px-8 text-center">
+                <div class="w-16 h-16 mb-6 rounded-full bg-cyan-500/10 flex items-center justify-center border border-cyan-500/30">
+                    <svg class="w-8 h-8 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                 </div>
-                
-                <!-- Start Button (Overlay) -->
-                <div id="startBtnContainer" class="absolute inset-0 flex items-center justify-center z-20 bg-slate-900/60 backdrop-blur-sm">
-                    <button id="startBtn" disabled class="px-8 py-4 bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-700 disabled:cursor-not-allowed text-white rounded-2xl font-bold shadow-2xl transition-all transform hover:scale-105 active:scale-95 flex flex-col items-center gap-2">
-                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
-                        START SCANNER
-                    </button>
-                </div>
-            </div>
-
-            <!-- Location Status -->
-            <div class="flex items-center justify-between px-4 py-2 bg-slate-800/40 rounded-xl border border-slate-700/50">
-                <div class="flex items-center gap-2">
-                    <div class="w-1.5 h-1.5 rounded-full bg-cyan-400"></div>
-                    <span id="gpsText" class="text-[10px] font-mono text-slate-400 uppercase tracking-tighter">Locating...</span>
-                </div>
-                <span class="text-[10px] font-bold text-cyan-500/50 uppercase tracking-widest">Biometric Encrypted</span>
+                <h3 class="text-xl font-bold mb-2">Ready to Start</h3>
+                <p class="text-slate-400 text-sm mb-8">Align your face clearly in front of the camera for high-accuracy recognition.</p>
+                <button id="startScanBtn" disabled class="w-full py-4 bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-2xl font-bold transition-all shadow-lg shadow-cyan-500/25">
+                    ENABLE AI CAMERA
+                </button>
             </div>
         </div>
-
-        <!-- Login Modal -->
-        <div id="loginModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-            <div class="bg-slate-900 border border-slate-700 p-8 rounded-3xl w-full max-w-sm shadow-2xl">
-                <h2 class="text-2xl font-bold text-white mb-2">Admin Login</h2>
-                <p class="text-slate-400 text-sm mb-6">Enter credentials to enroll new faces.</p>
-                <div class="space-y-4">
-                    <input type="password" id="adminPassword" placeholder="Admin PIN" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-4 text-white focus:outline-none focus:border-cyan-500 transition-all">
-                    <div class="flex gap-3">
-                        <button onclick="closeLogin()" class="flex-1 py-3 text-slate-400 font-bold">Cancel</button>
-                        <button id="doLoginBtn" class="flex-1 py-3 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-bold transition-all">Login</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Admin / Enrollment Panel -->
-        <div id="adminPanel" class="admin-panel">
-            <div class="max-w-2xl mx-auto p-6">
-                <div class="flex justify-between items-center mb-8">
-                    <h2 class="text-2xl font-bold text-white">Enrollment Dashboard</h2>
-                    <button onclick="closeAdminPanel()" class="text-slate-400 hover:text-white">Close</button>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <!-- Left: Camera Preview -->
-                    <div class="space-y-4">
-                        <div class="scanner-container !max-w-full" style="aspect-ratio: 1/1;">
-                            <video id="enrollVideo" autoplay muted playsinline></video>
-                            <canvas id="enrollCanvas"></canvas>
-                        </div>
-                        <p id="enrollStatus" class="text-center text-sm text-cyan-400">Ready to detect face...</p>
-                    </div>
-
-                    <!-- Right: Details Form -->
-                    <div class="space-y-4 glass-panel p-6 rounded-2xl">
-                        <input type="text" id="newName" placeholder="Full Name" class="w-full bg-slate-800/50 border border-slate-700 rounded-xl p-3 text-white">
-                        <input type="text" id="newCode" placeholder="Employee Code" class="w-full bg-slate-800/50 border border-slate-700 rounded-xl p-3 text-white">
-                        <input type="text" id="newDept" placeholder="Department" class="w-full bg-slate-800/50 border border-slate-700 rounded-xl p-3 text-white">
-                        <select id="newShift" class="w-full bg-slate-800/50 border border-slate-700 rounded-xl p-3 text-white">
-                            <option value="G">General Shift (G)</option>
-                            <option value="A">Shift A</option>
-                            <option value="C">Shift C</option>
-                        </select>
-                        <button id="enrollBtn" class="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold shadow-lg transition-all flex items-center justify-center gap-2">
-                            CAPTURE & REGISTER
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Success Modal -->
-        <div id="idCardModal" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-md z-50 flex items-center justify-center p-4 transition-all duration-300 opacity-0">
-            <div class="bg-slate-800 rounded-3xl w-full max-w-sm border border-emerald-500/30 shadow-[0_0_50px_rgba(16,185,129,0.15)] overflow-hidden transform scale-90 transition-transform duration-500 ease-out" id="idCardInner">
-                <!-- Header -->
-                <div class="bg-emerald-500/10 border-b border-emerald-500/20 py-4 flex items-center justify-center gap-2">
-                    <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    <span class="text-emerald-400 font-bold tracking-widest uppercase text-sm">Identity Verified</span>
-                </div>
-                
-                <div class="p-6 flex flex-col items-center">
-                    <!-- Avatar -->
-                    <div class="w-24 h-24 rounded-2xl border-2 border-emerald-500/50 p-1 mb-4 relative">
-                        <div class="w-full h-full rounded-xl overflow-hidden bg-slate-700">
-                            <img id="userSnapshot" src="" alt="User" class="w-full h-full object-cover transform scale-x-[-1]">
-                        </div>
-                        <div class="absolute -bottom-3 -right-3 bg-emerald-500 text-slate-900 text-xs font-bold px-2 py-1 rounded-lg" id="punchTypeBadge">IN</div>
-                    </div>
-                    
-                    <h2 id="empName" class="text-xl font-bold text-white mb-1">---</h2>
-                    <p id="empDesig" class="text-cyan-400 text-sm font-medium mb-6">---</p>
-                    
-                    <!-- Details Grid -->
-                    <div class="w-full bg-slate-900/50 rounded-2xl p-4 grid grid-cols-2 gap-4 border border-slate-700">
-                        <div>
-                            <p class="text-slate-500 text-[10px] uppercase tracking-wider mb-1">ID Number</p>
-                            <p id="empCode" class="text-white font-mono text-sm font-semibold">---</p>
-                        </div>
-                        <div>
-                            <p class="text-slate-500 text-[10px] uppercase tracking-wider mb-1">Department</p>
-                            <p id="empDept" class="text-white text-sm font-semibold">---</p>
-                        </div>
-                        <div class="col-span-2 bg-slate-800 rounded-xl p-3 flex justify-between items-center">
-                            <p class="text-slate-400 text-xs uppercase tracking-wider">Timestamp</p>
-                            <p id="punchTime" class="text-emerald-400 font-mono text-lg font-bold">--:--</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Custom Error Modal -->
-        <div id="errorModal" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div class="bg-slate-800 rounded-2xl max-w-sm w-full border border-red-500/30 p-6 text-center shadow-2xl">
-                <div class="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                </div>
-                <h3 class="text-lg font-bold text-white mb-2">Attention Required</h3>
-                <p id="errorMsgText" class="text-slate-400 text-sm mb-6"></p>
-                <button onclick="closeErrorModal()" class="w-full py-3 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl font-semibold transition-colors">Understood</button>
-            </div>
-        </div>
-
     </main>
 
-    <!-- Toast -->
-    <div id="toast" class="toast">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-        <span id="toastMsg">Ready</span>
+    <div id="idCardModal" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
+        <div id="idCard" class="id-card overflow-hidden">
+            <!-- Card Header -->
+            <div class="p-6 pb-0 flex flex-col items-center">
+                <div id="idBadge" class="status-badge mb-4">PUNCH IN</div>
+                <div class="w-32 h-32 rounded-3xl overflow-hidden border-2 border-cyan-500/30 bg-slate-800 shadow-xl mb-4">
+                    <img id="captureImg" src="" alt="Capture" class="w-full h-full object-cover">
+                </div>
+                <h2 id="idName" class="text-xl font-bold text-white text-center">---</h2>
+                <p id="idCode" class="text-cyan-400 text-xs font-mono tracking-widest mt-1 uppercase">---</p>
+            </div>
+
+            <!-- Card Info -->
+            <div class="p-6 space-y-4">
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-slate-900/50 p-3 rounded-2xl border border-white/5">
+                        <p class="text-[9px] text-slate-500 uppercase font-bold tracking-wider mb-1">Time</p>
+                        <p id="idTime" class="text-sm font-bold text-slate-200">--:--</p>
+                    </div>
+                    <div class="bg-slate-900/50 p-3 rounded-2xl border border-white/5">
+                        <p class="text-[9px] text-slate-500 uppercase font-bold tracking-wider mb-1">Date</p>
+                        <p id="idDate" class="text-sm font-bold text-slate-200">--/--/--</p>
+                    </div>
+                </div>
+                <div class="bg-slate-900/50 p-3 rounded-2xl border border-white/5">
+                    <p class="text-[9px] text-slate-500 uppercase font-bold tracking-wider mb-1">Position</p>
+                    <p id="idPos" class="text-sm font-bold text-slate-200">---</p>
+                </div>
+            </div>
+
+            <!-- Card Footer -->
+            <div class="bg-cyan-500/10 py-3 px-6 text-center border-t border-white/5">
+                <p class="text-[10px] text-cyan-400 font-bold uppercase tracking-widest">Attendance Verified ✓</p>
+            </div>
+        </div>
     </div>
 
-    <footer class="py-4 text-center text-[10px] text-slate-500 font-medium tracking-widest uppercase">
-        &copy; 2026 ACTIVEMAN &bull; POWERED BY SUPABASE
-    </footer>
+    <div id="adminModal" class="admin-modal overflow-y-auto">
+        <div class="max-w-xl mx-auto p-8">
+            <div class="flex justify-between items-center mb-10">
+                <div>
+                    <h2 class="text-3xl font-bold text-white">Enrollment Hub</h2>
+                    <p class="text-slate-400 text-sm">Register new employees into the biometric database.</p>
+                </div>
+                <button id="closeAdminBtn" class="p-3 bg-slate-800 rounded-2xl text-slate-400 hover:text-white">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <!-- Video Enrollment -->
+                <div class="space-y-6">
+                    <div class="aspect-video bg-black rounded-3xl overflow-hidden border border-slate-800 shadow-2xl">
+                        <video id="enrollVideo" autoplay muted playsinline class="w-full h-full object-cover"></video>
+                    </div>
+                    <div class="bg-slate-900/50 p-4 rounded-2xl border border-slate-800">
+                        <h4 class="text-xs font-bold text-slate-500 uppercase mb-2">Instructions</h4>
+                        <ul class="text-xs text-slate-400 space-y-2">
+                            <li>• Ensure the face is well-lit from the front.</li>
+                            <li>• Look directly into the camera.</li>
+                            <li>• Stay still while "Registering" button is active.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Form -->
+                <div class="space-y-4">
+                    <input type="text" id="regName" placeholder="Full Employee Name" class="w-full px-5 py-4 bg-slate-900 border border-slate-800 rounded-2xl text-white outline-none focus:border-cyan-500 transition-all">
+                    <input type="text" id="regCode" placeholder="Employee ID Code" class="w-full px-5 py-4 bg-slate-900 border border-slate-800 rounded-2xl text-white outline-none focus:border-cyan-500 transition-all">
+                    <input type="text" id="regDept" placeholder="Department" class="w-full px-5 py-4 bg-slate-900 border border-slate-800 rounded-2xl text-white outline-none focus:border-cyan-500 transition-all">
+                    <input type="text" id="regDes" placeholder="Designation" class="w-full px-5 py-4 bg-slate-900 border border-slate-800 rounded-2xl text-white outline-none focus:border-cyan-500 transition-all">
+                    <button id="enrollSubmitBtn" class="w-full py-5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-bold shadow-lg shadow-emerald-500/20 transition-all">
+                        CAPTURE & REGISTER FACE
+                    </button>
+                    <p id="regStatus" class="text-center text-xs font-medium text-cyan-400 min-h-[1.5rem]"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="fixed bottom-10 bg-slate-900 border border-cyan-500/30 px-6 py-4 rounded-2xl shadow-2xl opacity-0 translate-y-10 transition-all duration-500 z-[120] flex items-center gap-3">
+        <div class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></div>
+        <span id="toastText" class="text-sm font-semibold text-white">System ready</span>
+    </div>
 
     <script>
-        // --- SUPABASE SETUP ---
         const supabaseUrl = 'https://qetbmdibqnbpjbkiozxx.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFldGJtZGlicW5icGpia2lvenh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MjA1NTEsImV4cCI6MjA5NDI5NjU1MX0.TXBg-O77tDIUdFhMZBUU3-6vIUUDNcfWVjsF4f6Wkzc';
+        
         const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-        // --- STREAMING_CHUNK:Initializing Admin UI elements... ---
-        const loginModal = document.getElementById('loginModal');
-        const adminPanel = document.getElementById('adminPanel');
-        const adminLoginBtn = document.getElementById('adminLoginBtn');
-        const doLoginBtn = document.getElementById('doLoginBtn');
-        const enrollVideo = document.getElementById('enrollVideo');
-        const enrollBtn = document.getElementById('enrollBtn');
-        const enrollStatus = document.getElementById('enrollStatus');
+        let faceMatcher = null;
+        let isProcessing = false;
+        let employeeMap = new Map();
+        let cooldownSet = new Set();
 
-        // Admin Auth (Simple PIN for demo, can be expanded to full Supabase Auth)
-        adminLoginBtn.addEventListener('click', () => loginModal.classList.remove('hidden'));
-        function closeLogin() { loginModal.classList.add('hidden'); }
-
-        doLoginBtn.addEventListener('click', () => {
-            const pin = document.getElementById('adminPassword').value;
-            if(pin === "1234") { 
-                loginModal.classList.add('hidden');
-                document.getElementById('adminPassword').value = ''; // Clear PIN
-                openAdminPanel();
-                showToast("Admin Authenticated");
-            } else {
-                showError("Invalid Admin PIN");
-            }
-        });
-
-        async function openAdminPanel() {
-            adminPanel.classList.add('active');
-            const startBtnContainer = document.getElementById('startBtnContainer');
-            
-            // Stop main video if running
-            if (video.srcObject) {
-                video.srcObject.getTracks().forEach(track => track.stop());
-                video.srcObject = null;
-            }
-            
-            startBtnContainer.classList.remove('hidden'); // Reset start button for main scanner
-            scannerOverlay.classList.add('hidden');
-
+        async function init() {
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-                enrollVideo.srcObject = stream;
+                updateSystemStatus("Loading AI...", "warning");
+                const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
+                await Promise.all([
+                    faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+                    faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+                    faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+                ]);
+
+                await syncEmployees();
             } catch (err) {
-                showError("Admin Camera access failed: " + err.message);
+                notify("Critical: Model Load Failed", "error");
             }
         }
 
-        function closeAdminPanel() {
-            adminPanel.classList.remove('active');
-            if (enrollVideo.srcObject) {
-                enrollVideo.srcObject.getTracks().forEach(track => track.stop());
-                enrollVideo.srcObject = null;
+        async function syncEmployees() {
+            updateSystemStatus("Syncing DB...", "warning");
+            const { data, error } = await supabaseClient.from('employees').select('*').eq('Status', 'Active');
+            
+            if (error || !data) return notify("DB Sync Failed", "error");
+
+            const descriptors = [];
+            employeeMap.clear();
+
+            data.forEach(emp => {
+                const code = emp["Employee code"];
+                if (emp.Descriptor && code) {
+                    try {
+                        const desc = new Float32Array(JSON.parse(emp.Descriptor));
+                        descriptors.push(new faceapi.LabeledFaceDescriptors(code, [desc]));
+                        employeeMap.set(code, emp);
+                    } catch (e) {}
+                }
+            });
+
+            if (descriptors.length > 0) {
+                faceMatcher = new faceapi.FaceMatcher(descriptors, 0.45);
+                updateSystemStatus("Ready", "success");
+                document.getElementById('startScanBtn').disabled = false;
+                document.getElementById('systemTip').innerText = `System online. ${data.length} profiles loaded.`;
+            } else {
+                updateSystemStatus("No Profiles", "warning");
+                document.getElementById('systemTip').innerText = "Database empty. Register employees first.";
             }
         }
 
-        function closeAdminPanel() {
-            adminPanel.classList.remove('active');
-            if (enrollVideo.srcObject) {
-                enrollVideo.srcObject.getTracks().forEach(track => track.stop());
-            }
-            // Reset main scanner button
-            startBtn.classList.remove('hidden');
+        function updateSystemStatus(text, type) {
+            const dot = document.getElementById('statusDot');
+            const label = document.getElementById('statusLabel');
+            label.innerText = `System ${text}`;
+            dot.className = `w-2 h-2 rounded-full ${type === 'success' ? 'bg-emerald-500' : type === 'error' ? 'bg-red-500' : 'bg-amber-500'}`;
         }
 
-        // --- STREAMING_CHUNK:Enrollment Logic... ---
-        enrollBtn.addEventListener('click', async () => {
-            const name = document.getElementById('newName').value;
-            const code = document.getElementById('newCode').value;
-            const dept = document.getElementById('newDept').value;
-            const shift = document.getElementById('newShift').value;
+        function notify(msg) {
+            const t = document.getElementById('toast');
+            document.getElementById('toastText').innerText = msg;
+            t.style.opacity = '1';
+            t.style.transform = 'translateY(0)';
+            setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateY(10px)'; }, 3000);
+        }
 
-            if(!name || !code || !dept) {
-                showError("Please fill all fields");
-                return;
+        async function startScanning() {
+            const video = document.getElementById('video');
+            if (isProcessing) return setTimeout(startScanning, 200);
+
+            const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
+
+            if (detection && faceMatcher) {
+                const match = faceMatcher.findBestMatch(detection.descriptor);
+                if (match.label !== 'unknown' && !cooldownSet.has(match.label)) {
+                    isProcessing = true;
+                    cooldownSet.add(match.label); // Strict immediate lock
+                    await processPunch(match.label);
+                }
             }
+            setTimeout(startScanning, 100);
+        }
 
-            enrollBtn.disabled = true;
-            enrollBtn.innerText = "CAPTURING FACE...";
-            enrollStatus.innerText = "Analyzing biometric features...";
+        async function processPunch(code) {
+            const emp = employeeMap.get(code);
+            if (!emp) { isProcessing = false; return; }
+
+            const video = document.getElementById('video');
+            const now = new Date();
+            const dateStr = now.toISOString().split('T')[0];
+            const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+
+            // Capture Photo
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            const photoData = canvas.toDataURL('image/jpeg', 0.6);
 
             try {
-                const detectorOptions = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 });
-                const detection = await faceapi.detectSingleFace(enrollVideo, detectorOptions).withFaceLandmarks().withFaceDescriptor();
+                // Check for existing punch today
+                const { data: record } = await supabaseClient.from('attendance')
+                    .select('*').eq('employee_code', code).eq('date', dateStr).maybeSingle();
 
-                if (!detection) {
-                    throw new Error("Face not detected. Position clearly in center.");
+                let punchType = "IN";
+                if (!record) {
+                    // PUNCH IN
+                    await supabaseClient.from('attendance').insert([{
+                        "Name": emp.Name,
+                        "employee_code": code,
+                        "in_time": timeStr,
+                        "in_photo_url": photoData
+                    }]);
+                } else if (record && !record.out_time) {
+                    // PUNCH OUT
+                    punchType = "OUT";
+                    const inTime = new Date(`${dateStr}T${record.in_time}`);
+                    const outTime = new Date(`${dateStr}T${timeStr}`);
+                    const hrs = ((outTime - inTime) / (1000 * 60 * 60)).toFixed(2);
+                    
+                    await supabaseClient.from('attendance').update({
+                        "out_time": timeStr,
+                        "total_hours": hrs.toString(),
+                        "out_photo_url": photoData
+                    }).eq('id', record.id);
+                } else {
+                    notify("Attendance already completed for today.");
+                    setTimeout(() => isProcessing = false, 2000);
+                    return;
                 }
 
-                // Prepare descriptor for JSON storage
-                const descriptorArray = Array.from(detection.descriptor);
-                const descriptorJson = JSON.stringify(descriptorArray);
+                showIDCard(emp, photoData, punchType, timeStr, dateStr);
+            } catch (err) {
+                notify("DB Error: Try again");
+                cooldownSet.delete(code);
+                isProcessing = false;
+            }
+        }
 
-                updateStatus("Saving to Database...", "processing");
-                
+        function showIDCard(emp, img, type, time, date) {
+            const modal = document.getElementById('idCardModal');
+            const card = document.getElementById('idCard');
+            const badge = document.getElementById('idBadge');
+
+            document.getElementById('captureImg').src = img;
+            document.getElementById('idName').innerText = emp.Name;
+            document.getElementById('idCode').innerText = emp["Employee code"];
+            document.getElementById('idPos').innerText = `${emp.DESIGNATION} (${emp.DEPARTMENT})`;
+            document.getElementById('idTime').innerText = time;
+            document.getElementById('idDate').innerText = date.split('-').reverse().join('/');
+            
+            badge.innerText = `PUNCH ${type}`;
+            badge.className = `status-badge mb-4 ${type === 'IN' ? 'status-in' : 'status-out'}`;
+
+            modal.classList.remove('hidden');
+            setTimeout(() => card.classList.add('show'), 50);
+
+            // Hide after 5 seconds
+            setTimeout(() => {
+                card.classList.remove('show');
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                    isProcessing = false;
+                    // Keep cooldown for 60 seconds to prevent re-scanning the same person immediately
+                    setTimeout(() => cooldownSet.delete(emp["Employee code"]), 60000);
+                }, 500);
+            }, 5000);
+        }
+
+        async function enroll() {
+            const name = document.getElementById('regName').value;
+            const code = document.getElementById('regCode').value;
+            const status = document.getElementById('regStatus');
+            const btn = document.getElementById('enrollSubmitBtn');
+
+            if (!name || !code) return notify("Name and Code are required");
+
+            btn.disabled = true;
+            status.innerText = "Scanning face... please hold still";
+
+            try {
+                let detection = null;
+                for (let i = 0; i < 5; i++) {
+                    detection = await faceapi.detectSingleFace(document.getElementById('enrollVideo'), new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
+                    if (detection) break;
+                    await new Promise(r => setTimeout(r, 600));
+                }
+
+                if (!detection) throw new Error("Face not detected. Improve lighting.");
+
                 const { error } = await supabaseClient.from('employees').insert([{
-                    'Employee code': code,
-                    'Name': name,
-                    'DEPARTMENT': dept,
-                    'DESIGNATION': 'Staff', // Default
-                    'Shift': shift,
-                    'Status': 'Active',
-                    'Descriptor': descriptorJson
+                    "Name": name,
+                    "Employee code": code,
+                    "DEPARTMENT": document.getElementById('regDept').value,
+                    "DESIGNATION": document.getElementById('regDes').value,
+                    "Descriptor": JSON.stringify(Array.from(detection.descriptor)),
+                    "DOJ": new Date().toISOString().split('T')[0]
                 }]);
 
                 if (error) throw error;
 
-                showToast("Employee Enrolled Successfully!");
-                enrollStatus.innerText = "Face registered for: " + name;
-                
-                // Clear form
-                document.getElementById('newName').value = '';
-                document.getElementById('newCode').value = '';
-                
-                // Refresh local data
-                await fetchEmployeesFromSupabase();
-                
+                notify("Successfully Registered!");
+                status.innerText = "Registration Complete ✓";
+                await syncEmployees();
             } catch (err) {
-                showError(err.message);
-                enrollStatus.innerText = "Enrollment failed.";
+                notify(err.message);
+                status.innerText = "Error: " + err.message;
             } finally {
-                enrollBtn.disabled = false;
-                enrollBtn.innerText = "CAPTURE & REGISTER";
+                btn.disabled = false;
             }
+        }
+
+        document.getElementById('startScanBtn').addEventListener('click', async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                document.getElementById('video').srcObject = stream;
+                document.getElementById('setupView').classList.add('hidden');
+                document.getElementById('scannerOverlay').classList.remove('hidden');
+                startScanning();
+            } catch (e) { notify("Camera access denied"); }
         });
 
-        // --- DOM ELEMENTS ---
-        const video = document.getElementById('video');
-        const startBtn = document.getElementById('startBtn');
-        const systemMessage = document.getElementById('systemMessage');
-        const statusIndicator = document.getElementById('statusIndicator');
-        const statusIcon = document.getElementById('statusIcon');
-        const statusText = document.getElementById('statusText');
-        const scannerContainer = document.getElementById('scannerContainer');
-        const scannerOverlay = document.getElementById('scannerOverlay');
-        const gpsText = document.getElementById('gpsText');
-        const toast = document.getElementById('toast');
-        const errorModal = document.getElementById('errorModal');
-        const errorMsgText = document.getElementById('errorMsgText');
-        
-        // --- STATE VARIABLES ---
-        let modelsLoaded = false;
-        let isProcessing = false;
-        let labeledFaceDescriptors = [];
-        let faceMatcher = null;
-        let employeeDataMap = new Map(); 
-        let lastPunchTime = new Map(); 
-        let currentLocation = "Location Unknown";
-        let consecutiveMatches = 0;
-        let lastMatchedLabel = null;
-
-        // --- UTILS ---
-        function dataURItoBlob(dataURI) {
-            const byteString = atob(dataURI.split(',')[1]);
-            const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
-            const ab = new ArrayBuffer(byteString.length);
-            const ia = new Uint8Array(ab);
-            for (let i = 0; i < byteString.length; i++) { ia[i] = byteString.charCodeAt(i); }
-            return new Blob([ab], {type: mimeString});
-        }
-
-        function showToast(message) {
-            document.getElementById('toastMsg').innerText = message;
-            toast.classList.add('show');
-            setTimeout(() => toast.classList.remove('show'), 3000);
-        }
-
-        function showError(msg) {
-            errorMsgText.innerText = msg;
-            errorModal.classList.remove('hidden');
-        }
-
-        function closeErrorModal() {
-            errorModal.classList.add('hidden');
-        }
-
-        function updateStatus(text, type) {
-            systemMessage.innerText = text;
-            if(type === 'success') {
-                statusText.innerText = "Active";
-                statusText.className = "text-xs font-semibold text-emerald-400";
-                statusIcon.className = "w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]";
-            } else if(type === 'error') {
-                statusText.innerText = "Error";
-                statusText.className = "text-xs font-semibold text-red-400";
-                statusIcon.className = "w-2 h-2 rounded-full bg-red-500 animate-pulse";
-            } else {
-                statusText.innerText = "Syncing";
-                statusText.className = "text-xs font-semibold text-cyan-400";
-                statusIcon.className = "w-2 h-2 rounded-full bg-cyan-500 animate-ping";
-            }
-        }
-
-        // --- STREAMING_CHUNK:Location & Face API Models Setup... ---
-        function getLocation() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        currentLocation = `${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`;
-                        gpsText.innerText = `GPS: ${currentLocation}`;
-                        gpsText.previousElementSibling.classList.replace('text-cyan-400', 'text-emerald-400');
-                    },
-                    (error) => {
-                        gpsText.innerText = "Location Denied";
-                        gpsText.previousElementSibling.classList.replace('text-cyan-400', 'text-red-500');
-                    }
-                );
-            }
-        }
-
-        async function loadModels() {
-            updateStatus("Initializing AI Hardware...", "processing");
-            try {
-                // Ensure WebGL is used for performance
-                await faceapi.tf.setBackend('webgl');
-                await faceapi.tf.ready();
-
-                const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights';
-                
-                // PERFORMANCE FIX: Using tinyFaceDetector instead of ssdMobilenetv1
-                await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-                await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
-                await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
-                
-                modelsLoaded = true;
-                updateStatus("Connecting to Database...", "processing");
-                await fetchEmployeesFromSupabase();
-            } catch (err) {
-                console.error("Model Error:", err);
-                showError("Failed to load AI models. Please check your internet connection.");
-                updateStatus("Initialization Failed", "error");
-            }
-        }
-
-        // --- STREAMING_CHUNK:Fetching Data & Camera Initialization... ---
-        async function fetchEmployeesFromSupabase() {
-            try {
-                const { data, error } = await supabaseClient.from('employees').select('*').eq('Status', 'Active');
-                if (error) throw error;
-                if (!data || data.length === 0) throw new Error("No active employees found.");
-
-                labeledFaceDescriptors = [];
-                employeeDataMap.clear();
-
-                data.forEach(emp => {
-                    try {
-                        if (emp.Descriptor) {
-                            const descArray = JSON.parse(emp.Descriptor);
-                            const float32Desc = new Float32Array(descArray);
-                            labeledFaceDescriptors.push(new faceapi.LabeledFaceDescriptors(emp['Employee code'], [float32Desc]));
-                            employeeDataMap.set(emp['Employee code'], emp);
-                        }
-                    } catch(e) {}
-                });
-
-                if(labeledFaceDescriptors.length > 0) {
-                    faceMatcher = new faceapi.FaceMatcher(labeledFaceDescriptors, 0.45); // Adjusted threshold slightly for tinyFace
-                    updateStatus(`System Ready (${employeeDataMap.size} Profiles)`, "success");
-                    startBtn.disabled = false;
-                } else {
-                    throw new Error("No face descriptors found in database.");
-                }
-            } catch (err) {
-                updateStatus("Data Error", "error");
-                showError(err.message);
-            }
-        }
-
-        startBtn.addEventListener('click', async () => {
-            if (!modelsLoaded || !faceMatcher) return;
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } 
-                });
-                video.srcObject = stream;
-                document.getElementById('startBtnContainer').classList.add('hidden');
-                scannerOverlay.classList.remove('hidden');
-                systemMessage.innerText = "Position face in the frame";
-            } catch (err) {
-                if (err.name === 'NotAllowedError' || String(err).includes('Permission denied')) {
-                    showError("Camera Access Blocked!\n\nIf you are in a preview/iframe, please open the app in a new tab to allow camera access.");
-                } else {
-                    showError("Could not access camera: " + err.message);
-                }
-                updateStatus("Camera Error", "error");
-            }
+        document.getElementById('adminBtn').addEventListener('click', async () => {
+            const pin = prompt("Enter Admin PIN:");
+            if (pin === "1234") {
+                document.getElementById('adminModal').style.display = 'block';
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                document.getElementById('enrollVideo').srcObject = stream;
+            } else if (pin !== null) { notify("Incorrect PIN"); }
         });
 
-        // --- STREAMING_CHUNK:Optimized Face Detection Loop... ---
-        video.addEventListener('play', () => {
-            const canvas = faceapi.createCanvasFromMedia(video);
-            scannerContainer.append(canvas);
-            const displaySize = { width: video.clientWidth, height: video.clientHeight };
-            faceapi.matchDimensions(canvas, displaySize);
-
-            // Using TinyFaceDetectorOptions for massive performance boost
-            const detectorOptions = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 });
-
-            setInterval(async () => {
-                if (isProcessing) return;
-
-                const detections = await faceapi.detectSingleFace(video, detectorOptions).withFaceLandmarks().withFaceDescriptor();
-                
-                const ctx = canvas.getContext('2d');
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-                if (detections) {
-                    const resizedDetections = faceapi.resizeResults(detections, displaySize);
-                    const match = faceMatcher.findBestMatch(detections.descriptor);
-                    
-                    // Draw a clean, minimal bounding box manually instead of heavy faceapi.draw
-                    const box = resizedDetections.detection.box;
-                    ctx.strokeStyle = 'rgba(6, 182, 212, 0.8)';
-                    ctx.lineWidth = 2;
-                    ctx.strokeRect(box.x, box.y, box.width, box.height);
-                    
-                    if (match.label !== 'unknown' && match.distance < 0.45) {
-                        if (lastMatchedLabel === match.label) {
-                            consecutiveMatches++;
-                        } else {
-                            lastMatchedLabel = match.label;
-                            consecutiveMatches = 1;
-                        }
-
-                        // Custom Progress Text
-                        ctx.fillStyle = '#06b6d4';
-                        ctx.font = 'bold 14px Inter';
-                        ctx.fillText(`Scanning... ${Math.min(100, Math.round((consecutiveMatches/3)*100))}%`, box.x, box.y - 10);
-
-                        if (consecutiveMatches >= 3) {
-                            isProcessing = true;
-                            consecutiveMatches = 0;
-                            lastMatchedLabel = null;
-                            await processAttendance(match.label, video);
-                        }
-                    } else {
-                        consecutiveMatches = 0;
-                        lastMatchedLabel = null;
-                        ctx.fillStyle = '#ef4444';
-                        ctx.font = '12px Inter';
-                        ctx.fillText(`Unknown Subject`, box.x, box.y - 10);
-                    }
-                } else {
-                    consecutiveMatches = 0;
-                    lastMatchedLabel = null;
-                }
-            }, 400); // 400ms interval for better battery life and less lag
+        document.getElementById('closeAdminBtn').addEventListener('click', () => {
+            document.getElementById('adminModal').style.display = 'none';
+            const stream = document.getElementById('enrollVideo').srcObject;
+            if (stream) stream.getTracks().forEach(t => t.stop());
         });
 
-        // --- STREAMING_CHUNK:Attendance Processing Logic... ---
-        async function processAttendance(empCode, videoElement) {
-            scannerOverlay.classList.add('hidden');
-            updateStatus("Verifying Identity...", "processing");
+        document.getElementById('enrollSubmitBtn').addEventListener('click', enroll);
 
-            const now = Date.now();
-            if (lastPunchTime.has(empCode)) {
-                const timeDiff = (now - lastPunchTime.get(empCode)) / 1000 / 60;
-                if (timeDiff < 2) {
-                    showError(`Cooldown active for ${empCode}. Please wait 2 minutes before punching again.`);
-                    setTimeout(() => { isProcessing = false; scannerOverlay.classList.remove('hidden'); updateStatus("Ready", "success"); }, 3000);
-                    return;
-                }
-            }
-
-            const empData = employeeDataMap.get(empCode);
-            
-            // Capture Image
-            const snapCanvas = document.createElement('canvas');
-            snapCanvas.width = videoElement.videoWidth;
-            snapCanvas.height = videoElement.videoHeight;
-            const ctx = snapCanvas.getContext('2d');
-            ctx.drawImage(videoElement, 0, 0);
-            
-            // Overlay watermark
-            ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
-            ctx.fillRect(0, snapCanvas.height - 60, snapCanvas.width, 60);
-            ctx.fillStyle = '#06b6d4';
-            ctx.font = 'bold 16px sans-serif';
-            ctx.fillText(`SECURE | ${empData['Name']} | ${empCode}`, 10, snapCanvas.height - 35);
-            ctx.fillStyle = '#94a3b8';
-            ctx.font = '12px sans-serif';
-            ctx.fillText(`TIME: ${new Date().toLocaleString()} | LOC: ${currentLocation}`, 10, snapCanvas.height - 15);
-            
-            const imageBase64 = snapCanvas.toDataURL('image/jpeg', 0.8);
-
-            try {
-                let photoUrl = null;
-                try {
-                    const fileName = `photos/${empCode}_${now}.jpg`;
-                    const blob = dataURItoBlob(imageBase64);
-                    const { data: uploadData, error: uploadError } = await supabaseClient.storage
-                        .from('attendance-photos')
-                        .upload(fileName, blob, { contentType: 'image/jpeg', upsert: true });
-
-                    if (!uploadError) {
-                        photoUrl = supabaseUrl + '/storage/v1/object/public/attendance-photos/' + fileName;
-                    }
-                } catch (storageErr) { console.warn("Storage API Exception", storageErr); }
-
-                // Check DB
-                const localNow = new Date();
-                const todayDate = `${localNow.getFullYear()}-${String(localNow.getMonth() + 1).padStart(2, '0')}-${String(localNow.getDate()).padStart(2, '0')}`;
-                const nowTime = `${String(localNow.getHours()).padStart(2, '0')}:${String(localNow.getMinutes()).padStart(2, '0')}:${String(localNow.getSeconds()).padStart(2, '0')}`;
-                
-                const { data: records, error: fetchErr } = await supabaseClient
-                    .from('attendance').select('*')
-                    .eq('employee_code', empCode).eq('date', todayDate)
-                    .order('created_at', { ascending: false });
-
-                if (fetchErr) throw new Error(fetchErr.message);
-
-                let punchType = "IN";
-
-                if (records && records.length > 0) {
-                    let record = records[0];
-                    if (!record.out_time) {
-                        punchType = "OUT";
-                        
-                        // OT Calc
-                        let inTimeObj = new Date(`${todayDate}T${record.in_time}`);
-                        let outTimeObj = new Date(`${todayDate}T${nowTime}`);
-                        let durationMs = outTimeObj - inTimeObj;
-                        
-                        let shiftMinutes = 8 * 60 + 30; // Default G shift
-                        let shift = String(empData['Shift'] || 'G').toUpperCase();
-                        if(shift === 'A') shiftMinutes = 11 * 60 + 30;
-                        if(shift === 'C') shiftMinutes = 8 * 60;
-                        
-                        let otMs = Math.max(0, durationMs - (shiftMinutes * 60 * 1000));
-                        
-                        const formatDur = (ms) => {
-                            let h = Math.floor(ms / 3600000), m = Math.floor((ms / 60000) % 60), s = Math.floor((ms / 1000) % 60);
-                            return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-                        };
-
-                        const { error: updateErr } = await supabaseClient.from('attendance')
-                            .update({ out_time: nowTime, out_photo_url: photoUrl, total_hours: formatDur(durationMs), ot: formatDur(otMs) })
-                            .eq('id', record.id);
-                        if (updateErr) throw new Error(updateErr.message);
-                    } else {
-                        showError("You have already completed your shift today.");
-                        setTimeout(() => { isProcessing = false; scannerOverlay.classList.remove('hidden'); updateStatus("Ready", "success"); }, 3000);
-                        return;
-                    }
-                } else {
-                    const { error: insertErr } = await supabaseClient.from('attendance').insert([{
-                        employee_code: empCode, date: todayDate, in_time: nowTime, in_photo_url: photoUrl
-                    }]);
-                    if (insertErr) throw new Error(insertErr.message);
-                }
-
-                lastPunchTime.set(empCode, now);
-                showIDCard(empData, imageBase64, nowTime, punchType);
-
-            } catch(error) {
-                console.error("Punch Error:", error);
-                showError(`Database Error: ${error.message}\nCheck Supabase policies.`);
-                updateStatus("System Error", "error");
-                setTimeout(() => { isProcessing = false; scannerOverlay.classList.remove('hidden'); updateStatus("Ready", "success"); }, 3000);
-            }
-        }
-
-        // --- STREAMING_CHUNK:Final UI Handlers... ---
-        function showIDCard(empData, imgSrc, timeStr, punchType) {
-            document.getElementById('empName').innerText = empData['Name'] || 'Unknown';
-            document.getElementById('empDesig').innerText = empData['DESIGNATION'] || 'Staff';
-            document.getElementById('empCode').innerText = empData['Employee code'] || '---';
-            document.getElementById('empDept').innerText = empData['DEPARTMENT'] || '---';
-            document.getElementById('punchTime').innerText = timeStr;
-            
-            const badge = document.getElementById('punchTypeBadge');
-            badge.innerText = punchType;
-            badge.className = `absolute -bottom-3 -right-3 text-slate-900 text-xs font-bold px-2 py-1 rounded-lg ${punchType === 'IN' ? 'bg-emerald-500' : 'bg-cyan-500'}`;
-
-            document.getElementById('userSnapshot').src = imgSrc;
-            
-            const modal = document.getElementById('idCardModal');
-            const inner = document.getElementById('idCardInner');
-            
-            modal.classList.remove('hidden');
-            setTimeout(() => {
-                modal.classList.remove('opacity-0');
-                inner.classList.remove('scale-90');
-                inner.classList.add('scale-100');
-            }, 10);
-            
-            updateStatus("Verification Complete", "success");
-            showToast(`${empData['Name']} Verified`);
-
-            setTimeout(() => {
-                inner.classList.remove('scale-100');
-                inner.classList.add('scale-90');
-                modal.classList.add('opacity-0');
-                setTimeout(() => {
-                    modal.classList.add('hidden');
-                    isProcessing = false;
-                    scannerOverlay.classList.remove('hidden');
-                    systemMessage.innerText = "Position face in the frame";
-                }, 300);
-            }, 4000);
-        }
-
-        // Boot
-        startBtn.disabled = true;
-        getLocation();
-        loadModels();
+        window.onload = init;
     </script>
 </body>
 </html>
