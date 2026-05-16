@@ -387,7 +387,17 @@
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel(); // Stop any previous speech
                 const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = 'en-US';
+                
+                // Hindi language (hi-IN) set kar di hai
+                utterance.lang = 'hi-IN'; 
+                
+                // System me Hindi voice dhoondh kar set karna
+                const voices = window.speechSynthesis.getVoices();
+                const hindiVoice = voices.find(v => v.lang === 'hi-IN');
+                if(hindiVoice) {
+                    utterance.voice = hindiVoice;
+                }
+
                 utterance.rate = 1.0; // Normal speed
                 window.speechSynthesis.speak(utterance);
             }
@@ -553,7 +563,7 @@
             } catch (err) {
                 console.error("Camera:", err);
                 notify("Camera permission denied", "error");
-                speakText("Camera access denied. Please allow permissions.");
+                speakText("Camera ki permission nahi mili hai. Kripya allow karein.");
             }
         }
 
@@ -607,10 +617,10 @@
                     if (match.label !== 'unknown' && match.distance < 0.45) {
                         
                         if (currentTarget === match.label) {
-                            matchConfidence += 18; // Speed up slightly
+                            matchConfidence += 40; // Fast verification (1-2 frames max)
                         } else {
                             currentTarget = match.label;
-                            matchConfidence = 20;
+                            matchConfidence = 40;
                         }
 
                         verifyUI.classList.remove('opacity-0');
@@ -658,7 +668,7 @@
             const now = Date.now();
             if (lastPunchTime.has(empCode) && (now - lastPunchTime.get(empCode)) < 60000) {
                 notify("Attendance recently recorded.", "error");
-                speakText(empName + ", your attendance was already recorded recently.");
+                speakText(empName + ", aapki haziri abhi kuch der pehle hi lag chuki hai.");
                 resumeScanning();
                 return;
             }
@@ -690,7 +700,9 @@
                     const blob = dataURItoBlob(imageBase64);
                     const { error } = await supabaseClient.storage.from('attendance-photos').upload(fileName, blob, { contentType: 'image/jpeg' });
                     if (!error) photoUrl = supabaseUrl + '/storage/v1/object/public/attendance-photos/' + fileName;
-                } catch(e) {}
+                } catch(e) {
+                    console.warn("Photo upload warning:", e);
+                }
 
                 const localDate = new Date();
                 const todayStr = `${localDate.getFullYear()}-${String(localDate.getMonth() + 1).padStart(2, '0')}-${String(localDate.getDate()).padStart(2, '0')}`;
@@ -702,6 +714,7 @@
                 if (fetchErr) throw fetchErr;
 
                 let punchType = "IN";
+                let successMessage = "";
 
                 if (records && records.length > 0) {
                     let record = records[0];
@@ -710,33 +723,41 @@
                         let totalMs = new Date(`${todayStr}T${timeStr}`).getTime() - new Date(`${todayStr}T${record.in_time}`).getTime();
                         let totalStr = `${String(Math.floor(totalMs / 3600000)).padStart(2,'0')}:${String(Math.floor((totalMs % 3600000) / 60000)).padStart(2,'0')}:00`;
 
-                        await supabaseClient.from('attendance').update({ out_time: timeStr, out_photo_url: photoUrl, total_hours: totalStr }).eq('id', record.id);
-                        speakText("Punch out successful for " + empName);
+                        // STRICT CHECK FOR UPDATE
+                        const { error: updateErr } = await supabaseClient.from('attendance').update({ out_time: timeStr, out_photo_url: photoUrl, total_hours: totalStr }).eq('id', record.id);
+                        if (updateErr) throw updateErr;
+                        
+                        successMessage = empName + ", aapka punch out safal raha.";
                     } else {
                         notify("Shift completed for today.", "info");
-                        speakText(empName + ", your shift is completed for today.");
+                        speakText(empName + ", aaj ki aapki shift puri ho chuki hai.");
                         resumeScanning();
                         return;
                     }
                 } else {
-                    // Fixing the NULL name issue by explicitly pushing the resolved empName variable
-                    await supabaseClient.from('attendance').insert([{ 
+                    // STRICT CHECK FOR INSERT
+                    const { error: insertErr } = await supabaseClient.from('attendance').insert([{ 
                         employee_code: empCode, 
-                        name: empName,        // Fixed name variable to prevent null issues
+                        Name: empName, // Screenshot ke anusaar column ka naam "Name" (Capital N) hai
                         date: todayStr, 
                         in_time: timeStr, 
                         in_photo_url: photoUrl 
                     }]);
-                    speakText("Punch in successful for " + empName);
+                    
+                    if (insertErr) throw insertErr;
+                    
+                    successMessage = empName + ", aapka punch in safal raha.";
                 }
 
+                // Sirf tabhi awaz aayegi jab DB ne data accept kar liya ho
+                speakText(successMessage);
                 lastPunchTime.set(empCode, now);
                 showSuccessUI(empData, empName, imageBase64, timeStr, punchType);
 
             } catch (error) {
-                console.error("Save Error:", error);
-                notify("System error saving record.", "error");
-                speakText("System error. Please try again.");
+                console.error("Database Save Error Detailed:", error.message || error);
+                notify("Error: " + (error.message || "Database connection failed"), "error");
+                speakText("Data save nahi ho paya. Kripya system admin se sampark karein.");
                 resumeScanning();
             }
         }
