@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ActiveMan | Enterprise Attendance</title>
+    <title>Inzo</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -38,6 +38,7 @@
         .app-container {
             width: 100%;
             max-width: 440px;
+            min-height: 90vh; /* Better vertical space utilization */
             background: var(--surface);
             border-radius: 2rem;
             box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(0,0,0,0.02);
@@ -54,7 +55,7 @@
             border-radius: 1.5rem; 
             overflow: hidden; 
             background: #0f172a;
-            aspect-ratio: 3/4;
+            aspect-ratio: 9/13; /* Taller aspect ratio for perfect mobile view */
             box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1);
             transition: all 0.3s ease;
         }
@@ -223,6 +224,36 @@
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
+        /* Admin Form Elements */
+        .input-field {
+            width: 100%; padding: 0.6rem 1rem; border-radius: 0.75rem;
+            border: 1px solid #cbd5e1; font-size: 0.875rem; outline: none;
+            transition: all 0.2s; background: #f8fafc; color: var(--text-primary);
+        }
+        .input-field:focus { border-color: var(--brand-color); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+        .admin-modal {
+            position: fixed; inset: 0; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px);
+            z-index: 200; display: flex; align-items: center; justify-content: center; padding: 1rem;
+            opacity: 0; pointer-events: none; transition: all 0.3s ease;
+        }
+        .admin-modal.show { opacity: 1; pointer-events: auto; }
+        .admin-content {
+            background: white; width: 100%; max-width: 480px; border-radius: 1.5rem;
+            max-height: 95vh; overflow-y: auto; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+            transform: translateY(20px); transition: all 0.3s ease;
+        }
+        .admin-modal.show .admin-content { transform: translateY(0); }
+        
+        .admin-camera-box {
+            width: 100%; height: 220px; background: #0f172a; border-radius: 1rem; overflow: hidden; position: relative;
+        }
+        .admin-camera-box video {
+            width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1);
+        }
+        .admin-camera-box canvas {
+            position: absolute; top:0; left:0; width:100%; height:100%; z-index: 10;
+        }
+
     </style>
 </head>
 <body>
@@ -230,12 +261,11 @@
     <main class="app-container">
         
         <!-- Professional Header (Centered, Clean) -->
-        <header class="pt-6 pb-4 px-6 flex flex-col items-center justify-center border-b border-slate-100">
-            <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-2">
-                <i class="fa-solid fa-expand text-xl"></i>
-            </div>
-            <h1 class="text-lg font-bold text-slate-800 tracking-tight">ActiveMan</h1>
-            <p class="text-[10px] uppercase tracking-widest font-semibold text-slate-400 mt-1">Enterprise Attendance</p>
+        <header class="pt-4 pb-4 px-6 flex items-center justify-between border-b border-slate-100">
+            <h1 class="text-2xl font-extrabold text-slate-800 tracking-tight">Inzo</h1>
+            <button id="openAuthBtn" class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center transition-colors shadow-sm" title="Admin Access">
+                <i class="fa-solid fa-user-shield text-xl"></i>
+            </button>
         </header>
 
         <!-- Initializing State -->
@@ -254,7 +284,7 @@
         </div>
 
         <!-- Scanner State -->
-        <div id="scannerState" class="hidden flex-col items-center pt-4 pb-2">
+        <div id="scannerState" class="hidden flex-col items-center pt-4 pb-2 flex-grow justify-center">
             
             <div class="scanner-viewport" id="scannerWrapper">
                 
@@ -332,6 +362,93 @@
                         </span>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auth Modal (Login / Signup) -->
+    <div id="authModal" class="admin-modal">
+        <div class="admin-content p-6">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-800">Admin Access</h2>
+                    <p class="text-xs text-slate-500 mt-1">Login to manage employees</p>
+                </div>
+                <button id="closeAuthBtn" class="w-8 h-8 bg-slate-100 rounded-full text-slate-500"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <form id="authForm" class="flex flex-col gap-4">
+                <div>
+                    <label class="text-xs font-semibold text-slate-600 mb-1 block">Email Address</label>
+                    <input type="email" id="authEmail" class="input-field" placeholder="admin@company.com" required>
+                </div>
+                <div>
+                    <label class="text-xs font-semibold text-slate-600 mb-1 block">Password</label>
+                    <input type="password" id="authPass" class="input-field" placeholder="••••••••" required>
+                </div>
+                
+                <button type="submit" id="authSubmitBtn" class="btn-corporate mt-2"><i class="fa-solid fa-right-to-bracket"></i> Login as Admin</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Admin Dashboard (Register Employee) -->
+    <div id="adminPanelModal" class="admin-modal">
+        <div class="admin-content flex flex-col h-full max-h-[90vh]">
+            <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 sticky top-0 z-20">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-800"><i class="fa-solid fa-user-plus text-blue-600 mr-2"></i>New Employee</h2>
+                </div>
+                <div class="flex gap-2">
+                    <button id="logoutBtn" class="px-3 py-1.5 bg-red-50 text-red-600 text-xs font-bold rounded-lg"><i class="fa-solid fa-power-off mr-1"></i> Logout</button>
+                    <button id="closeAdminBtn" class="w-8 h-8 bg-slate-200 rounded-full text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            </div>
+            
+            <div class="p-5 overflow-y-auto flex-1 pb-10">
+                <form id="registerForm" class="flex flex-col gap-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="col-span-2">
+                            <label class="text-xs font-semibold text-slate-600 mb-1 block">Full Name *</label>
+                            <input type="text" id="regName" class="input-field" required placeholder="e.g. Vivek Kumar">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-600 mb-1 block">Emp Code (Auto-generated) *</label>
+                            <input type="text" id="regCode" class="input-field bg-slate-100 cursor-not-allowed font-mono font-bold text-blue-700" required readonly placeholder="Generating...">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-600 mb-1 block">Date of Joining</label>
+                            <input type="date" id="regDOJ" class="input-field" required>
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-600 mb-1 block">Department</label>
+                            <input type="text" id="regDept" class="input-field" required placeholder="e.g. MIS">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-600 mb-1 block">Designation</label>
+                            <input type="text" id="regDesig" class="input-field" required placeholder="e.g. Executive">
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <label class="text-xs font-semibold text-slate-600 mb-2 flex items-center justify-between">
+                            <span>Face Data (Biometric) *</span>
+                            <span id="faceStatus" class="text-red-500 font-bold bg-red-50 px-2 py-0.5 rounded text-[10px]">Not Captured</span>
+                        </label>
+                        
+                        <div class="admin-camera-box" id="adminCamWrapper">
+                            <video id="adminVideo" autoplay muted playsinline></video>
+                        </div>
+                        
+                        <button type="button" id="captureFaceBtn" class="w-full py-3 mt-3 bg-slate-800 text-white font-semibold rounded-xl text-sm flex items-center justify-center gap-2 hover:bg-slate-700 transition-colors">
+                            <i class="fa-solid fa-camera"></i> Scan & Capture Face
+                        </button>
+                    </div>
+
+                    <button type="submit" id="saveEmpBtn" class="btn-corporate mt-4 !bg-emerald-500 hover:!bg-emerald-600 disabled:!bg-slate-300">
+                        <i class="fa-solid fa-cloud-arrow-up"></i> Save Employee to Database
+                    </button>
+                </form>
             </div>
         </div>
     </div>
@@ -807,6 +924,197 @@
                 startDetectionLoop();
             }
         }
+
+        // ==========================================
+        // ADMIN & AUTHENTICATION LOGIC
+        // ==========================================
+        const authModal = document.getElementById('authModal');
+        const adminPanelModal = document.getElementById('adminPanelModal');
+        const adminVideo = document.getElementById('adminVideo');
+        const adminCamWrapper = document.getElementById('adminCamWrapper');
+        const faceStatus = document.getElementById('faceStatus');
+        const saveEmpBtn = document.getElementById('saveEmpBtn');
+        
+        let adminStream = null;
+        let adminCanvas = null;
+        let newEmpDescriptor = null;
+
+        // UI Toggles
+        document.getElementById('openAuthBtn').addEventListener('click', async () => {
+            // Check if already logged in
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if(session) {
+                openAdminDashboard();
+            } else {
+                authModal.classList.add('show');
+            }
+        });
+        document.getElementById('closeAuthBtn').addEventListener('click', () => authModal.classList.remove('show'));
+        
+        document.getElementById('closeAdminBtn').addEventListener('click', () => {
+            adminPanelModal.classList.remove('show');
+            stopAdminCamera();
+            resumeScanning(); // Resume main attendance scanner
+        });
+
+        // Auth Form Submit
+        document.getElementById('authForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('authEmail').value;
+            const pass = document.getElementById('authPass').value;
+            const btn = document.getElementById('authSubmitBtn');
+
+            btn.innerHTML = `<div class="loader-ring"></div> Processing...`;
+            btn.disabled = true;
+
+            try {
+                const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password: pass });
+                if(error) throw error;
+                notify("Login Successful", "success");
+                authModal.classList.remove('show');
+                openAdminDashboard();
+            } catch (err) {
+                notify("Invalid credentials or error logging in.", "error");
+            } finally {
+                btn.innerHTML = `<i class="fa-solid fa-right-to-bracket"></i> Login as Admin`;
+                btn.disabled = false;
+            }
+        });
+
+        // Logout
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+            await supabaseClient.auth.signOut();
+            adminPanelModal.classList.remove('show');
+            stopAdminCamera();
+            notify("Logged out successfully", "info");
+            resumeScanning();
+        });
+
+        async function openAdminDashboard() {
+            adminPanelModal.classList.add('show');
+            
+            // Pause main camera to save resources
+            isDetecting = false;
+            if(mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+            
+            // Reset Admin Form
+            document.getElementById('registerForm').reset();
+            
+            // Auto-generate Employee Code (Format: EMP-XXXX)
+            const uniqueCode = 'EMP-' + Math.floor(1000 + Math.random() * 9000);
+            document.getElementById('regCode').value = uniqueCode;
+
+            newEmpDescriptor = null;
+            faceStatus.className = "text-red-500 font-bold bg-red-50 px-2 py-0.5 rounded text-[10px]";
+            faceStatus.innerText = "Not Captured";
+            saveEmpBtn.disabled = true;
+
+            // Start Admin Camera
+            try {
+                adminStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+                adminVideo.srcObject = adminStream;
+            } catch (err) {
+                notify("Camera needed for registration", "error");
+            }
+        }
+
+        function stopAdminCamera() {
+            if(adminStream) adminStream.getTracks().forEach(t => t.stop());
+            if(adminCanvas) { adminCanvas.remove(); adminCanvas = null; }
+        }
+
+        // Capture Admin Face
+        document.getElementById('captureFaceBtn').addEventListener('click', async () => {
+            const btn = document.getElementById('captureFaceBtn');
+            btn.innerHTML = `<div class="loader-ring"></div> Scanning Face...`;
+            
+            if(adminCanvas) adminCanvas.remove();
+            adminCanvas = faceapi.createCanvasFromMedia(adminVideo);
+            adminCamWrapper.appendChild(adminCanvas);
+            faceapi.matchDimensions(adminCanvas, { width: adminVideo.clientWidth, height: adminVideo.clientHeight });
+
+            const detectorOptions = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 });
+            const detection = await faceapi.detectSingleFace(adminVideo, detectorOptions).withFaceLandmarks().withFaceDescriptor();
+
+            if (detection) {
+                newEmpDescriptor = detection.descriptor;
+                
+                // Draw box
+                const resizedDetections = faceapi.resizeResults(detection, { width: adminVideo.clientWidth, height: adminVideo.clientHeight });
+                const ctx = adminCanvas.getContext('2d');
+                ctx.clearRect(0,0, adminCanvas.width, adminCanvas.height);
+                faceapi.draw.drawDetections(adminCanvas, resizedDetections);
+                
+                faceStatus.className = "text-emerald-600 font-bold bg-emerald-100 px-2 py-0.5 rounded text-[10px]";
+                faceStatus.innerHTML = `<i class="fa-solid fa-check-circle"></i> Captured`;
+                saveEmpBtn.disabled = false;
+                notify("Face Captured Successfully!", "success");
+            } else {
+                notify("No face detected. Look directly at the camera.", "error");
+                const ctx = adminCanvas.getContext('2d');
+                ctx.clearRect(0,0, adminCanvas.width, adminCanvas.height);
+            }
+            btn.innerHTML = `<i class="fa-solid fa-camera"></i> Scan & Capture Face`;
+        });
+
+        // Save Employee to DB
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if(!newEmpDescriptor) {
+                notify("Please capture face first!", "error");
+                return;
+            }
+
+            const empName = document.getElementById('regName').value;
+            const empCode = document.getElementById('regCode').value;
+            const empDOJ = document.getElementById('regDOJ').value;
+            const empDept = document.getElementById('regDept').value;
+            const empDesig = document.getElementById('regDesig').value;
+            const btn = document.getElementById('saveEmpBtn');
+
+            btn.innerHTML = `<div class="loader-ring"></div> Saving...`;
+            btn.disabled = true;
+
+            try {
+                // Formatting descriptor for database
+                const descriptorArray = Array.from(newEmpDescriptor);
+                
+                const { error } = await supabaseClient.from('employees').insert([{
+                    Name: empName,
+                    'Employee code': empCode,
+                    Descriptor: JSON.stringify(descriptorArray),
+                    Status: 'Active',
+                    DEPARTMENT: empDept,
+                    DESIGNATION: empDesig,
+                    DOJ: empDOJ
+                }]);
+
+                if(error) throw error;
+
+                notify(`Employee ${empName} Registered!`, "success");
+                document.getElementById('registerForm').reset();
+                
+                // Generate next code automatically
+                const nextUniqueCode = 'EMP-' + Math.floor(1000 + Math.random() * 9000);
+                document.getElementById('regCode').value = nextUniqueCode;
+
+                newEmpDescriptor = null;
+                faceStatus.className = "text-red-500 font-bold bg-red-50 px-2 py-0.5 rounded text-[10px]";
+                faceStatus.innerText = "Not Captured";
+                saveEmpBtn.disabled = true;
+                if(adminCanvas) adminCanvas.getContext('2d').clearRect(0,0, adminCanvas.width, adminCanvas.height);
+                
+                // Refresh models to include new employee
+                fetchEmployeesData();
+
+            } catch (err) {
+                console.error(err);
+                notify(err.message || "Failed to save employee", "error");
+            } finally {
+                btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Save Employee to Database`;
+                btn.disabled = false;
+            }
+        });
 
         window.addEventListener('load', initSystem);
     </script>
