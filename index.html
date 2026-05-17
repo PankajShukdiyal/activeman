@@ -55,7 +55,8 @@
             border-radius: 1.5rem; 
             overflow: hidden; 
             background: #0f172a;
-            aspect-ratio: 9/13; /* Taller aspect ratio for perfect mobile view */
+            height: 60vh; /* Fixed height for perfect mobile view without overflow */
+            max-height: 550px;
             box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1);
             transition: all 0.3s ease;
         }
@@ -260,7 +261,6 @@
 
     <main class="app-container">
         
-        <!-- Professional Header (Centered, Clean) -->
         <header class="pt-4 pb-4 px-6 flex items-center justify-between border-b border-slate-100">
             <h1 class="text-2xl font-extrabold text-slate-800 tracking-tight">Inzo</h1>
             <button id="openAuthBtn" class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center transition-colors shadow-sm" title="Admin Access">
@@ -268,7 +268,20 @@
             </button>
         </header>
 
-        <!-- Initializing State -->
+        <!-- Device Auth State -->
+        <div id="authDeviceState" class="hidden flex-col items-center justify-center py-16 px-6 text-center flex-grow">
+            <div class="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center text-3xl mb-4 shadow-inner border border-slate-200">
+                <i class="fa-solid fa-lock"></i>
+            </div>
+            <h2 class="text-xl font-bold text-slate-800 mb-2">Security Locked</h2>
+            <p class="text-xs text-slate-500 mb-6 px-4">System shuru karne ke liye Company PIN darj karein.</p>
+            <div class="w-full max-w-[240px]">
+                <input type="password" id="devicePinInput" class="input-field text-center text-lg tracking-widest mb-4" placeholder="Enter PIN">
+                <button id="verifyDeviceBtn" class="btn-corporate w-full shadow-md"><i class="fa-solid fa-key"></i> Unlock System</button>
+            </div>
+            <p class="text-[10px] text-slate-400 mt-4">Hint PIN: INZO2026</p>
+        </div>
+
         <div id="setupState" class="flex flex-col items-center justify-center py-16 px-6 text-center">
             <div class="text-blue-500 mb-4">
                 <i class="fa-solid fa-microchip text-4xl opacity-80"></i>
@@ -283,12 +296,10 @@
             </div>
         </div>
 
-        <!-- Scanner State -->
         <div id="scannerState" class="hidden flex-col items-center pt-4 pb-2 flex-grow justify-center">
             
             <div class="scanner-viewport" id="scannerWrapper">
                 
-                <!-- Contextual Overlay Status (Floating inside video) -->
                 <div class="status-pill left">
                     <div id="statusDot" class="w-2 h-2 rounded-full bg-yellow-400"></div>
                     <span id="statusText" class="text-[10px] font-bold text-white uppercase tracking-wider">Ready</span>
@@ -299,15 +310,12 @@
                     <span id="gpsText" class="text-[10px] font-bold text-white uppercase tracking-wider">GPS</span>
                 </div>
 
-                <!-- Video Feed -->
                 <video id="video" autoplay muted playsinline></video>
                 
-                <!-- Scanning UI Overlay -->
                 <div class="absolute inset-0 z-10 pointer-events-none">
                     <div class="scan-line"></div>
                     <div class="focus-frame" id="reticle"></div>
                     
-                    <!-- Bottom Helper Text & Progress inside video -->
                     <div class="absolute bottom-4 left-0 w-full flex flex-col items-center px-4">
                         <div id="verifyUI" class="w-full flex flex-col items-center opacity-0 transition-opacity duration-300 bg-black/60 backdrop-blur-md p-3 rounded-2xl border border-white/10">
                             <span class="text-[11px] text-white font-medium uppercase tracking-wider mb-2 flex items-center gap-2">
@@ -321,7 +329,6 @@
                 </div>
             </div>
 
-            <!-- Action Controls -->
             <div class="flex items-center justify-center gap-6 mt-4 mb-2 w-full px-6">
                 <button id="toggleCamBtn" class="w-12 h-12 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center hover:bg-slate-200 transition-colors shadow-sm" title="Switch Camera">
                     <i class="fa-solid fa-camera-rotate text-lg"></i>
@@ -366,7 +373,6 @@
         </div>
     </div>
 
-    <!-- Auth Modal (Login / Signup) -->
     <div id="authModal" class="admin-modal">
         <div class="admin-content p-6">
             <div class="flex justify-between items-center mb-6">
@@ -383,7 +389,10 @@
                     <input type="email" id="authEmail" class="input-field" placeholder="admin@company.com" required>
                 </div>
                 <div>
-                    <label class="text-xs font-semibold text-slate-600 mb-1 block">Password</label>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="text-xs font-semibold text-slate-600 block">Password</label>
+                        <button type="button" id="forgotPassBtn" class="text-[10px] font-semibold text-blue-600 hover:underline">Forgot?</button>
+                    </div>
                     <input type="password" id="authPass" class="input-field" placeholder="••••••••" required>
                 </div>
                 
@@ -392,20 +401,38 @@
         </div>
     </div>
 
-    <!-- Admin Dashboard (Register Employee) -->
     <div id="adminPanelModal" class="admin-modal">
         <div class="admin-content flex flex-col h-full max-h-[90vh]">
-            <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 sticky top-0 z-20">
-                <div>
-                    <h2 class="text-lg font-bold text-slate-800"><i class="fa-solid fa-user-plus text-blue-600 mr-2"></i>New Employee</h2>
+            <div class="p-5 border-b border-slate-100 flex flex-col gap-4 bg-slate-50 sticky top-0 z-20">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-lg font-bold text-slate-800"><i class="fa-solid fa-user-shield text-blue-600 mr-2"></i>Admin Panel</h2>
+                    <div class="flex gap-2">
+                        <button id="logoutBtn" class="px-3 py-1.5 bg-red-50 text-red-600 text-xs font-bold rounded-lg"><i class="fa-solid fa-power-off mr-1"></i> Logout</button>
+                        <button id="closeAdminBtn" class="w-8 h-8 bg-slate-200 rounded-full text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
                 </div>
-                <div class="flex gap-2">
-                    <button id="logoutBtn" class="px-3 py-1.5 bg-red-50 text-red-600 text-xs font-bold rounded-lg"><i class="fa-solid fa-power-off mr-1"></i> Logout</button>
-                    <button id="closeAdminBtn" class="w-8 h-8 bg-slate-200 rounded-full text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+                <div class="flex gap-2 bg-slate-200/50 p-1 rounded-lg">
+                    <button id="tabRegister" class="flex-1 py-1.5 text-xs font-bold bg-white shadow-sm rounded-md text-slate-800 transition-all">Add New</button>
+                    <button id="tabDirectory" class="flex-1 py-1.5 text-xs font-bold text-slate-500 hover:text-slate-700 transition-all">Directory</button>
+                    <button id="tabReports" class="flex-1 py-1.5 text-xs font-bold text-slate-500 hover:text-slate-700 transition-all">Reports</button>
                 </div>
             </div>
             
             <div class="p-5 overflow-y-auto flex-1 pb-10">
+                <!-- Reports Tab Content -->
+                <div id="reportsTabContent" class="hidden flex-col gap-4">
+                    <div class="flex justify-between items-center bg-blue-50 p-4 rounded-xl border border-blue-100">
+                        <div>
+                            <h3 class="font-bold text-blue-900 text-sm">Export Attendance</h3>
+                            <p class="text-xs text-blue-700">Download complete logs in Excel format.</p>
+                        </div>
+                        <button id="exportCsvBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition shadow"><i class="fa-solid fa-file-excel mr-1"></i> Export CSV</button>
+                    </div>
+                    <div id="reportsList" class="flex flex-col gap-2"></div>
+                </div>
+
+                <div id="directoryTabContent" class="hidden flex-col gap-2"></div>
+
                 <form id="registerForm" class="flex flex-col gap-4">
                     <div class="grid grid-cols-2 gap-4">
                         <div class="col-span-2">
@@ -438,6 +465,9 @@
                         
                         <div class="admin-camera-box" id="adminCamWrapper">
                             <video id="adminVideo" autoplay muted playsinline></video>
+                            <button type="button" id="toggleAdminCamBtn" class="absolute top-2 right-2 w-8 h-8 bg-black/40 text-white rounded-full z-20 flex items-center justify-center hover:bg-black/60 transition">
+                                <i class="fa-solid fa-camera-rotate"></i>
+                            </button>
                         </div>
                         
                         <button type="button" id="captureFaceBtn" class="w-full py-3 mt-3 bg-slate-800 text-white font-semibold rounded-xl text-sm flex items-center justify-center gap-2 hover:bg-slate-700 transition-colors">
@@ -453,7 +483,6 @@
         </div>
     </div>
 
-    <!-- Clean Toast Notification -->
     <div id="notification" class="toast">
         <i id="notifIcon" class="fa-solid fa-info-circle"></i>
         <span id="notifText">Message</span>
@@ -589,32 +618,7 @@
         }
 
         // --- STREAMING_CHUNK: Lightweight AI Initialization ---
-        async function initSystem() {
-            setSystemStatus('loading');
-            try {
-                updateLoading(15, "Initializing hardware...");
-                await faceapi.tf.setBackend('webgl');
-                await faceapi.tf.ready();
-
-                const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights';
-                
-                updateLoading(40, "Loading optimized models...");
-                await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-                await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
-                await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
-                
-                updateLoading(70, "Syncing employee directory...");
-                await fetchEmployeesData();
-                
-            } catch (err) {
-                console.error("Init Error:", err);
-                setSystemStatus('error');
-                updateLoading(100, "Initialization failed.");
-                notify("Failed to load components", "error");
-            }
-        }
-
-        async function fetchEmployeesData() {
+        async function fetchEmployeesData(isSilent = false) {
             try {
                 const { data, error } = await supabaseClient.from('employees').select('*').eq('Status', 'Active');
                 if (error) throw error;
@@ -636,23 +640,54 @@
 
                 if(labeledFaceDescriptors.length > 0) {
                     faceMatcher = new faceapi.FaceMatcher(labeledFaceDescriptors, 0.45); 
-                    updateLoading(100, "System Ready");
-                    
-                    setTimeout(() => {
-                        setupState.classList.add('hidden');
-                        scannerState.classList.remove('hidden');
-                        scannerState.classList.add('flex');
-                        setSystemStatus('ready');
-                        initLocation();
-                        startCamera(); // Auto start camera as soon as ready
-                    }, 600);
+                    if (!isSilent) {
+                        updateLoading(100, "System Ready");
+                        
+                        setTimeout(() => {
+                            setupState.classList.add('hidden');
+                            scannerState.classList.remove('hidden');
+                            scannerState.classList.add('flex');
+                            setSystemStatus('ready');
+                            initLocation();
+                            startCamera(); // Auto start camera as soon as ready
+                        }, 600);
+                    }
                 } else {
-                    throw new Error("No face data found");
+                    if (!isSilent) throw new Error("No face data found");
                 }
             } catch (err) {
                 console.error("Fetch Error:", err);
+                if (!isSilent) {
+                    setSystemStatus('error');
+                    updateLoading(100, "DB Error: " + (err.message || "Connection Failed"));
+                    notify("Database connection failed. Check your Supabase project.", "error");
+                }
+            }
+        }
+
+        async function initSystem() {
+            setSystemStatus('loading');
+            try {
+                updateLoading(15, "Initializing hardware...");
+                await faceapi.tf.setBackend('webgl');
+                await faceapi.tf.ready();
+
+                // Switched to a more reliable CDN for models to fix 'Failed to fetch' error
+                const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
+                
+                updateLoading(40, "Loading optimized models...");
+                await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+                await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+                await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+                
+                updateLoading(70, "Syncing employee directory...");
+                await fetchEmployeesData();
+                
+            } catch (err) {
+                console.error("Init Error:", err);
                 setSystemStatus('error');
-                updateLoading(100, "Database error");
+                updateLoading(100, "Init Failed: " + (err.message || "Failed to fetch models"));
+                notify("System error. Check internet connection or CORS.", "error");
             }
         }
 
@@ -732,15 +767,16 @@
 
                 if (detection) {
                     reticle.classList.add('detecting');
+
                     const match = faceMatcher.findBestMatch(detection.descriptor);
                     
                     if (match.label !== 'unknown' && match.distance < 0.45) {
                         
                         if (currentTarget === match.label) {
-                            matchConfidence += 40; // Fast verification (1-2 frames max)
+                            matchConfidence += 50; // Super fast verification (1-2 frames max)
                         } else {
                             currentTarget = match.label;
-                            matchConfidence = 40;
+                            matchConfidence = 50;
                         }
 
                         verifyUI.classList.remove('opacity-0');
@@ -771,52 +807,77 @@
         function resetScanState() {
             matchConfidence = 0;
             currentTarget = null;
+
             verifyUI.classList.add('opacity-0');
             verifyProgress.style.width = '0%';
             reticle.classList.remove('detecting');
         }
 
         // --- STREAMING_CHUNK: Attendance Business Logic ---
-        async function recordAttendance(empCode) {
-            notify("Verifying data...", "info");
-            setSystemStatus('loading');
+        async function recordAttendance(empCode, offlineProcessData = null) {
+            if(!offlineProcessData) {
+                notify("Verifying data...", "info");
+                setSystemStatus('loading');
+            }
 
-            const empData = employeeDataMap.get(empCode);
-            // Robustly extract Employee Name (handling different cases)
+            const empData = employeeDataMap.get(empCode) || { Name: "Employee", 'Employee code': empCode };
             const empName = empData['Name'] || empData['name'] || empData['employee_name'] || empData['Employee Name'] || 'Employee';
 
             const now = Date.now();
-            if (lastPunchTime.has(empCode) && (now - lastPunchTime.get(empCode)) < 60000) {
+            if (!offlineProcessData && lastPunchTime.has(empCode) && (now - lastPunchTime.get(empCode)) < 60000) {
                 notify("Attendance recently recorded.", "error");
                 speakText(empName + ", aapki haziri abhi kuch der pehle hi lag chuki hai.");
                 resumeScanning();
                 return;
             }
 
-            // Generate professional snapshot
-            const snapCanvas = document.createElement('canvas');
-            snapCanvas.width = video.videoWidth;
-            snapCanvas.height = video.videoHeight;
-            const ctx = snapCanvas.getContext('2d');
+            const localDate = new Date();
+            const todayStr = offlineProcessData ? offlineProcessData.todayStr : `${localDate.getFullYear()}-${String(localDate.getMonth() + 1).padStart(2, '0')}-${String(localDate.getDate()).padStart(2, '0')}`;
+            const timeStr = offlineProcessData ? offlineProcessData.timeStr : `${String(localDate.getHours()).padStart(2, '0')}:${String(localDate.getMinutes()).padStart(2, '0')}:${String(localDate.getSeconds()).padStart(2, '0')}`;
             
-            ctx.translate(snapCanvas.width, 0);
-            ctx.scale(-1, 1);
-            ctx.drawImage(video, 0, 0);
-            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            // LATE MARK LOGIC (Shift 09:30 AM)
+            const shiftStart = "09:30:00";
+            const isLate = timeStr > shiftStart;
 
-            // Minimal Watermark
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-            ctx.fillRect(0, snapCanvas.height - 40, snapCanvas.width, 40);
-            ctx.fillStyle = '#ffffff';
-            ctx.font = '500 12px Inter, sans-serif';
-            ctx.fillText(`${empCode} • ${new Date().toLocaleTimeString()} • Loc: ${currentLocation}`, 10, snapCanvas.height - 15);
-            
-            const imageBase64 = snapCanvas.toDataURL('image/jpeg', 0.8);
+            let imageBase64 = offlineProcessData ? offlineProcessData.imageBase64 : null;
+
+            if(!offlineProcessData) {
+                // Generate professional snapshot
+                const snapCanvas = document.createElement('canvas');
+                snapCanvas.width = video.videoWidth;
+                snapCanvas.height = video.videoHeight;
+                const ctx = snapCanvas.getContext('2d');
+                ctx.translate(snapCanvas.width, 0);
+                ctx.scale(-1, 1);
+                ctx.drawImage(video, 0, 0);
+                ctx.setTransform(1, 0, 0, 1, 0, 0);
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                ctx.fillRect(0, snapCanvas.height - 40, snapCanvas.width, 40);
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '500 12px Inter, sans-serif';
+                ctx.fillText(`${empCode} • ${new Date().toLocaleTimeString()} • Loc: ${currentLocation}`, 10, snapCanvas.height - 15);
+                imageBase64 = snapCanvas.toDataURL('image/jpeg', 0.6); // Slightly compressed for local storage
+            }
+
+            // OFFLINE LOGIC
+            if (!navigator.onLine && !offlineProcessData) {
+                let pending = JSON.parse(localStorage.getItem('pending_punches') || '[]');
+                pending.push({ empCode, todayStr, timeStr, imageBase64 });
+                localStorage.setItem('pending_punches', JSON.stringify(pending));
+                
+                notify("Saved Offline (No Internet)", "info");
+                lastPunchTime.set(empCode, now);
+                let msg = empName + ", aapka punch offline save ho gaya hai.";
+                if(isLate) msg += " Dhyan rahe, aap late hain.";
+                speakText(msg);
+                showSuccessUI(empData, empName, imageBase64, timeStr, "OFFLINE");
+                return;
+            }
 
             try {
                 let photoUrl = null;
                 try {
-                    const fileName = `corp_photos/${empCode}_${now}.jpg`;
+                    const fileName = `corp_photos/${empCode}_${Date.now()}.jpg`;
                     const blob = dataURItoBlob(imageBase64);
                     const { error } = await supabaseClient.storage.from('attendance-photos').upload(fileName, blob, { contentType: 'image/jpeg' });
                     if (!error) photoUrl = supabaseUrl + '/storage/v1/object/public/attendance-photos/' + fileName;
@@ -824,10 +885,6 @@
                     console.warn("Photo upload warning:", e);
                 }
 
-                const localDate = new Date();
-                const todayStr = `${localDate.getFullYear()}-${String(localDate.getMonth() + 1).padStart(2, '0')}-${String(localDate.getDate()).padStart(2, '0')}`;
-                const timeStr = `${String(localDate.getHours()).padStart(2, '0')}:${String(localDate.getMinutes()).padStart(2, '0')}:${String(localDate.getSeconds()).padStart(2, '0')}`;
-                
                 const { data: records, error: fetchErr } = await supabaseClient
                     .from('attendance').select('*').eq('employee_code', empCode).eq('date', todayStr).order('created_at', { ascending: false });
 
@@ -840,47 +897,72 @@
                     let record = records[0];
                     if (!record.out_time) {
                         punchType = "OUT";
-                        let totalMs = new Date(`${todayStr}T${timeStr}`).getTime() - new Date(`${todayStr}T${record.in_time}`).getTime();
+                        let totalMs = new Date(`${todayStr}T${timeStr}`).getTime() - new Date(`${todayStr}T${record.in_time.substring(0,8)}`).getTime();
                         let totalStr = `${String(Math.floor(totalMs / 3600000)).padStart(2,'0')}:${String(Math.floor((totalMs % 3600000) / 60000)).padStart(2,'0')}:00`;
 
-                        // STRICT CHECK FOR UPDATE
                         const { error: updateErr } = await supabaseClient.from('attendance').update({ out_time: timeStr, out_photo_url: photoUrl, total_hours: totalStr }).eq('id', record.id);
                         if (updateErr) throw updateErr;
                         
                         successMessage = empName + ", aapka punch out safal raha.";
                     } else {
-                        notify("Shift completed for today.", "info");
-                        speakText(empName + ", aaj ki aapki shift puri ho chuki hai.");
-                        resumeScanning();
+                        if(!offlineProcessData) {
+                            notify("Shift completed for today.", "info");
+                            speakText(empName + ", aaj ki aapki shift puri ho chuki hai.");
+                            resumeScanning();
+                        }
                         return;
                     }
                 } else {
-                    // STRICT CHECK FOR INSERT
+                    const finalInTime = isLate ? `${timeStr} (LATE)` : timeStr;
                     const { error: insertErr } = await supabaseClient.from('attendance').insert([{ 
                         employee_code: empCode, 
-                        Name: empName, // Screenshot ke anusaar column ka naam "Name" (Capital N) hai
+                        Name: empName, 
                         date: todayStr, 
-                        in_time: timeStr, 
+                        in_time: finalInTime, 
                         in_photo_url: photoUrl 
                     }]);
                     
                     if (insertErr) throw insertErr;
                     
                     successMessage = empName + ", aapka punch in safal raha.";
+                    if(isLate && !offlineProcessData) successMessage += " Dhyan rahe, aap late hain.";
                 }
 
-                // Sirf tabhi awaz aayegi jab DB ne data accept kar liya ho
-                speakText(successMessage);
-                lastPunchTime.set(empCode, now);
-                showSuccessUI(empData, empName, imageBase64, timeStr, punchType);
+                if(!offlineProcessData) {
+                    speakText(successMessage);
+                    lastPunchTime.set(empCode, now);
+                    showSuccessUI(empData, empName, imageBase64, timeStr, punchType);
+                }
 
             } catch (error) {
                 console.error("Database Save Error Detailed:", error.message || error);
-                notify("Error: " + (error.message || "Database connection failed"), "error");
-                speakText("Data save nahi ho paya. Kripya system admin se sampark karein.");
-                resumeScanning();
+                if(!offlineProcessData) {
+                    notify("Error: " + (error.message || "Database connection failed"), "error");
+                    speakText("Data save nahi ho paya.");
+                    resumeScanning();
+                } else {
+                    throw error; // Let sync function catch it
+                }
             }
         }
+
+        // OFFLINE SYNC LISTENER
+        window.addEventListener('online', async () => {
+            let pending = JSON.parse(localStorage.getItem('pending_punches') || '[]');
+            if (pending.length === 0) return;
+            
+            notify(`Syncing ${pending.length} offline records...`, "info");
+            let remaining = [];
+            for(let p of pending) {
+                try {
+                    await recordAttendance(p.empCode, p);
+                } catch(e) {
+                    remaining.push(p);
+                }
+            }
+            localStorage.setItem('pending_punches', JSON.stringify(remaining));
+            if(remaining.length === 0) notify("All offline data synced!", "success");
+        });
 
         // --- STREAMING_CHUNK: Presentation ---
         function showSuccessUI(empData, empName, imgSrc, timeStr, punchType) {
@@ -918,10 +1000,12 @@
         function resumeScanning() {
             setSystemStatus('ready');
             resetScanState();
-            if (mediaStream) {
+            if (mediaStream && mediaStream.active && video.srcObject) {
                 scannerWrapper.classList.add('active-scan');
                 isDetecting = true;
                 startDetectionLoop();
+            } else {
+                startCamera(); // Fully restarts if tracks were stopped
             }
         }
 
@@ -934,14 +1018,20 @@
         const adminCamWrapper = document.getElementById('adminCamWrapper');
         const faceStatus = document.getElementById('faceStatus');
         const saveEmpBtn = document.getElementById('saveEmpBtn');
+        const tabRegister = document.getElementById('tabRegister');
+        const tabDirectory = document.getElementById('tabDirectory');
+        const tabReports = document.getElementById('tabReports'); // New Tab
+        const registerForm = document.getElementById('registerForm');
+        const directoryTabContent = document.getElementById('directoryTabContent');
+        const reportsTabContent = document.getElementById('reportsTabContent'); // New Tab Content
         
         let adminStream = null;
         let adminCanvas = null;
         let newEmpDescriptor = null;
+        let adminFacingMode = 'user'; // Tracks admin camera state
 
         // UI Toggles
         document.getElementById('openAuthBtn').addEventListener('click', async () => {
-            // Check if already logged in
             const { data: { session } } = await supabaseClient.auth.getSession();
             if(session) {
                 openAdminDashboard();
@@ -954,7 +1044,149 @@
         document.getElementById('closeAdminBtn').addEventListener('click', () => {
             adminPanelModal.classList.remove('show');
             stopAdminCamera();
-            resumeScanning(); // Resume main attendance scanner
+            resumeScanning();
+        });
+
+        // Tab Logic & Directory Render
+        function switchTab(tab) {
+            [tabRegister, tabDirectory, tabReports].forEach(t => t.className = "flex-1 py-1.5 text-xs font-bold text-slate-500 hover:text-slate-700 transition-all");
+            [registerForm, directoryTabContent, reportsTabContent].forEach(c => c.classList.add('hidden'));
+
+            if(tab === 'register') {
+                tabRegister.className = "flex-1 py-1.5 text-xs font-bold bg-white shadow-sm rounded-md text-slate-800 transition-all";
+                registerForm.classList.remove('hidden');
+                startAdminCamera();
+            } else if(tab === 'directory') {
+                tabDirectory.className = "flex-1 py-1.5 text-xs font-bold bg-white shadow-sm rounded-md text-slate-800 transition-all";
+                directoryTabContent.classList.remove('hidden');
+                stopAdminCamera();
+                renderDirectory();
+            } else {
+                tabReports.className = "flex-1 py-1.5 text-xs font-bold bg-white shadow-sm rounded-md text-slate-800 transition-all";
+                reportsTabContent.classList.remove('hidden');
+                stopAdminCamera();
+                renderReports();
+            }
+        }
+
+        tabRegister.addEventListener('click', () => switchTab('register'));
+        tabDirectory.addEventListener('click', () => switchTab('directory'));
+        tabReports.addEventListener('click', () => switchTab('reports'));
+
+        // Delete Employee
+        async function deleteEmployee(id, name) {
+            if(!confirm(`Delete ${name} permanently?`)) return;
+            try {
+                await supabaseClient.from('employees').delete().eq('id', id);
+                notify("Employee deleted", "success");
+                renderDirectory();
+                fetchEmployeesData(true); // Update AI descriptors silently
+            } catch(e) {
+                notify("Failed to delete", "error");
+            }
+        }
+
+        async function renderDirectory() {
+            directoryTabContent.innerHTML = '<div class="flex justify-center py-6"><div class="loader-ring" style="border-color: rgba(37,99,235,0.3); border-top-color: #2563eb;"></div></div>';
+            
+            try {
+                const { data, error } = await supabaseClient.from('employees').select('*').order('created_at', { ascending: false });
+                
+                if (error) throw error;
+
+                directoryTabContent.innerHTML = '<h3 class="text-sm font-bold text-slate-700 mb-3">Registered Employees (' + (data ? data.length : 0) + ')</h3>';
+                
+                if(!data || data.length === 0) {
+                    directoryTabContent.innerHTML += '<p class="text-xs text-slate-500 bg-slate-50 p-4 rounded-xl text-center border border-slate-100">No employees found in database.</p>';
+                    return;
+                }
+                
+                let html = '<div class="flex flex-col gap-3">';
+                data.forEach(emp => {
+                    const statusColor = emp.Status === 'Active' ? 'text-emerald-700 bg-emerald-100 border-emerald-200' : 'text-red-700 bg-red-100 border-red-200';
+                    html += `<div class="p-3 bg-white border border-slate-200 rounded-xl flex justify-between items-center shadow-sm">
+                                <div>
+                                    <p class="text-sm font-bold text-slate-800">${emp.Name || emp.name || 'Unknown'}</p>
+                                    <p class="text-[10px] font-semibold text-slate-500 uppercase mt-0.5">ID: ${emp['Employee code']} • ${emp.DEPARTMENT || 'N/A'}</p>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="px-2 py-1 ${statusColor} text-[10px] font-bold rounded-md border">${emp.Status || 'Active'}</span>
+                                    <button onclick="deleteEmployee(${emp.id}, '${emp.Name}')" class="w-7 h-7 bg-red-50 text-red-500 rounded hover:bg-red-100 flex items-center justify-center"><i class="fa-solid fa-trash text-xs"></i></button>
+                                </div>
+                             </div>`;
+                });
+                html += '</div>';
+                directoryTabContent.innerHTML += html;
+
+            } catch (err) {
+                console.error("Directory fetch error:", err);
+                directoryTabContent.innerHTML = '<p class="text-xs text-red-500 bg-red-50 p-3 rounded-lg border border-red-100">Failed to load directory. Check database connection.</p>';
+            }
+        }
+
+        // Render Reports & CSV
+        let currentReportData = [];
+        async function renderReports() {
+            const list = document.getElementById('reportsList');
+            list.innerHTML = '<div class="loader-ring mx-auto" style="border-top-color: #2563eb;"></div>';
+            try {
+                const { data, error } = await supabaseClient.from('attendance').select('*').order('created_at', { ascending: false }).limit(50);
+                if (error) throw error;
+                currentReportData = data;
+                
+                if(!data || data.length === 0) {
+                    list.innerHTML = '<p class="text-xs text-center p-3 text-slate-500">No attendance data yet.</p>';
+                    return;
+                }
+
+                let html = '';
+                data.forEach(r => {
+                    const isLate = r.in_time && r.in_time.includes('LATE');
+                    html += `<div class="p-3 bg-white border border-slate-200 rounded-xl shadow-sm text-xs">
+                                <div class="flex justify-between font-bold text-slate-800 border-b border-slate-100 pb-1 mb-1">
+                                    <span>${r.Name} (${r.employee_code})</span>
+                                    <span>${r.date}</span>
+                                </div>
+                                <div class="flex justify-between text-slate-600 mt-1">
+                                    <span>In: <span class="${isLate ? 'text-red-500 font-bold' : ''}">${r.in_time}</span></span>
+                                    <span>Out: ${r.out_time || '--:--'}</span>
+                                    <span>Hrs: ${r.total_hours || '-'}</span>
+                                </div>
+                             </div>`;
+                });
+                list.innerHTML = html;
+            } catch (err) {
+                list.innerHTML = '<p class="text-xs text-red-500">Failed to load reports.</p>';
+            }
+        }
+
+        document.getElementById('exportCsvBtn').addEventListener('click', () => {
+            if(!currentReportData || currentReportData.length === 0) return notify("No data to export", "error");
+            
+            const headers = ['Name', 'Employee Code', 'Date', 'In Time', 'Out Time', 'Total Hours'];
+            const rows = currentReportData.map(d => [d.Name, d.employee_code, d.date, d.in_time, d.out_time || '', d.total_hours || '']);
+            let csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.map(i => `"${i}"`).join(","))].join("\n");
+            
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `Attendance_Report_${new Date().toLocaleDateString()}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        });
+
+        // Forgot Password 
+        document.getElementById('forgotPassBtn').addEventListener('click', async () => {
+            const email = document.getElementById('authEmail').value;
+            if(!email) return notify("Pehle apna email address daalein", "error");
+            try {
+                const { error } = await supabaseClient.auth.resetPasswordForEmail(email);
+                if(error) throw error;
+                notify("Password reset link aapke email par bhej diya gaya hai", "success");
+            } catch (err) {
+                notify(err.message, "error");
+            }
         });
 
         // Auth Form Submit
@@ -993,26 +1225,31 @@
         async function openAdminDashboard() {
             adminPanelModal.classList.add('show');
             
-            // Pause main camera to save resources
+            // 🛑 FIX: Properly stop and clear the main attendance camera to save resources & clear frozen frame
             isDetecting = false;
             if(mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+            video.srcObject = null; // Clears the frozen camera frame completely
+            scannerWrapper.classList.remove('active-scan');
             
             // Reset Admin Form
             document.getElementById('registerForm').reset();
-            
-            // Auto-generate Employee Code (Format: EMP-XXXX)
             const uniqueCode = 'EMP-' + Math.floor(1000 + Math.random() * 9000);
             document.getElementById('regCode').value = uniqueCode;
-
             newEmpDescriptor = null;
             faceStatus.className = "text-red-500 font-bold bg-red-50 px-2 py-0.5 rounded text-[10px]";
             faceStatus.innerText = "Not Captured";
             saveEmpBtn.disabled = true;
 
-            // Start Admin Camera
+            switchTab('register');
+        }
+
+        // Admin Camera Logic (Includes Back/Front Toggle)
+        async function startAdminCamera() {
+            stopAdminCamera();
             try {
-                adminStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+                adminStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: adminFacingMode } });
                 adminVideo.srcObject = adminStream;
+                adminVideo.style.transform = adminFacingMode === 'user' ? 'scaleX(-1)' : 'scaleX(1)';
             } catch (err) {
                 notify("Camera needed for registration", "error");
             }
@@ -1022,6 +1259,11 @@
             if(adminStream) adminStream.getTracks().forEach(t => t.stop());
             if(adminCanvas) { adminCanvas.remove(); adminCanvas = null; }
         }
+
+        document.getElementById('toggleAdminCamBtn').addEventListener('click', () => {
+            adminFacingMode = adminFacingMode === 'user' ? 'environment' : 'user';
+            startAdminCamera();
+        });
 
         // Capture Admin Face
         document.getElementById('captureFaceBtn').addEventListener('click', async () => {
@@ -1104,8 +1346,8 @@
                 saveEmpBtn.disabled = true;
                 if(adminCanvas) adminCanvas.getContext('2d').clearRect(0,0, adminCanvas.width, adminCanvas.height);
                 
-                // Refresh models to include new employee
-                fetchEmployeesData();
+                // Refresh models to include new employee silently
+                fetchEmployeesData(true);
 
             } catch (err) {
                 console.error(err);
@@ -1116,7 +1358,36 @@
             }
         });
 
-        window.addEventListener('load', initSystem);
+        // App Start & Security Logic
+        const COMPANY_PIN = "INZO2026"; // Lock PIN
+
+        function startAppFlow() {
+            if (localStorage.getItem('inzo_device_verified') === 'true') {
+                document.getElementById('authDeviceState').classList.add('hidden');
+                document.getElementById('setupState').classList.remove('hidden');
+                initSystem();
+            } else {
+                document.getElementById('authDeviceState').classList.remove('hidden');
+                document.getElementById('authDeviceState').classList.add('flex');
+                document.getElementById('setupState').classList.add('hidden');
+            }
+        }
+
+        document.getElementById('verifyDeviceBtn').addEventListener('click', () => {
+            const pin = document.getElementById('devicePinInput').value;
+            if (pin === COMPANY_PIN) {
+                localStorage.setItem('inzo_device_verified', 'true');
+                notify("Device Verified Successfully!", "success");
+                startAppFlow();
+            } else {
+                notify("Galat PIN! Access Denied.", "error");
+            }
+        });
+
+        window.addEventListener('load', () => {
+            document.getElementById('setupState').classList.add('hidden');
+            startAppFlow();
+        });
     </script>
 </body>
 </html>
