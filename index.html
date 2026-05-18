@@ -268,6 +268,10 @@
             </button>
         </header>
 
+        <div id="offlineBanner" class="hidden w-full bg-red-500 text-white text-[10px] font-bold text-center py-1.5 uppercase tracking-widest shadow-inner z-50">
+            <i class="fa-solid fa-wifi-slash mr-1"></i> Offline Mode - Data will be saved locally
+        </div>
+
         <!-- Device Auth State -->
         <div id="authDeviceState" class="hidden flex-col items-center justify-center py-16 px-6 text-center flex-grow">
             <div class="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center text-3xl mb-4 shadow-inner border border-slate-200">
@@ -620,8 +624,32 @@
         // --- STREAMING_CHUNK: Lightweight AI Initialization ---
         async function fetchEmployeesData(isSilent = false) {
             try {
-                const { data, error } = await supabaseClient.from('employees').select('*').eq('Status', 'Active');
-                if (error) throw error;
+                let data = null;
+
+                // Try fetching live data if online
+                if (navigator.onLine) {
+                    try {
+                        const response = await supabaseClient.from('employees').select('*').eq('Status', 'Active');
+                        if (response.error) throw response.error;
+                        data = response.data;
+                        // Cache data locally for offline usage
+                        localStorage.setItem('cached_employees_data', JSON.stringify(data));
+                    } catch (dbErr) {
+                        console.warn("DB Fetch failed, trying cache...", dbErr);
+                    }
+                }
+
+                // If offline or DB fetch failed, load from cache
+                if (!data) {
+                    const cachedStr = localStorage.getItem('cached_employees_data');
+                    if (cachedStr) {
+                        data = JSON.parse(cachedStr);
+                        if (!isSilent) notify("Offline Mode Active", "info");
+                    } else {
+                        throw new Error("No offline data available. Connect to internet first.");
+                    }
+                }
+
                 if (!data || data.length === 0) throw new Error("No employee records");
 
                 labeledFaceDescriptors = [];
@@ -859,18 +887,22 @@
                 imageBase64 = snapCanvas.toDataURL('image/jpeg', 0.6); // Slightly compressed for local storage
             }
 
-            // OFFLINE LOGIC
-            if (!navigator.onLine && !offlineProcessData) {
+            const saveOfflineTask = () => {
                 let pending = JSON.parse(localStorage.getItem('pending_punches') || '[]');
                 pending.push({ empCode, todayStr, timeStr, imageBase64 });
                 localStorage.setItem('pending_punches', JSON.stringify(pending));
                 
-                notify("Saved Offline (No Internet)", "info");
+                notify("Saved Offline (Connection Failed)", "info");
                 lastPunchTime.set(empCode, now);
                 let msg = empName + ", aapka punch offline save ho gaya hai.";
                 if(isLate) msg += " Dhyan rahe, aap late hain.";
                 speakText(msg);
                 showSuccessUI(empData, empName, imageBase64, timeStr, "OFFLINE");
+            };
+
+            // OFFLINE LOGIC (Fast check)
+            if (!navigator.onLine && !offlineProcessData) {
+                saveOfflineTask();
                 return;
             }
 
@@ -937,9 +969,8 @@
             } catch (error) {
                 console.error("Database Save Error Detailed:", error.message || error);
                 if(!offlineProcessData) {
-                    notify("Error: " + (error.message || "Database connection failed"), "error");
-                    speakText("Data save nahi ho paya.");
-                    resumeScanning();
+                    // KISI BHI ERROR (SLOW INTERNET/FAIL) PE OFFLINE SAVE KAREGA
+                    saveOfflineTask();
                 } else {
                     throw error; // Let sync function catch it
                 }
@@ -947,7 +978,13 @@
         }
 
         // OFFLINE SYNC LISTENER
+        window.addEventListener('offline', () => {
+            document.getElementById('offlineBanner').classList.remove('hidden');
+            notify("Internet disconnected. Ready for offline punches.", "error");
+        });
+
         window.addEventListener('online', async () => {
+            document.getElementById('offlineBanner').classList.add('hidden');
             let pending = JSON.parse(localStorage.getItem('pending_punches') || '[]');
             if (pending.length === 0) return;
             
@@ -1366,6 +1403,23 @@
                 document.getElementById('authDeviceState').classList.add('hidden');
                 document.getElementById('setupState').classList.remove('hidden');
                 initSystem();
+                async function syncOfflinePunches() {
+                    let pending = JSON.parse(localStorage.getItem('pending_punches') || '[]');
+                    if (pending.length === 0) return;
+                    
+                    notify(`Syncing ${pending.length} offline records...`, "info");
+                    let remaining = [];
+                    for(let p of pending) {
+                        try {
+                            await recordAttendance(p.empCode, p);
+                        } catch(e) {
+                            remaining.push(p);
+                        }
+                    }
+                    localStorage.setItem('pending_punches', JSON.stringify(remaining));
+                    if(remaining.length === 0) notify("All offline data synced!", "success");
+                }
+                setTimeout(syncOfflinePunches, 3000); // Auto-sync pending offline data on startup
             } else {
                 document.getElementById('authDeviceState').classList.remove('hidden');
                 document.getElementById('authDeviceState').classList.add('flex');
@@ -1386,6 +1440,9 @@
 
         window.addEventListener('load', () => {
             document.getElementById('setupState').classList.add('hidden');
+            if (!navigator.onLine) {
+                document.getElementById('offlineBanner').classList.remove('hidden');
+            }
             startAppFlow();
         });
     </script>
