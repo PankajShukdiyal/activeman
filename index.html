@@ -2,1234 +2,1449 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Professional Resume Builder</title>
-    <!-- Tailwind CSS -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Inzo</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- React & ReactDOM -->
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-    <!-- Babel for JSX -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- FontAwesome for Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
-        .custom-scrollbar:hover::-webkit-scrollbar-thumb { background-color: #94a3b8; }
-        @media print {
-            @page { margin: 0; } /* Hides browser URL and timestamp headers/footers */
-            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        :root {
+            --brand-color: #2563eb; /* Corporate Blue */
+            --brand-hover: #1d4ed8;
+            --success: #10b981;
+            --error: #ef4444;
+            --surface: #ffffff;
+            --background: #f1f5f9; /* Light clean gray */
+            --text-primary: #0f172a;
+            --text-secondary: #64748b;
         }
+
+        body { 
+            background-color: var(--background); 
+            color: var(--text-primary); 
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Clean Enterprise Card */
+        .app-container {
+            width: 100%;
+            max-width: 440px;
+            min-height: 90vh; /* Better vertical space utilization */
+            background: var(--surface);
+            border-radius: 2rem;
+            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(0,0,0,0.02);
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .scanner-viewport { 
+            position: relative; 
+            width: calc(100% - 2rem); 
+            margin: 0 auto;
+            border-radius: 1.5rem; 
+            overflow: hidden; 
+            background: #0f172a;
+            height: 60vh; /* Fixed height for perfect mobile view without overflow */
+            max-height: 550px;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1);
+            transition: all 0.3s ease;
+        }
+
+        .scanner-viewport.active-scan {
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2), inset 0 0 0 1px rgba(255,255,255,0.1);
+        }
+
+        video { 
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%; 
+            height: 100%; 
+            object-fit: cover; 
+            display: block; 
+            transform: scaleX(-1);
+        }
+        
+        canvas { 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            width: 100% !important; 
+            height: 100% !important;
+            z-index: 5;
+            object-fit: cover;
+        }
+
+        /* Status Pills over Video */
+        .status-pill {
+            position: absolute;
+            top: 1rem;
+            z-index: 20;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 0.375rem 0.75rem;
+            border-radius: 9999px;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-pill.left { left: 1rem; }
+        .status-pill.right { right: 1rem; }
+
+        /* Minimal Reticle */
+        .focus-frame {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 65%;
+            height: 55%;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 20px;
+            z-index: 10;
+            transition: all 0.3s ease;
+        }
+        
+        /* Corner accents for the frame */
+        .focus-frame::before, .focus-frame::after {
+            content: ''; position: absolute; width: 100%; height: 100%;
+            border-radius: 20px; z-index: -1;
+        }
+        .focus-frame.detecting {
+            border-color: rgba(37, 99, 235, 0.8);
+            background: rgba(37, 99, 235, 0.05);
+            box-shadow: 0 0 30px rgba(37, 99, 235, 0.2) inset;
+        }
+
+        /* Subtle Scan Line */
+        .scan-line {
+            position: absolute; 
+            width: 100%; 
+            height: 2px; 
+            background: linear-gradient(90deg, transparent, rgba(37, 99, 235, 0.8), transparent);
+            box-shadow: 0 0 8px rgba(37, 99, 235, 0.5); 
+            animation: scan-anim 2.5s infinite linear;
+            z-index: 11;
+            left: 0;
+            opacity: 0;
+        }
+        
+        .active-scan .scan-line { opacity: 1; }
+
+        @keyframes scan-anim {
+            0% { top: 5%; }
+            50% { top: 95%; }
+            100% { top: 5%; }
+        }
+
+        .btn-corporate {
+            background-color: var(--brand-color);
+            color: white;
+            font-weight: 600;
+            font-size: 0.95rem;
+            border: none;
+            border-radius: 1rem;
+            padding: 1rem;
+            width: calc(100% - 2rem);
+            margin: 1.5rem auto 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        
+        .btn-corporate:hover:not(:disabled) { background-color: var(--brand-hover); }
+        .btn-corporate:active:not(:disabled) { transform: scale(0.98); }
+        
+        .btn-corporate:disabled {
+            background-color: #e2e8f0;
+            color: #94a3b8;
+            cursor: not-allowed;
+        }
+
+        /* Progress Bar */
+        .progress-track {
+            width: 100%;
+            height: 4px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: var(--brand-color);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        /* Clean Toast Notification */
+        .toast {
+            position: fixed; 
+            bottom: 2rem; 
+            left: 50%; 
+            transform: translateX(-50%) translateY(100px);
+            background: var(--text-primary); 
+            color: white; 
+            padding: 0.875rem 1.5rem;
+            border-radius: 99px; 
+            font-size: 0.875rem;
+            font-weight: 500; 
+            opacity: 0; 
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 1000; 
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2);
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+        /* Loader Spinner */
+        .loader-ring {
+            width: 18px; height: 18px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: currentColor;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Admin Form Elements */
+        .input-field {
+            width: 100%; padding: 0.6rem 1rem; border-radius: 0.75rem;
+            border: 1px solid #cbd5e1; font-size: 0.875rem; outline: none;
+            transition: all 0.2s; background: #f8fafc; color: var(--text-primary);
+        }
+        .input-field:focus { border-color: var(--brand-color); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+        .admin-modal {
+            position: fixed; inset: 0; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px);
+            z-index: 200; display: flex; align-items: center; justify-content: center; padding: 1rem;
+            opacity: 0; pointer-events: none; transition: all 0.3s ease;
+        }
+        .admin-modal.show { opacity: 1; pointer-events: auto; }
+        .admin-content {
+            background: white; width: 100%; max-width: 480px; border-radius: 1.5rem;
+            max-height: 95vh; overflow-y: auto; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+            transform: translateY(20px); transition: all 0.3s ease;
+        }
+        .admin-modal.show .admin-content { transform: translateY(0); }
+        
+        .admin-camera-box {
+            width: 100%; height: 220px; background: #0f172a; border-radius: 1rem; overflow: hidden; position: relative;
+        }
+        .admin-camera-box video {
+            width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1);
+        }
+        .admin-camera-box canvas {
+            position: absolute; top:0; left:0; width:100%; height:100%; z-index: 10;
+        }
+
     </style>
 </head>
 <body>
-    <div id="root"></div>
 
-    <script type="text/babel">
-        const { useState } = React;
+    <main class="app-container">
+        
+        <header class="pt-4 pb-4 px-6 flex items-center justify-between border-b border-slate-100">
+            <h1 class="text-2xl font-extrabold text-slate-800 tracking-tight">Inzo</h1>
+            <button id="openAuthBtn" class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center transition-colors shadow-sm" title="Admin Access">
+                <i class="fa-solid fa-user-shield text-xl"></i>
+            </button>
+        </header>
 
-        const App = () => {
-          // --- States for Resume Data ---
-          const [personalInfo, setPersonalInfo] = useState({
-            name: 'Aarav Verma',
-            title: 'Senior Product Designer',
-            email: 'aarav.design@example.com',
-            phone: '+91-9876543210',
-            location: 'Bengaluru, India',
-            photo: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?fit=crop&w=200&h=200',
-            summary: 'Creative and detail-oriented Product Designer with over 5 years of experience in creating user-centric digital products. Proven ability to lead design processes, collaborate with cross-functional teams, and deliver high-quality UI/UX solutions that increased user engagement by 40%. Highly skilled in wireframing, prototyping, and modern design tools.',
-          });
+        <div id="offlineBanner" class="hidden w-full bg-red-500 text-white text-[10px] font-bold text-center py-1.5 uppercase tracking-widest shadow-inner z-50">
+            <i class="fa-solid fa-wifi-slash mr-1"></i> Offline Mode - Data will be saved locally
+        </div>
 
-          const [experience, setExperience] = useState([
-            {
-              id: 1,
-              company: 'TechInnovate Solutions',
-              role: 'Lead UI/UX Designer',
-              duration: 'Mar 2021 - Present',
-              description: 'Spearheaded the complete redesign of the core SaaS platform, improving usability scores by 35%. Managed a team of 3 junior designers and established a unified design system. Collaborated directly with stakeholders to align product goals with user needs.',
-            },
-            {
-              id: 2,
-              company: 'Creative Web Agency',
-              role: 'UI Designer',
-              duration: 'Jun 2018 - Feb 2021',
-              description: 'Designed responsive web applications for over 20+ e-commerce clients. Conducted user research and A/B testing to optimize conversion rates. Reduced user drop-off rate at checkout by 15% through streamlined UI flows.',
-            }
-          ]);
-
-          const [education, setEducation] = useState([
-            {
-              id: 1,
-              degree: 'B.Des in Interaction Design',
-              institution: 'National Institute of Design',
-              year: '2018',
-              marks: '8.5 CGPA',
-            },
-            {
-              id: 2,
-              degree: '12th Standard (Science)',
-              institution: 'Delhi Public School',
-              year: '2014',
-              marks: '92%',
-            }
-          ]);
-
-          const [skills, setSkills] = useState('Figma, Adobe XD, User Research, Wireframing, Prototyping, HTML/CSS, Interaction Design, Team Leadership, Agile Methodology');
-          
-          const [projects, setProjects] = useState([
-            {
-              id: 1,
-              title: 'FinTech Dashboard Redesign',
-              duration: '3 Months',
-              description: 'Revamped the primary analytics dashboard for a major FinTech app, introducing dark mode and modular widgets. Resulted in a 25% increase in daily active users.',
-            }
-          ]);
-
-          const [template, setTemplate] = useState('modern_split'); // 'classic_ats', 'modern_split', 'creative_red', 'corporate_pro', 'minimal_grid'
-          const [activeTab, setActiveTab] = useState('personal'); // Tab navigation state
-
-          // --- Handlers ---
-          const handlePersonalInfoChange = (e) => {
-            setPersonalInfo({ ...personalInfo, [e.target.name]: e.target.value });
-          };
-
-          const handlePhotoUpload = (e) => {
-            const file = e.target.files[0];
-            if (file) {
-              const reader = new FileReader();
-              reader.onloadend = () => {
-                setPersonalInfo({ ...personalInfo, photo: reader.result });
-              };
-              reader.readAsDataURL(file);
-            }
-          };
-
-          const handleArrayChange = (index, field, value, setter, state) => {
-            const newState = [...state];
-            newState[index][field] = value;
-            setter(newState);
-          };
-
-          const addItem = (setter, state, defaultItem) => {
-            setter([...state, { id: Date.now(), ...defaultItem }]);
-          };
-
-          const removeItem = (id, setter, state) => {
-            setter(state.filter(item => item.id !== id));
-          };
-
-          const handlePrint = () => {
-            window.print();
-          };
-
-          // --- Templates ---
-          
-          // 1. Classic ATS Template (Like Pankaj PDF - Strictly Text, Clean)
-          const ClassicTemplate = () => (
-            <div className="font-sans text-gray-900 leading-relaxed p-10 bg-white h-full">
-              <div className="text-center mb-6 border-b-2 border-gray-800 pb-6">
-                <h1 className="text-4xl font-bold uppercase tracking-wider mb-2">{personalInfo.name}</h1>
-                <h2 className="text-xl text-gray-700 font-semibold mb-3">{personalInfo.title}</h2>
-                <p className="text-sm font-medium">
-                  {personalInfo.phone} | {personalInfo.email} | {personalInfo.location}
-                </p>
-              </div>
-
-              {personalInfo.summary && (
-                <div className="mb-6">
-                  <h3 className="text-sm font-bold border-b border-gray-300 mb-2 uppercase tracking-widest text-gray-500 pb-1">Profile Summary</h3>
-                  <p className="text-sm text-justify leading-relaxed">{personalInfo.summary}</p>
-                </div>
-              )}
-
-              {skills && (
-                <div className="mb-6">
-                  <h3 className="text-sm font-bold border-b border-gray-300 mb-2 uppercase tracking-widest text-gray-500 pb-1">Skills</h3>
-                  <p className="text-sm leading-relaxed font-medium text-gray-800">{skills.split(',').map(s => s.trim()).join('  •  ')}</p>
-                </div>
-              )}
-
-              <div className="mb-6">
-                <h3 className="text-sm font-bold border-b border-gray-300 mb-4 uppercase tracking-widest text-gray-500 pb-1">Work Experience</h3>
-                {experience.map((exp) => (
-                  <div key={exp.id} className="mb-5">
-                    <div className="flex justify-between font-bold text-base mb-1">
-                      <span className="text-gray-900">{exp.role} - <span className="font-semibold text-gray-600">{exp.company}</span></span>
-                      <span className="text-sm text-gray-600">{exp.duration}</span>
-                    </div>
-                    <ul className="list-disc list-outside ml-5 text-sm text-gray-700 space-y-1 mt-2">
-                      {exp.description.split('. ').map((point, i) => point && <li key={i}>{point.trim()}</li>)}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-
-              {projects.length > 0 && (
-                <div className="mb-6">
-                  <h3 className="text-sm font-bold border-b border-gray-300 mb-4 uppercase tracking-widest text-gray-500 pb-1">Projects</h3>
-                  {projects.map((proj) => (
-                    <div key={proj.id} className="mb-4">
-                      <div className="flex justify-between font-bold mb-1">
-                        <span className="text-gray-900">{proj.title}</span>
-                        <span className="text-sm font-normal text-gray-600">{proj.duration}</span>
-                      </div>
-                      <p className="text-sm mt-1 text-gray-700">{proj.description}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="mb-6">
-                <h3 className="text-sm font-bold border-b border-gray-300 mb-4 uppercase tracking-widest text-gray-500 pb-1">Education</h3>
-                {education.map((edu) => (
-                  <div key={edu.id} className="mb-2 flex justify-between text-sm">
-                    <div>
-                      <span className="font-bold text-gray-900">{edu.degree}</span> <span className="text-gray-600">| {edu.institution}</span>
-                    </div>
-                    <div className="font-medium text-gray-700">
-                      {edu.year} | {edu.marks}
-                    </div>
-                  </div>
-                ))}
-              </div>
+        <!-- Device Auth State -->
+        <div id="authDeviceState" class="hidden flex-col items-center justify-center py-16 px-6 text-center flex-grow">
+            <div class="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center text-3xl mb-4 shadow-inner border border-slate-200">
+                <i class="fa-solid fa-lock"></i>
             </div>
-          );
+            <h2 class="text-xl font-bold text-slate-800 mb-2">Security Locked</h2>
+            <p class="text-xs text-slate-500 mb-6 px-4">System shuru karne ke liye Company PIN darj karein.</p>
+            <div class="w-full max-w-[240px]">
+                <input type="password" id="devicePinInput" class="input-field text-center text-lg tracking-widest mb-4" placeholder="Enter PIN">
+                <button id="verifyDeviceBtn" class="btn-corporate w-full shadow-md"><i class="fa-solid fa-key"></i> Unlock System</button>
+            </div>
+            <p class="text-[10px] text-slate-400 mt-4">Hint PIN: INZO2026</p>
+        </div>
 
-          // 2. Modern Split Template (Like Rashmi PDF - Sidebar + Photo)
-          const ModernTemplate = () => (
-            <div className="flex h-full font-sans text-gray-800 bg-white min-h-[297mm]">
-              {/* Left Column */}
-              <div className="w-[35%] bg-[#1e293b] text-white p-8">
-                <div className="flex justify-center mb-8">
-                  <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-slate-500 shadow-xl">
-                    <img src={personalInfo.photo || 'https://via.placeholder.com/150'} alt="Profile" className="w-full h-full object-cover" />
-                  </div>
+        <div id="setupState" class="flex flex-col items-center justify-center py-16 px-6 text-center">
+            <div class="text-blue-500 mb-4">
+                <i class="fa-solid fa-microchip text-4xl opacity-80"></i>
+            </div>
+            <h2 class="text-base font-semibold text-slate-800 mb-1">Loading System</h2>
+            <p id="loadingMsg" class="text-sm text-slate-500 mb-6">Connecting to secure database...</p>
+            
+            <div class="w-full max-w-[200px]">
+                <div class="progress-track">
+                    <div id="loadingProgress" class="progress-fill"></div>
                 </div>
+            </div>
+        </div>
+
+        <div id="scannerState" class="hidden flex-col items-center pt-4 pb-2 flex-grow justify-center">
+            
+            <div class="scanner-viewport" id="scannerWrapper">
                 
-                <h1 className="text-2xl font-extrabold mb-1 leading-tight tracking-tight text-center">{personalInfo.name}</h1>
-                <h2 className="text-xs font-medium text-blue-400 uppercase tracking-widest mb-8 text-center">{personalInfo.title}</h2>
+                <div class="status-pill left">
+                    <div id="statusDot" class="w-2 h-2 rounded-full bg-yellow-400"></div>
+                    <span id="statusText" class="text-[10px] font-bold text-white uppercase tracking-wider">Ready</span>
+                </div>
+
+                <div class="status-pill right">
+                    <i id="gpsIcon" class="fa-solid fa-location-arrow text-[10px] text-white"></i>
+                    <span id="gpsText" class="text-[10px] font-bold text-white uppercase tracking-wider">GPS</span>
+                </div>
+
+                <video id="video" autoplay muted playsinline></video>
                 
-                <div className="mb-8 space-y-4 text-xs font-medium text-slate-300">
-                  <div className="flex items-center gap-3"><i className="fa-solid fa-envelope text-slate-400 w-4"></i> <span className="break-all">{personalInfo.email}</span></div>
-                  <div className="flex items-center gap-3"><i className="fa-solid fa-phone text-slate-400 w-4"></i> <span>{personalInfo.phone}</span></div>
-                  <div className="flex items-center gap-3"><i className="fa-solid fa-location-dot text-slate-400 w-4"></i> <span>{personalInfo.location}</span></div>
-                </div>
-
-                <div className="mb-8">
-                  <h3 className="text-xs font-bold uppercase tracking-widest mb-4 text-white border-b border-slate-600 pb-2">Key Skills</h3>
-                  <ul className="flex flex-col gap-2 text-xs text-slate-300">
-                    {skills.split(',').map((s, i) => <li key={i} className="flex items-center gap-2"><div className="w-1.5 h-1.5 bg-blue-500 rounded-full shrink-0"></div>{s.trim()}</li>)}
-                  </ul>
-                </div>
-
-                <div className="mb-8">
-                  <h3 className="text-xs font-bold uppercase tracking-widest mb-4 text-white border-b border-slate-600 pb-2">Education</h3>
-                  {education.map((edu) => (
-                    <div key={edu.id} className="mb-4">
-                      <div className="font-bold text-sm text-slate-100">{edu.degree}</div>
-                      <div className="text-xs text-slate-400 mt-1">{edu.institution}</div>
-                      <div className="text-xs text-slate-500 mt-0.5">{edu.year} | {edu.marks}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Right Column */}
-              <div className="w-[65%] p-8 bg-slate-50">
-                {personalInfo.summary && (
-                  <div className="mb-8">
-                    <h3 className="text-sm font-bold uppercase tracking-widest mb-3 text-slate-900 border-b-2 border-slate-200 pb-2">Profile Summary</h3>
-                    <p className="text-xs text-slate-600 leading-relaxed text-justify">{personalInfo.summary}</p>
-                  </div>
-                )}
-
-                <div className="mb-8">
-                  <h3 className="text-sm font-bold uppercase tracking-widest mb-4 text-slate-900 border-b-2 border-slate-200 pb-2">Work Experience</h3>
-                  {experience.map((exp) => (
-                    <div key={exp.id} className="mb-6 relative pl-4 border-l-2 border-slate-200">
-                      <div className="absolute w-2 h-2 bg-blue-500 rounded-full -left-[5px] top-1.5"></div>
-                      <div className="flex justify-between items-baseline mb-1">
-                        <h4 className="font-bold text-slate-900 text-sm">{exp.role}</h4>
-                        <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-2.5 py-1 rounded-full">{exp.duration}</span>
-                      </div>
-                      <div className="text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">{exp.company}</div>
-                      <ul className="list-disc list-outside ml-4 text-xs text-slate-600 space-y-1.5 leading-relaxed">
-                        {exp.description.split('. ').map((point, i) => point && <li key={i}>{point.trim()}</li>)}
-                      </ul>
-                    </div>
-                  ))}
-                </div>
-
-                {projects.length > 0 && (
-                  <div className="mb-8">
-                    <h3 className="text-sm font-bold uppercase tracking-widest mb-4 text-slate-900 border-b-2 border-slate-200 pb-2">Projects</h3>
-                    {projects.map((proj) => (
-                      <div key={proj.id} className="mb-5 relative pl-4 border-l-2 border-slate-200">
-                        <div className="absolute w-2 h-2 bg-blue-500 rounded-full -left-[5px] top-1.5"></div>
-                        <div className="flex justify-between items-baseline mb-1">
-                          <h4 className="font-bold text-slate-900 text-sm">{proj.title}</h4>
-                          <span className="text-[10px] text-slate-500 font-bold bg-slate-200 px-2 rounded-full py-0.5">{proj.duration}</span>
+                <div class="absolute inset-0 z-10 pointer-events-none">
+                    <div class="scan-line"></div>
+                    <div class="focus-frame" id="reticle"></div>
+                    
+                    <div class="absolute bottom-4 left-0 w-full flex flex-col items-center px-4">
+                        <div id="verifyUI" class="w-full flex flex-col items-center opacity-0 transition-opacity duration-300 bg-black/60 backdrop-blur-md p-3 rounded-2xl border border-white/10">
+                            <span class="text-[11px] text-white font-medium uppercase tracking-wider mb-2 flex items-center gap-2">
+                                <i class="fa-solid fa-fingerprint text-blue-400"></i> Verifying Identity
+                            </span>
+                            <div class="w-full h-1.5 bg-white/20 rounded-full overflow-hidden">
+                                <div id="verifyProgress" class="h-full bg-blue-500 w-0 transition-all duration-100"></div>
+                            </div>
                         </div>
-                        <p className="text-xs text-slate-600 leading-relaxed mt-1">{proj.description}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+                    </div>
+                </div>
             </div>
-          );
 
-          // 3. Creative Red Template (Like Meherunesha PDF - Red Accent & Photo)
-          const CreativeTemplate = () => (
-            <div className="font-sans text-gray-800 bg-white min-h-[297mm] p-8">
-              {/* Header section */}
-              <div className="flex gap-8 items-center border-b-4 border-red-500 pb-6 mb-8">
-                <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-red-500 shrink-0">
-                  <img src={personalInfo.photo || 'https://via.placeholder.com/150'} alt="Profile" className="w-full h-full object-cover" />
-                </div>
-                <div>
-                  <h1 className="text-4xl font-black text-gray-900 tracking-tight uppercase mb-2">{personalInfo.name}</h1>
-                  <h2 className="text-lg font-bold text-red-600 uppercase tracking-widest mb-4">{personalInfo.title}</h2>
-                  <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs font-semibold text-gray-600">
-                    <span className="flex items-center gap-1"><i className="fa-solid fa-phone text-red-500"></i> {personalInfo.phone}</span>
-                    <span className="flex items-center gap-1"><i className="fa-solid fa-envelope text-red-500"></i> {personalInfo.email}</span>
-                    <span className="flex items-center gap-1"><i className="fa-solid fa-location-dot text-red-500"></i> {personalInfo.location}</span>
-                  </div>
-                </div>
-              </div>
+            <div class="flex items-center justify-center gap-6 mt-4 mb-2 w-full px-6">
+                <button id="toggleCamBtn" class="w-12 h-12 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center hover:bg-slate-200 transition-colors shadow-sm" title="Switch Camera">
+                    <i class="fa-solid fa-camera-rotate text-lg"></i>
+                </button>
+                <button id="playPauseBtn" class="w-14 h-14 rounded-full bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-100 transition-colors shadow-sm border border-red-100" title="Start/Stop Camera">
+                    <i id="playPauseIcon" class="fa-solid fa-pause text-xl"></i>
+                </button>
+            </div>
+            <p class="text-[11px] text-slate-400 text-center mb-4 px-6 font-medium">Auto-scan active. Ensure face is clearly visible.</p>
+        </div>
 
-              <div className="grid grid-cols-3 gap-10">
-                {/* Left Narrow Column */}
-                <div className="col-span-1 space-y-8">
-                  <div>
-                    <h3 className="text-sm font-black uppercase text-gray-900 border-l-4 border-red-500 pl-3 mb-4">Key Skills</h3>
-                    <div className="flex flex-col gap-2">
-                      {skills.split(',').map((s, i) => (
-                        <span key={i} className="text-xs font-bold text-gray-700 bg-gray-100 py-1.5 px-3 rounded-md border-l-2 border-red-300">
-                          {s.trim()}
+    </main>
+
+    <div id="successModal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-3xl w-full max-w-[360px] overflow-hidden shadow-2xl transform scale-95 transition-transform duration-300" id="modalInner">
+            
+            <div class="p-6 text-center border-b border-slate-100 bg-slate-50 relative overflow-hidden">
+                <div class="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-2xl mx-auto mb-3">
+                    <i class="fa-solid fa-check"></i>
+                </div>
+                <h2 class="text-slate-800 font-bold text-lg" id="punchTypeLabel">Attendance Logged</h2>
+                <p class="text-xs text-slate-500 font-medium uppercase tracking-wider mt-1" id="punchTime">--:--</p>
+            </div>
+            
+            <div class="p-6 flex flex-col items-center">
+                <div class="w-20 h-20 rounded-2xl border border-slate-200 overflow-hidden mb-3 shadow-sm">
+                    <img id="userSnapshot" src="" alt="Employee" class="w-full h-full object-cover">
+                </div>
+                
+                <h3 id="empName" class="text-base font-bold text-slate-800">---</h3>
+                <p id="empCode" class="text-sm text-slate-500 font-medium mb-4">ID: ---</p>
+                
+                <div class="w-full bg-slate-50 rounded-xl p-3 border border-slate-100">
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-500 text-xs font-semibold">Verification</span>
+                        <span class="text-emerald-600 text-xs font-bold bg-emerald-100 px-2 py-1 rounded-md flex items-center gap-1">
+                            <i class="fa-solid fa-shield-check"></i> Passed
                         </span>
-                      ))}
                     </div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-sm font-black uppercase text-gray-900 border-l-4 border-red-500 pl-3 mb-4">Education</h3>
-                    <div className="space-y-4">
-                      {education.map((edu) => (
-                        <div key={edu.id}>
-                          <div className="font-bold text-xs text-gray-900">{edu.degree}</div>
-                          <div className="text-[10px] font-semibold text-red-600 mt-1">{edu.year} | {edu.marks}</div>
-                          <div className="text-[10px] text-gray-500 mt-0.5">{edu.institution}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
                 </div>
-
-                {/* Right Wide Column */}
-                <div className="col-span-2 space-y-8">
-                  {personalInfo.summary && (
-                    <div>
-                      <h3 className="text-sm font-black uppercase text-gray-900 border-l-4 border-red-500 pl-3 mb-4">Profile Summary</h3>
-                      <p className="text-xs text-gray-700 leading-relaxed font-medium">{personalInfo.summary}</p>
-                    </div>
-                  )}
-
-                  <div>
-                    <h3 className="text-sm font-black uppercase text-gray-900 border-l-4 border-red-500 pl-3 mb-4">Work Experience</h3>
-                    <div className="space-y-6">
-                      {experience.map((exp) => (
-                        <div key={exp.id}>
-                          <div className="flex justify-between items-center mb-1">
-                            <h4 className="font-bold text-gray-900 text-sm">{exp.role}</h4>
-                            <span className="text-[10px] font-bold text-red-600">{exp.duration}</span>
-                          </div>
-                          <div className="text-xs font-bold text-gray-500 mb-2">{exp.company}</div>
-                          <p className="text-xs text-gray-700 leading-relaxed">{exp.description}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {projects.length > 0 && (
-                    <div>
-                      <h3 className="text-sm font-black uppercase text-gray-900 border-l-4 border-red-500 pl-3 mb-4">Projects</h3>
-                      <div className="space-y-5">
-                        {projects.map((proj) => (
-                          <div key={proj.id}>
-                            <div className="flex justify-between items-center mb-1">
-                              <h4 className="font-bold text-gray-900 text-sm">{proj.title}</h4>
-                              <span className="text-[10px] font-bold text-gray-500">{proj.duration}</span>
-                            </div>
-                            <p className="text-xs text-gray-700 leading-relaxed">{proj.description}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
             </div>
-          );
+        </div>
+    </div>
 
-          // 4. Corporate Pro Template (AI Added - Sharp, Professional, Blue Line)
-          const CorporateTemplate = () => (
-            <div className="font-serif text-gray-900 bg-white min-h-[297mm]">
-              <div className="h-4 bg-blue-800 w-full"></div>
-              <div className="p-10">
-                <header className="flex justify-between items-end border-b pb-6 mb-8">
-                  <div>
-                    <h1 className="text-4xl font-bold text-gray-900 mb-2">{personalInfo.name}</h1>
-                    <h2 className="text-lg text-blue-800 font-semibold">{personalInfo.title}</h2>
-                  </div>
-                  <div className="text-right text-xs text-gray-600 space-y-1 font-sans">
-                    <div>{personalInfo.email}</div>
-                    <div>{personalInfo.phone}</div>
-                    <div>{personalInfo.location}</div>
-                  </div>
-                </header>
-
-                {personalInfo.summary && (
-                  <div className="mb-8">
-                    <h3 className="text-sm font-bold text-blue-800 uppercase tracking-widest mb-3">Professional Summary</h3>
-                    <p className="text-sm text-gray-700 leading-relaxed">{personalInfo.summary}</p>
-                  </div>
-                )}
-
-                <div className="mb-8">
-                  <h3 className="text-sm font-bold text-blue-800 uppercase tracking-widest mb-4">Experience & Achievements</h3>
-                  <div className="space-y-6">
-                    {experience.map((exp) => (
-                      <div key={exp.id} className="grid grid-cols-4 gap-4">
-                        <div className="col-span-1 text-xs font-bold text-gray-500 font-sans mt-1">
-                          {exp.duration}
-                        </div>
-                        <div className="col-span-3">
-                          <h4 className="font-bold text-gray-900 text-base">{exp.role}</h4>
-                          <div className="text-sm italic text-gray-600 mb-2">{exp.company}</div>
-                          <ul className="list-disc list-outside ml-4 text-sm text-gray-700 space-y-1.5">
-                            {exp.description.split('. ').map((point, i) => point && <li key={i}>{point.trim()}</li>)}
-                          </ul>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mb-8">
-                  <h3 className="text-sm font-bold text-blue-800 uppercase tracking-widest mb-4">Technical Expertise</h3>
-                  <div className="flex flex-wrap gap-2 font-sans">
-                    {skills.split(',').map((s, i) => (
-                      <span key={i} className="text-xs font-semibold text-blue-900 bg-blue-50 px-3 py-1.5 border border-blue-100 rounded">
-                        {s.trim()}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-8 font-sans">
-                  <div>
-                     <h3 className="text-sm font-bold text-blue-800 uppercase tracking-widest mb-4 font-serif">Education</h3>
-                     {education.map((edu) => (
-                        <div key={edu.id} className="mb-3">
-                          <div className="font-bold text-sm text-gray-900">{edu.degree}</div>
-                          <div className="text-xs text-gray-600">{edu.institution}</div>
-                          <div className="text-xs text-gray-500 font-medium">{edu.year} | {edu.marks}</div>
-                        </div>
-                      ))}
-                  </div>
-                  {projects.length > 0 && (
-                    <div>
-                      <h3 className="text-sm font-bold text-blue-800 uppercase tracking-widest mb-4 font-serif">Key Projects</h3>
-                       {projects.map((proj) => (
-                        <div key={proj.id} className="mb-3">
-                          <div className="font-bold text-sm text-gray-900 flex justify-between"><span>{proj.title}</span> <span className="text-xs font-normal text-gray-500">{proj.duration}</span></div>
-                          <p className="text-xs text-gray-700 mt-1">{proj.description}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          );
-
-          // 5. Minimal Grid Template (AI Added - Modern Layout without sidebar)
-          const MinimalGridTemplate = () => (
-            <div className="font-sans text-gray-800 p-10 bg-white min-h-[297mm]">
-              <header className="mb-10 text-center">
-                <h1 className="text-5xl font-black tracking-tight mb-2 text-gray-900">{personalInfo.name}</h1>
-                <div className="text-xl text-indigo-600 mb-4 font-medium tracking-wide">{personalInfo.title}</div>
-                <div className="text-xs font-bold text-gray-500 flex justify-center gap-6 uppercase tracking-wider">
-                  <span>{personalInfo.email}</span>
-                  <span>{personalInfo.phone}</span>
-                  <span>{personalInfo.location}</span>
-                </div>
-              </header>
-
-              {personalInfo.summary && (
-                <section className="mb-10 text-center px-10">
-                  <p className="text-sm text-gray-600 leading-relaxed italic border-y py-4 border-gray-100 font-medium">{personalInfo.summary}</p>
-                </section>
-              )}
-
-              <div className="grid grid-cols-2 gap-x-12 gap-y-10">
-                <section className="col-span-2">
-                  <h2 className="text-xl font-black text-gray-900 border-b-2 border-indigo-600 pb-2 mb-6 inline-block">Work Experience</h2>
-                  <div className="grid grid-cols-2 gap-8">
-                    {experience.map((exp) => (
-                      <div key={exp.id} className="bg-gray-50 p-5 rounded-2xl">
-                        <h3 className="font-bold text-gray-900 text-base">{exp.role}</h3>
-                        <div className="text-xs text-indigo-600 font-bold mb-3 uppercase tracking-wider mt-1">{exp.company} <span className="text-gray-400 font-medium lowercase ml-1">({exp.duration})</span></div>
-                        <p className="text-xs text-gray-600 leading-relaxed">{exp.description}</p>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-
-                <section>
-                  <h2 className="text-xl font-black text-gray-900 border-b-2 border-indigo-600 pb-2 mb-6 inline-block">Core Skills</h2>
-                  <div className="flex flex-wrap gap-2">
-                     {skills.split(',').map((s, i) => (
-                      <span key={i} className="text-xs font-bold text-gray-700 bg-white border-2 border-gray-100 px-4 py-2 rounded-full shadow-sm">
-                        {s.trim()}
-                      </span>
-                    ))}
-                  </div>
-                </section>
-
-                <section>
-                   <h2 className="text-xl font-black text-gray-900 border-b-2 border-indigo-600 pb-2 mb-6 inline-block">Education</h2>
-                   <div className="space-y-4">
-                    {education.map((edu) => (
-                      <div key={edu.id} className="flex justify-between items-center border-b border-gray-100 pb-3">
-                        <div>
-                          <div className="font-bold text-sm text-gray-900">{edu.degree}</div>
-                          <div className="text-xs text-gray-500 mt-0.5">{edu.institution}</div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-sm font-black text-indigo-600">{edu.marks}</div>
-                          <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{edu.year}</div>
-                        </div>
-                      </div>
-                    ))}
-                   </div>
-                </section>
-
-                {projects.length > 0 && (
-                  <section className="col-span-2">
-                    <h2 className="text-xl font-black text-gray-900 border-b-2 border-indigo-600 pb-2 mb-6 inline-block">Highlighted Projects</h2>
-                    <div className="grid grid-cols-2 gap-6">
-                      {projects.map((proj) => (
-                        <div key={proj.id} className="border border-gray-200 p-4 rounded-xl">
-                          <h3 className="font-bold text-gray-900 text-sm mb-1">{proj.title}</h3>
-                          <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-2">{proj.duration}</div>
-                          <p className="text-xs text-gray-600 mt-1">{proj.description}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-                )}
-              </div>
-            </div>
-          );
-
-          // 6. Timeline Template (Experience with visual timeline)
-          const TimelineTemplate = () => (
-            <div className="font-sans text-gray-800 p-10 bg-white min-h-[297mm] flex gap-10">
-              <div className="w-[30%] border-r-2 border-gray-100 pr-8">
-                {personalInfo.photo && (
-                  <div className="w-32 h-32 rounded-2xl overflow-hidden mb-6 shadow-md mx-auto">
-                    <img src={personalInfo.photo} alt="Profile" className="w-full h-full object-cover" />
-                  </div>
-                )}
-                <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight leading-none text-center mb-1">{personalInfo.name || 'Your Name'}</h1>
-                <h2 className="text-sm font-bold text-teal-600 text-center uppercase tracking-widest mb-8">{personalInfo.title || 'Your Title'}</h2>
-                
-                <div className="space-y-4 text-xs text-gray-600 mb-10">
-                  {personalInfo.phone && <div className="flex items-center gap-3"><i className="fa-solid fa-phone text-gray-400"></i> {personalInfo.phone}</div>}
-                  {personalInfo.email && <div className="flex items-center gap-3"><i className="fa-solid fa-envelope text-gray-400"></i> <span className="break-all">{personalInfo.email}</span></div>}
-                  {personalInfo.location && <div className="flex items-center gap-3"><i className="fa-solid fa-location-dot text-gray-400"></i> {personalInfo.location}</div>}
-                </div>
-
-                {skills && (
-                  <div className="mb-10">
-                    <h3 className="text-xs font-black uppercase text-gray-900 tracking-widest mb-4">Skills</h3>
-                    <div className="flex flex-col gap-2">
-                      {skills.split(',').map((s, i) => (
-                        <div key={i} className="text-xs font-semibold text-gray-700 bg-gray-50 p-2 rounded border border-gray-100">{s.trim()}</div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {education.length > 0 && (
-                  <div>
-                    <h3 className="text-xs font-black uppercase text-gray-900 tracking-widest mb-4">Education</h3>
-                    <div className="space-y-4">
-                      {education.map((edu) => (
-                        <div key={edu.id}>
-                          <div className="font-bold text-sm text-gray-800">{edu.degree}</div>
-                          <div className="text-xs text-gray-500 mt-1">{edu.institution}</div>
-                          <div className="text-[10px] font-bold text-teal-600 mt-0.5">{edu.year} | {edu.marks}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-              
-              <div className="w-[70%]">
-                {personalInfo.summary && (
-                  <div className="mb-10">
-                    <h3 className="text-xl font-black text-gray-900 mb-4">About Me</h3>
-                    <p className="text-sm text-gray-600 leading-relaxed">{personalInfo.summary}</p>
-                  </div>
-                )}
-
-                {experience.length > 0 && (
-                  <div className="mb-10">
-                    <h3 className="text-xl font-black text-gray-900 mb-6">Experience</h3>
-                    <div className="relative border-l-2 border-teal-100 ml-3 space-y-8">
-                      {experience.map((exp) => (
-                        <div key={exp.id} className="relative pl-8">
-                          <div className="absolute w-4 h-4 bg-teal-500 rounded-full -left-[9px] top-1 border-4 border-white shadow-sm"></div>
-                          <h4 className="font-bold text-lg text-gray-900 leading-tight">{exp.role}</h4>
-                          <div className="flex items-center gap-2 mb-2 mt-1">
-                            <span className="text-sm font-bold text-teal-700">{exp.company}</span>
-                            <span className="text-gray-300">•</span>
-                            <span className="text-xs font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded">{exp.duration}</span>
-                          </div>
-                          <p className="text-sm text-gray-600 leading-relaxed">{exp.description}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {projects.length > 0 && (
-                  <div>
-                    <h3 className="text-xl font-black text-gray-900 mb-6">Projects</h3>
-                    <div className="grid grid-cols-1 gap-4">
-                      {projects.map((proj) => (
-                        <div key={proj.id} className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                          <div className="flex justify-between items-baseline mb-2">
-                            <h4 className="font-bold text-gray-900">{proj.title}</h4>
-                            <span className="text-xs font-bold text-teal-600">{proj.duration}</span>
-                          </div>
-                          <p className="text-sm text-gray-600">{proj.description}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-
-          // 7. Elegant Serif Template (Classic, Academic, High-end)
-          const ElegantTemplate = () => (
-            <div className="font-serif text-gray-900 p-12 bg-white min-h-[297mm]">
-              <div className="text-center border-b-[3px] border-double border-gray-900 pb-8 mb-8">
-                <h1 className="text-5xl font-normal tracking-wide uppercase mb-3">{personalInfo.name || 'Your Name'}</h1>
-                <h2 className="text-lg italic text-gray-700 mb-4">{personalInfo.title || 'Your Title'}</h2>
-                <div className="flex justify-center items-center gap-4 text-sm font-sans text-gray-600 uppercase tracking-wider">
-                  {personalInfo.email && <span>{personalInfo.email}</span>}
-                  {(personalInfo.email && personalInfo.phone) && <span>♦</span>}
-                  {personalInfo.phone && <span>{personalInfo.phone}</span>}
-                  {((personalInfo.email || personalInfo.phone) && personalInfo.location) && <span>♦</span>}
-                  {personalInfo.location && <span>{personalInfo.location}</span>}
-                </div>
-              </div>
-
-              {personalInfo.summary && (
-                <div className="mb-8">
-                  <p className="text-sm leading-loose text-justify text-gray-800">{personalInfo.summary}</p>
-                </div>
-              )}
-
-              {experience.length > 0 && (
-                <div className="mb-8">
-                  <h3 className="text-lg font-bold uppercase tracking-widest border-b border-gray-300 pb-1 mb-5">Professional Experience</h3>
-                  <div className="space-y-6">
-                    {experience.map((exp) => (
-                      <div key={exp.id}>
-                        <div className="flex justify-between items-baseline">
-                          <h4 className="font-bold text-base">{exp.role}</h4>
-                          <span className="text-sm font-sans font-medium text-gray-600">{exp.duration}</span>
-                        </div>
-                        <div className="text-sm italic text-gray-700 mb-2">{exp.company}</div>
-                        <ul className="list-square list-inside text-sm text-gray-800 space-y-1.5 leading-relaxed">
-                          {exp.description.split('. ').map((point, i) => point && <li key={i}>{point.trim()}</li>)}
-                        </ul>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {education.length > 0 && (
-                <div className="mb-8">
-                  <h3 className="text-lg font-bold uppercase tracking-widest border-b border-gray-300 pb-1 mb-5">Education</h3>
-                  <div className="space-y-4">
-                    {education.map((edu) => (
-                      <div key={edu.id} className="flex justify-between items-baseline">
-                        <div>
-                          <span className="font-bold">{edu.degree}</span>
-                          <span className="italic text-gray-700">, {edu.institution}</span>
-                        </div>
-                        <div className="text-sm font-sans text-gray-600">
-                          {edu.year} | {edu.marks}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {projects.length > 0 && (
-                <div className="mb-8">
-                  <h3 className="text-lg font-bold uppercase tracking-widest border-b border-gray-300 pb-1 mb-5">Selected Projects</h3>
-                  <div className="space-y-4">
-                    {projects.map((proj) => (
-                      <div key={proj.id}>
-                        <div className="flex justify-between items-baseline">
-                          <h4 className="font-bold">{proj.title}</h4>
-                          <span className="text-sm font-sans font-medium text-gray-600">{proj.duration}</span>
-                        </div>
-                        <p className="text-sm text-gray-800 mt-1">{proj.description}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {skills && (
-                <div className="mb-8">
-                  <h3 className="text-lg font-bold uppercase tracking-widest border-b border-gray-300 pb-1 mb-4">Core Competencies</h3>
-                  <p className="text-sm leading-relaxed font-sans text-gray-800">
-                    {skills.split(',').map((s, i) => <span key={i} className="inline-block mr-4 mb-2 border border-gray-300 px-2 py-1">{s.trim()}</span>)}
-                  </p>
-                </div>
-              )}
-            </div>
-          );
-
-          // 8. Dark Pro Template (Modern Dark Theme)
-          const DarkModeTemplate = () => (
-            <div className="font-sans text-gray-100 bg-slate-900 p-10 min-h-[297mm]">
-              <div className="flex items-center gap-8 mb-10 border-b border-slate-700 pb-8">
-                {personalInfo.photo && (
-                  <div className="w-32 h-32 rounded-full overflow-hidden border-2 border-indigo-500 shrink-0 shadow-[0_0_15px_rgba(99,102,241,0.5)]">
-                    <img src={personalInfo.photo} alt="Profile" className="w-full h-full object-cover" />
-                  </div>
-                )}
+    <div id="authModal" class="admin-modal">
+        <div class="admin-content p-6">
+            <div class="flex justify-between items-center mb-6">
                 <div>
-                  <h1 className="text-4xl font-extrabold text-white tracking-tight mb-2">{personalInfo.name || 'Your Name'}</h1>
-                  <h2 className="text-lg font-semibold text-indigo-400 uppercase tracking-widest mb-4">{personalInfo.title || 'Your Title'}</h2>
-                  <div className="flex flex-wrap gap-4 text-xs font-medium text-slate-400">
-                    {personalInfo.email && <span className="bg-slate-800 px-3 py-1 rounded-full"><i className="fa-solid fa-envelope text-indigo-500 mr-2"></i>{personalInfo.email}</span>}
-                    {personalInfo.phone && <span className="bg-slate-800 px-3 py-1 rounded-full"><i className="fa-solid fa-phone text-indigo-500 mr-2"></i>{personalInfo.phone}</span>}
-                    {personalInfo.location && <span className="bg-slate-800 px-3 py-1 rounded-full"><i className="fa-solid fa-location-dot text-indigo-500 mr-2"></i>{personalInfo.location}</span>}
-                  </div>
+                    <h2 class="text-xl font-bold text-slate-800">Admin Access</h2>
+                    <p class="text-xs text-slate-500 mt-1">Login to manage employees</p>
                 </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-10">
-                <div className="col-span-2 space-y-10">
-                  {personalInfo.summary && (
-                    <section>
-                      <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Summary</h3>
-                      <p className="text-sm text-slate-300 leading-relaxed">{personalInfo.summary}</p>
-                    </section>
-                  )}
-
-                  {experience.length > 0 && (
-                    <section>
-                      <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-6">Experience</h3>
-                      <div className="space-y-6">
-                        {experience.map((exp) => (
-                          <div key={exp.id} className="bg-slate-800/50 p-5 rounded-xl border border-slate-700/50 hover:border-indigo-500/50 transition">
-                            <div className="flex justify-between items-baseline mb-2">
-                              <h4 className="font-bold text-white text-base">{exp.role}</h4>
-                              <span className="text-xs font-bold text-indigo-400 bg-indigo-500/10 px-2 py-1 rounded">{exp.duration}</span>
-                            </div>
-                            <div className="text-sm font-semibold text-slate-400 mb-3">{exp.company}</div>
-                            <ul className="list-disc list-outside ml-4 text-sm text-slate-300 space-y-1">
-                              {exp.description.split('. ').map((point, i) => point && <li key={i}>{point.trim()}</li>)}
-                            </ul>
-                          </div>
-                        ))}
-                      </div>
-                    </section>
-                  )}
-
-                  {projects.length > 0 && (
-                    <section>
-                      <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-6">Projects</h3>
-                      <div className="space-y-4">
-                        {projects.map((proj) => (
-                          <div key={proj.id} className="bg-slate-800/50 p-5 rounded-xl border border-slate-700/50">
-                            <div className="flex justify-between items-baseline mb-2">
-                              <h4 className="font-bold text-white text-sm">{proj.title}</h4>
-                              <span className="text-xs font-medium text-slate-500">{proj.duration}</span>
-                            </div>
-                            <p className="text-sm text-slate-300">{proj.description}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </section>
-                  )}
-                </div>
-
-                <div className="col-span-1 space-y-10">
-                  {skills && (
-                    <section>
-                      <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Skills</h3>
-                      <div className="flex flex-wrap gap-2">
-                        {skills.split(',').map((s, i) => (
-                          <span key={i} className="text-xs font-semibold text-indigo-200 bg-indigo-900/40 border border-indigo-700/50 px-3 py-1.5 rounded-full">
-                            {s.trim()}
-                          </span>
-                        ))}
-                      </div>
-                    </section>
-                  )}
-
-                  {education.length > 0 && (
-                    <section>
-                      <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Education</h3>
-                      <div className="space-y-4">
-                        {education.map((edu) => (
-                          <div key={edu.id} className="border-l-2 border-indigo-500 pl-3">
-                            <div className="font-bold text-sm text-white">{edu.degree}</div>
-                            <div className="text-xs text-slate-400 mt-1">{edu.institution}</div>
-                            <div className="text-xs font-bold text-indigo-400 mt-1">{edu.year} • {edu.marks}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </section>
-                  )}
-                </div>
-              </div>
+                <button id="closeAuthBtn" class="w-8 h-8 bg-slate-100 rounded-full text-slate-500"><i class="fa-solid fa-xmark"></i></button>
             </div>
-          );
-
-          // 9. Arc Studio Template (Based on Rashmi Resume 10/11 PDF - Semi-circle border)
-          const ArcTemplate = () => (
-            <div className="font-sans text-gray-800 bg-white min-h-[297mm] flex h-full">
-              {/* Left Thin Sidebar */}
-              <div className="w-[35%] p-10 border-r border-gray-100 flex flex-col items-center">
-                <div className="relative mb-8">
-                  {/* Outer Arc */}
-                  <div className="absolute -inset-4 border-l-2 border-b-2 border-slate-800 rounded-bl-full rounded-tl-full rounded-br-full transform -rotate-12 opacity-80"></div>
-                  {/* Inner Photo */}
-                  <div className="w-36 h-36 rounded-full overflow-hidden border-4 border-white shadow-lg relative z-10 bg-gray-100">
-                    {personalInfo.photo ? <img src={personalInfo.photo} alt="Profile" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-slate-200"></div>}
-                  </div>
+            
+            <form id="authForm" class="flex flex-col gap-4">
+                <div>
+                    <label class="text-xs font-semibold text-slate-600 mb-1 block">Email Address</label>
+                    <input type="email" id="authEmail" class="input-field" placeholder="admin@company.com" required>
                 </div>
-
-                <div className="w-full text-left space-y-6 mt-4">
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-800 uppercase tracking-widest border-b border-slate-200 pb-1 mb-3">Contact</h3>
-                    <div className="space-y-2 text-xs font-medium text-slate-600">
-                      {personalInfo.phone && <div className="flex items-center gap-2"><i className="fa-solid fa-mobile-screen w-4 text-slate-400"></i> {personalInfo.phone}</div>}
-                      {personalInfo.email && <div className="flex items-center gap-2"><i className="fa-regular fa-envelope w-4 text-slate-400"></i> <span className="break-all">{personalInfo.email}</span></div>}
-                      {personalInfo.location && <div className="flex items-center gap-2"><i className="fa-solid fa-location-dot w-4 text-slate-400"></i> {personalInfo.location}</div>}
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="text-xs font-semibold text-slate-600 block">Password</label>
+                        <button type="button" id="forgotPassBtn" class="text-[10px] font-semibold text-blue-600 hover:underline">Forgot?</button>
                     </div>
-                  </div>
-
-                  {skills && (
-                    <div>
-                      <h3 className="text-sm font-bold text-slate-800 uppercase tracking-widest border-b border-slate-200 pb-1 mb-3">Key Skills</h3>
-                      <ul className="text-xs text-slate-600 space-y-1.5 list-disc list-inside">
-                        {skills.split(',').map((s, i) => <li key={i}>{s.trim()}</li>)}
-                      </ul>
-                    </div>
-                  )}
-
-                  {education.length > 0 && (
-                    <div>
-                      <h3 className="text-sm font-bold text-slate-800 uppercase tracking-widest border-b border-slate-200 pb-1 mb-3">Education</h3>
-                      <div className="space-y-3">
-                        {education.map((edu) => (
-                          <div key={edu.id}>
-                            <div className="font-bold text-xs text-slate-800">{edu.degree}</div>
-                            <div className="text-[10px] text-slate-500 mt-0.5">{edu.institution}</div>
-                            <div className="text-[10px] font-semibold text-slate-600 mt-0.5">{edu.year}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                    <input type="password" id="authPass" class="input-field" placeholder="••••••••" required>
                 </div>
-              </div>
-
-              {/* Right Main Content */}
-              <div className="w-[65%] p-10 bg-slate-50/50">
-                <div className="mb-10">
-                  <h1 className="text-4xl font-black text-slate-900 tracking-tight uppercase mb-1">{personalInfo.name || 'Your Name'}</h1>
-                  <h2 className="text-lg font-bold text-slate-500 uppercase tracking-widest">{personalInfo.title || 'Your Title'}</h2>
-                </div>
-
-                {personalInfo.summary && (
-                  <div className="mb-8">
-                    <h3 className="text-sm font-bold text-slate-800 uppercase tracking-widest mb-3 border-l-4 border-slate-800 pl-3">Profile Summary</h3>
-                    <p className="text-sm text-slate-600 leading-relaxed text-justify">{personalInfo.summary}</p>
-                  </div>
-                )}
-
-                {experience.length > 0 && (
-                  <div className="mb-8">
-                    <h3 className="text-sm font-bold text-slate-800 uppercase tracking-widest mb-4 border-l-4 border-slate-800 pl-3">Work Experience</h3>
-                    <div className="space-y-6">
-                      {experience.map((exp) => (
-                        <div key={exp.id}>
-                          <div className="flex justify-between items-baseline mb-1">
-                            <h4 className="font-bold text-slate-800 text-sm">{exp.role}</h4>
-                            <span className="text-[10px] font-bold text-slate-500 bg-slate-200 px-2 py-0.5 rounded">{exp.duration}</span>
-                          </div>
-                          <div className="text-xs font-bold text-slate-600 mb-2">{exp.company}</div>
-                          <p className="text-xs text-slate-600 leading-relaxed">{exp.description}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {projects.length > 0 && (
-                  <div className="mb-8">
-                    <h3 className="text-sm font-bold text-slate-800 uppercase tracking-widest mb-4 border-l-4 border-slate-800 pl-3">Projects</h3>
-                    <div className="space-y-4">
-                      {projects.map((proj) => (
-                        <div key={proj.id}>
-                          <div className="flex justify-between items-baseline mb-1">
-                            <h4 className="font-bold text-slate-800 text-sm">{proj.title}</h4>
-                            <span className="text-[10px] font-bold text-slate-500">{proj.duration}</span>
-                          </div>
-                          <p className="text-xs text-slate-600 leading-relaxed">{proj.description}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-
-          // 10. Pro Sidebar (Based on Rashmi Resume 1 / 8 PDF - Two column with grey sidebar)
-          const ProSidebarTemplate = () => (
-            <div className="font-sans text-gray-800 bg-white min-h-[297mm] flex h-full">
-              {/* Left Sidebar */}
-              <div className="w-[32%] bg-[#f3f4f6] p-8 flex flex-col">
-                <div className="mb-8 flex justify-center">
-                  <div className="w-36 h-36 rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-white">
-                    {personalInfo.photo ? <img src={personalInfo.photo} alt="Profile" className="w-full h-full object-cover" /> : <i className="fa-solid fa-user text-5xl text-gray-300 flex items-center justify-center h-full w-full"></i>}
-                  </div>
-                </div>
-
-                <div className="space-y-6">
-                  <div>
-                    <h3 className="text-[11px] font-bold text-slate-800 uppercase tracking-widest border-b-2 border-slate-300 pb-1 mb-3">Mobile</h3>
-                    <div className="text-xs font-medium text-slate-600">{personalInfo.phone || 'N/A'}</div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-[11px] font-bold text-slate-800 uppercase tracking-widest border-b-2 border-slate-300 pb-1 mb-3">Email</h3>
-                    <div className="text-xs font-medium text-slate-600 break-all">{personalInfo.email || 'N/A'}</div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-[11px] font-bold text-slate-800 uppercase tracking-widest border-b-2 border-slate-300 pb-1 mb-3">Location</h3>
-                    <div className="text-xs font-medium text-slate-600">{personalInfo.location || 'N/A'}</div>
-                  </div>
-
-                  {skills && (
-                    <div>
-                      <h3 className="text-[11px] font-bold text-slate-800 uppercase tracking-widest border-b-2 border-slate-300 pb-1 mb-3">Key Skills</h3>
-                      <ul className="text-xs text-slate-600 space-y-1.5 list-disc list-inside font-medium">
-                        {skills.split(',').map((s, i) => <li key={i}>{s.trim()}</li>)}
-                      </ul>
-                    </div>
-                  )}
-
-                  {education.length > 0 && (
-                    <div>
-                      <h3 className="text-[11px] font-bold text-slate-800 uppercase tracking-widest border-b-2 border-slate-300 pb-1 mb-3">Education</h3>
-                      <div className="space-y-3">
-                        {education.map((edu) => (
-                          <div key={edu.id}>
-                            <div className="font-bold text-xs text-slate-800">{edu.degree}</div>
-                            <div className="text-[10px] text-slate-500 mt-1">{edu.institution}</div>
-                            <div className="text-[10px] font-bold text-slate-600 mt-0.5">{edu.year}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Right Content */}
-              <div className="w-[68%] p-10 bg-white">
-                <header className="mb-10">
-                  <h1 className="text-4xl font-black text-slate-800 tracking-tight uppercase mb-2">{personalInfo.name || 'Your Name'}</h1>
-                  <h2 className="text-lg font-bold text-blue-600 uppercase tracking-widest">{personalInfo.title || 'Your Title'}</h2>
-                </header>
-
-                {personalInfo.summary && (
-                  <div className="mb-8">
-                    <h3 className="text-sm font-bold text-slate-800 uppercase tracking-widest bg-gray-100 py-1.5 px-3 rounded mb-4">Profile Summary</h3>
-                    <p className="text-xs text-slate-600 leading-relaxed text-justify px-1">{personalInfo.summary}</p>
-                  </div>
-                )}
-
-                {experience.length > 0 && (
-                  <div className="mb-8">
-                    <h3 className="text-sm font-bold text-slate-800 uppercase tracking-widest bg-gray-100 py-1.5 px-3 rounded mb-4">Work Experience</h3>
-                    <div className="space-y-6 px-1">
-                      {experience.map((exp) => (
-                        <div key={exp.id}>
-                          <div className="flex justify-between items-center mb-1">
-                            <h4 className="font-bold text-slate-800 text-sm">{exp.role}</h4>
-                            <span className="text-[10px] font-bold text-slate-500">{exp.duration}</span>
-                          </div>
-                          <div className="text-xs font-bold text-blue-600 mb-2">{exp.company}</div>
-                          <ul className="list-disc list-outside ml-4 text-xs text-slate-600 space-y-1.5 leading-relaxed">
-                            {exp.description.split('. ').map((point, i) => point && <li key={i}>{point.trim()}</li>)}
-                          </ul>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {projects.length > 0 && (
-                  <div className="mb-8">
-                    <h3 className="text-sm font-bold text-slate-800 uppercase tracking-widest bg-gray-100 py-1.5 px-3 rounded mb-4">Projects</h3>
-                    <div className="space-y-5 px-1">
-                      {projects.map((proj) => (
-                        <div key={proj.id}>
-                          <div className="flex justify-between items-center mb-1">
-                            <h4 className="font-bold text-slate-800 text-sm">{proj.title}</h4>
-                            <span className="text-[10px] font-bold text-slate-500">{proj.duration}</span>
-                          </div>
-                          <p className="text-xs text-slate-600 leading-relaxed mt-1">{proj.description}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-
-          return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 flex flex-col md:flex-row print:bg-white print:block font-sans overflow-hidden">
-              
-              {/* 1. DARK ICON SIDEBAR */}
-              <div className="w-full md:w-20 bg-slate-900 flex md:flex-col items-center py-4 md:py-8 gap-2 md:gap-8 print:hidden z-20 shrink-0 overflow-x-auto md:overflow-visible shadow-2xl shadow-slate-900/50">
-                <div className="text-blue-500 md:mb-4 px-4 md:px-0">
-                  <i className="fa-solid fa-file-invoice text-3xl drop-shadow-md"></i>
-                </div>
-                <button onClick={() => setActiveTab('personal')} className={`p-3 rounded-xl transition-all duration-300 flex flex-col items-center gap-1 ${activeTab === 'personal' ? 'bg-blue-600 text-white shadow-[0_0_20px_rgba(37,99,235,0.4)] scale-110' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`} title="Personal Info">
-                  <i className="fa-solid fa-user text-xl"></i>
-                </button>
-                <button onClick={() => setActiveTab('experience')} className={`p-3 rounded-xl transition-all duration-300 flex flex-col items-center gap-1 ${activeTab === 'experience' ? 'bg-blue-600 text-white shadow-[0_0_20px_rgba(37,99,235,0.4)] scale-110' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`} title="Experience">
-                  <i className="fa-solid fa-briefcase text-xl"></i>
-                </button>
-                <button onClick={() => setActiveTab('education')} className={`p-3 rounded-xl transition-all duration-300 flex flex-col items-center gap-1 ${activeTab === 'education' ? 'bg-blue-600 text-white shadow-[0_0_20px_rgba(37,99,235,0.4)] scale-110' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`} title="Education">
-                  <i className="fa-solid fa-graduation-cap text-xl"></i>
-                </button>
-                <button onClick={() => setActiveTab('projects')} className={`p-3 rounded-xl transition-all duration-300 flex flex-col items-center gap-1 ${activeTab === 'projects' ? 'bg-blue-600 text-white shadow-[0_0_20px_rgba(37,99,235,0.4)] scale-110' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`} title="Projects">
-                  <i className="fa-solid fa-folder-open text-xl"></i>
-                </button>
-                <button onClick={() => setActiveTab('skills')} className={`p-3 rounded-xl transition-all duration-300 flex flex-col items-center gap-1 ${activeTab === 'skills' ? 'bg-blue-600 text-white shadow-[0_0_20px_rgba(37,99,235,0.4)] scale-110' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`} title="Skills">
-                  <i className="fa-solid fa-screwdriver-wrench text-xl"></i>
-                </button>
-              </div>
-
-              {/* 2. WHITE FORM PANEL */}
-              <div className="w-full md:w-[380px] bg-white shadow-[8px_0_30px_rgba(0,0,0,0.06)] overflow-y-auto h-auto md:h-screen print:hidden z-10 shrink-0 border-r border-slate-100 flex flex-col custom-scrollbar">
-                <div className="p-6 border-b border-slate-100 bg-white/80 backdrop-blur-md sticky top-0 z-10">
-                   <h2 className="text-xl font-extrabold text-slate-800 tracking-tight">Editor Studio</h2>
-                   <p className="text-xs text-slate-500 mt-1 font-medium">Craft your perfect resume</p>
-                </div>
-
-                <div className="p-6 flex-1">
-                  {/* Premium Template Selector */}
-                  <div className="mb-8">
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 block">Design Templates</label>
-                    <div className="grid grid-cols-2 gap-3">
-                      {[
-                        { id: 'classic_ats', name: 'Classic ATS', desc: 'Pankaj Style' },
-                        { id: 'modern_split', name: 'Modern Split', desc: 'Rashmi Style' },
-                        { id: 'creative_red', name: 'Creative Red', desc: 'Meherunesha Style' },
-                        { id: 'corporate_pro', name: 'Corporate Pro', desc: 'Executive Look' },
-                        { id: 'minimal_grid', name: 'Minimal Grid', desc: 'Spacious & Modern' },
-                        { id: 'timeline_view', name: 'Timeline View', desc: 'Visual Journey' },
-                        { id: 'elegant_serif', name: 'Elegant Serif', desc: 'Academic/Classic' },
-                        { id: 'dark_mode', name: 'Dark Pro', desc: 'Digital Dark Theme' },
-                        { id: 'arc_studio', name: 'Arc Studio', desc: 'Curved Image Style' },
-                        { id: 'pro_sidebar', name: 'Pro Sidebar', desc: 'Two Column Grey' }
-                      ].map((tpl) => (
-                        <button 
-                          key={tpl.id}
-                          onClick={() => setTemplate(tpl.id)} 
-                          className={`relative flex flex-col items-start p-3 rounded-xl border-2 transition-all duration-200 ${template === tpl.id ? 'border-blue-600 bg-blue-50/50 shadow-md' : 'border-slate-100 bg-white hover:border-blue-300 hover:bg-slate-50'}`}
-                        >
-                          <span className={`text-sm font-bold ${template === tpl.id ? 'text-blue-700' : 'text-slate-700'}`}>{tpl.name}</span>
-                          <span className="text-[10px] text-slate-500 font-medium mt-0.5">{tpl.desc}</span>
-                          {template === tpl.id && <i className="fa-solid fa-circle-check text-blue-600 absolute top-3 right-3 text-lg"></i>}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Dynamic Form Sections based on activeTab */}
-                  {activeTab === 'personal' && (
-                    <div className="space-y-4 animate-in fade-in slide-in-from-left-4 duration-300">
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Personal Details</label>
-                      <div className="space-y-3">
-                        <div className="flex gap-3">
-                          <div className="w-16 h-16 rounded-full bg-slate-100 border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden shrink-0">
-                            {personalInfo.photo ? <img src={personalInfo.photo} alt="Profile" className="w-full h-full object-cover" /> : <i className="fa-solid fa-image text-slate-400 text-2xl"></i>}
-                          </div>
-                          <div className="flex-1 flex flex-col justify-center">
-                            <label className="text-[10px] font-semibold text-slate-500 uppercase ml-1 mb-1">Upload Photo</label>
-                            <input type="file" accept="image/*" onChange={handlePhotoUpload} className="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200 cursor-pointer transition" />
-                            <input type="text" name="photo" value={personalInfo.photo} onChange={handlePersonalInfoChange} placeholder="Or paste image URL..." className="w-full mt-2 p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition" />
-                          </div>
-                        </div>
-                        <div><label className="text-[10px] font-semibold text-slate-500 uppercase ml-1">Full Name</label><input type="text" name="name" value={personalInfo.name} onChange={handlePersonalInfoChange} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition" /></div>
-                        <div><label className="text-[10px] font-semibold text-slate-500 uppercase ml-1">Job Title</label><input type="text" name="title" value={personalInfo.title} onChange={handlePersonalInfoChange} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition" /></div>
-                        <div><label className="text-[10px] font-semibold text-slate-500 uppercase ml-1">Email</label><input type="email" name="email" value={personalInfo.email} onChange={handlePersonalInfoChange} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition" /></div>
-                        <div><label className="text-[10px] font-semibold text-slate-500 uppercase ml-1">Phone</label><input type="text" name="phone" value={personalInfo.phone} onChange={handlePersonalInfoChange} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition" /></div>
-                        <div><label className="text-[10px] font-semibold text-slate-500 uppercase ml-1">Location</label><input type="text" name="location" value={personalInfo.location} onChange={handlePersonalInfoChange} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition" /></div>
-                        <div><label className="text-[10px] font-semibold text-slate-500 uppercase ml-1">Professional Summary</label><textarea name="summary" value={personalInfo.summary} onChange={handlePersonalInfoChange} rows="5" className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition resize-none"></textarea></div>
-                      </div>
-                    </div>
-                  )}
-
-                  {activeTab === 'experience' && (
-                    <div className="space-y-4 animate-in fade-in slide-in-from-left-4 duration-300">
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Work Experience</label>
-                      {experience.map((exp, index) => (
-                        <div key={exp.id} className="p-4 bg-slate-50 border border-slate-200 rounded-xl relative group hover:border-slate-300 transition shadow-sm">
-                          <button onClick={() => removeItem(exp.id, setExperience, experience)} className="absolute -top-2 -right-2 bg-red-100 text-red-600 p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition shadow-md hover:bg-red-200">
-                            <i className="fa-solid fa-trash text-xs"></i>
-                          </button>
-                          <div className="space-y-3">
-                            <div><label className="text-[10px] font-semibold text-slate-500 uppercase ml-1">Company</label><input type="text" value={exp.company} onChange={(e) => handleArrayChange(index, 'company', e.target.value, setExperience, experience)} className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none transition" /></div>
-                            <div><label className="text-[10px] font-semibold text-slate-500 uppercase ml-1">Role</label><input type="text" value={exp.role} onChange={(e) => handleArrayChange(index, 'role', e.target.value, setExperience, experience)} className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none transition" /></div>
-                            <div><label className="text-[10px] font-semibold text-slate-500 uppercase ml-1">Duration</label><input type="text" value={exp.duration} onChange={(e) => handleArrayChange(index, 'duration', e.target.value, setExperience, experience)} className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none transition" /></div>
-                            <div><label className="text-[10px] font-semibold text-slate-500 uppercase ml-1">Description (Use . for bullets)</label><textarea value={exp.description} onChange={(e) => handleArrayChange(index, 'description', e.target.value, setExperience, experience)} rows="4" className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none transition resize-none"></textarea></div>
-                          </div>
-                        </div>
-                      ))}
-                      <button onClick={() => addItem(setExperience, experience, { company: '', role: '', duration: '', description: '' })} className="w-full py-3 border-2 border-dashed border-slate-300 text-slate-500 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:border-blue-500 hover:text-blue-600 transition bg-white hover:bg-slate-50">
-                        <i className="fa-solid fa-plus text-sm"></i> Add Experience
-                      </button>
-                    </div>
-                  )}
-
-                  {activeTab === 'education' && (
-                    <div className="space-y-4 animate-in fade-in slide-in-from-left-4 duration-300">
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Education</label>
-                      {education.map((edu, index) => (
-                        <div key={edu.id} className="p-4 bg-slate-50 border border-slate-200 rounded-xl relative group hover:border-slate-300 transition shadow-sm">
-                           <button onClick={() => removeItem(edu.id, setEducation, education)} className="absolute -top-2 -right-2 bg-red-100 text-red-600 p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition shadow-md hover:bg-red-200">
-                            <i className="fa-solid fa-trash text-xs"></i>
-                          </button>
-                          <div className="space-y-3">
-                            <div><label className="text-[10px] font-semibold text-slate-500 uppercase ml-1">Degree</label><input type="text" value={edu.degree} onChange={(e) => handleArrayChange(index, 'degree', e.target.value, setEducation, education)} className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none transition" /></div>
-                            <div><label className="text-[10px] font-semibold text-slate-500 uppercase ml-1">Institution</label><input type="text" value={edu.institution} onChange={(e) => handleArrayChange(index, 'institution', e.target.value, setEducation, education)} className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none transition" /></div>
-                            <div className="flex gap-2">
-                              <div className="w-1/2"><label className="text-[10px] font-semibold text-slate-500 uppercase ml-1">Year</label><input type="text" value={edu.year} onChange={(e) => handleArrayChange(index, 'year', e.target.value, setEducation, education)} className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none transition" /></div>
-                              <div className="w-1/2"><label className="text-[10px] font-semibold text-slate-500 uppercase ml-1">Marks</label><input type="text" value={edu.marks} onChange={(e) => handleArrayChange(index, 'marks', e.target.value, setEducation, education)} className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none transition" /></div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                       <button onClick={() => addItem(setEducation, education, { degree: '', institution: '', year: '', marks: '' })} className="w-full py-3 border-2 border-dashed border-slate-300 text-slate-500 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:border-blue-500 hover:text-blue-600 transition bg-white hover:bg-slate-50">
-                        <i className="fa-solid fa-plus text-sm"></i> Add Education
-                      </button>
-                    </div>
-                  )}
-
-                  {activeTab === 'projects' && (
-                    <div className="space-y-4 animate-in fade-in slide-in-from-left-4 duration-300">
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Projects</label>
-                      {projects.map((proj, index) => (
-                        <div key={proj.id} className="p-4 bg-slate-50 border border-slate-200 rounded-xl relative group hover:border-slate-300 transition shadow-sm">
-                           <button onClick={() => removeItem(proj.id, setProjects, projects)} className="absolute -top-2 -right-2 bg-red-100 text-red-600 p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition shadow-md hover:bg-red-200">
-                            <i className="fa-solid fa-trash text-xs"></i>
-                          </button>
-                          <div className="space-y-3">
-                            <div><label className="text-[10px] font-semibold text-slate-500 uppercase ml-1">Project Title</label><input type="text" value={proj.title} onChange={(e) => handleArrayChange(index, 'title', e.target.value, setProjects, projects)} className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none transition" /></div>
-                            <div><label className="text-[10px] font-semibold text-slate-500 uppercase ml-1">Duration</label><input type="text" value={proj.duration} onChange={(e) => handleArrayChange(index, 'duration', e.target.value, setProjects, projects)} className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none transition" /></div>
-                            <div><label className="text-[10px] font-semibold text-slate-500 uppercase ml-1">Description</label><textarea value={proj.description} onChange={(e) => handleArrayChange(index, 'description', e.target.value, setProjects, projects)} rows="3" className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none transition resize-none"></textarea></div>
-                          </div>
-                        </div>
-                      ))}
-                       <button onClick={() => addItem(setProjects, projects, { title: '', duration: '', description: '' })} className="w-full py-3 border-2 border-dashed border-slate-300 text-slate-500 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:border-blue-500 hover:text-blue-600 transition bg-white hover:bg-slate-50">
-                        <i className="fa-solid fa-plus text-sm"></i> Add Project
-                      </button>
-                    </div>
-                  )}
-
-                  {activeTab === 'skills' && (
-                    <div className="space-y-4 animate-in fade-in slide-in-from-left-4 duration-300">
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Skills</label>
-                      <div className="bg-blue-50/80 p-3 rounded-lg mb-2 border border-blue-100">
-                        <p className="text-xs text-blue-700 font-medium">Use commas (,) to separate your skills.</p>
-                      </div>
-                      <textarea value={skills} onChange={(e) => setSkills(e.target.value)} placeholder="e.g. MS Excel, Tally, HTML, Communication" rows="6" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition resize-none leading-relaxed"></textarea>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* 3. PREVIEW CANVAS (A4 Sized) */}
-              <div className="flex-1 h-auto md:h-screen overflow-y-auto bg-transparent flex flex-col items-center py-6 md:py-10 print:w-full print:p-0 print:m-0 print:h-auto print:bg-white print:block custom-scrollbar">
                 
-                <div className="w-full max-w-[210mm] flex justify-between items-center mb-6 px-4 md:px-0 print:hidden sticky top-0 z-20">
-                  <div className="bg-white/80 backdrop-blur-md px-4 py-2 rounded-full shadow-sm border border-slate-200 text-sm font-bold text-slate-700 hidden md:block">
-                    Live Preview (A4 Size)
-                  </div>
-                  <button 
-                    onClick={handlePrint}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl shadow-[0_8px_20px_rgba(37,99,235,0.25)] font-bold text-sm flex items-center gap-2 transition transform hover:-translate-y-0.5 ml-auto"
-                  >
-                    <i className="fa-solid fa-download text-sm"></i>
-                    Download PDF
-                  </button>
-                </div>
+                <button type="submit" id="authSubmitBtn" class="btn-corporate mt-2"><i class="fa-solid fa-right-to-bracket"></i> Login as Admin</button>
+            </form>
+        </div>
+    </div>
 
-                {/* Scaled wrapper for smaller screens, full size for desktop/print */}
-                <div className="w-full max-w-[210mm] px-4 md:px-0">
-                  <div className="bg-white shadow-[0_20px_50px_rgba(0,0,0,0.1)] rounded-sm overflow-hidden print:shadow-none print:w-full print:min-h-0 print:p-0 transition-all duration-500">
-                    {template === 'classic_ats' && <ClassicTemplate />}
-                    {template === 'modern_split' && <ModernTemplate />}
-                    {template === 'creative_red' && <CreativeTemplate />}
-                    {template === 'corporate_pro' && <CorporateTemplate />}
-                    {template === 'minimal_grid' && <MinimalGridTemplate />}
-                    {template === 'timeline_view' && <TimelineTemplate />}
-                    {template === 'elegant_serif' && <ElegantTemplate />}
-                    {template === 'dark_mode' && <DarkModeTemplate />}
-                    {template === 'arc_studio' && <ArcTemplate />}
-                    {template === 'pro_sidebar' && <ProSidebarTemplate />}
-                  </div>
+    <div id="adminPanelModal" class="admin-modal">
+        <div class="admin-content flex flex-col h-full max-h-[90vh]">
+            <div class="p-5 border-b border-slate-100 flex flex-col gap-4 bg-slate-50 sticky top-0 z-20">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-lg font-bold text-slate-800"><i class="fa-solid fa-user-shield text-blue-600 mr-2"></i>Admin Panel</h2>
+                    <div class="flex gap-2">
+                        <button id="logoutBtn" class="px-3 py-1.5 bg-red-50 text-red-600 text-xs font-bold rounded-lg"><i class="fa-solid fa-power-off mr-1"></i> Logout</button>
+                        <button id="closeAdminBtn" class="w-8 h-8 bg-slate-200 rounded-full text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
                 </div>
-              </div>
+                <div class="flex gap-2 bg-slate-200/50 p-1 rounded-lg">
+                    <button id="tabRegister" class="flex-1 py-1.5 text-xs font-bold bg-white shadow-sm rounded-md text-slate-800 transition-all">Add New</button>
+                    <button id="tabDirectory" class="flex-1 py-1.5 text-xs font-bold text-slate-500 hover:text-slate-700 transition-all">Directory</button>
+                    <button id="tabReports" class="flex-1 py-1.5 text-xs font-bold text-slate-500 hover:text-slate-700 transition-all">Reports</button>
+                </div>
             </div>
-          );
-        };
+            
+            <div class="p-5 overflow-y-auto flex-1 pb-10">
+                <!-- Reports Tab Content -->
+                <div id="reportsTabContent" class="hidden flex-col gap-4">
+                    <div class="flex justify-between items-center bg-blue-50 p-4 rounded-xl border border-blue-100">
+                        <div>
+                            <h3 class="font-bold text-blue-900 text-sm">Export Attendance</h3>
+                            <p class="text-xs text-blue-700">Download complete logs in Excel format.</p>
+                        </div>
+                        <button id="exportCsvBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition shadow"><i class="fa-solid fa-file-excel mr-1"></i> Export CSV</button>
+                    </div>
+                    <div id="reportsList" class="flex flex-col gap-2"></div>
+                </div>
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+                <div id="directoryTabContent" class="hidden flex-col gap-2"></div>
+
+                <form id="registerForm" class="flex flex-col gap-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="col-span-2">
+                            <label class="text-xs font-semibold text-slate-600 mb-1 block">Full Name *</label>
+                            <input type="text" id="regName" class="input-field" required placeholder="e.g. Vivek Kumar">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-600 mb-1 block">Emp Code (Auto-generated) *</label>
+                            <input type="text" id="regCode" class="input-field bg-slate-100 cursor-not-allowed font-mono font-bold text-blue-700" required readonly placeholder="Generating...">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-600 mb-1 block">Date of Joining</label>
+                            <input type="date" id="regDOJ" class="input-field" required>
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-600 mb-1 block">Department</label>
+                            <input type="text" id="regDept" class="input-field" required placeholder="e.g. MIS">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-600 mb-1 block">Designation</label>
+                            <input type="text" id="regDesig" class="input-field" required placeholder="e.g. Executive">
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <label class="text-xs font-semibold text-slate-600 mb-2 flex items-center justify-between">
+                            <span>Face Data (Biometric) *</span>
+                            <span id="faceStatus" class="text-red-500 font-bold bg-red-50 px-2 py-0.5 rounded text-[10px]">Not Captured</span>
+                        </label>
+                        
+                        <div class="admin-camera-box" id="adminCamWrapper">
+                            <video id="adminVideo" autoplay muted playsinline></video>
+                            <button type="button" id="toggleAdminCamBtn" class="absolute top-2 right-2 w-8 h-8 bg-black/40 text-white rounded-full z-20 flex items-center justify-center hover:bg-black/60 transition">
+                                <i class="fa-solid fa-camera-rotate"></i>
+                            </button>
+                        </div>
+                        
+                        <button type="button" id="captureFaceBtn" class="w-full py-3 mt-3 bg-slate-800 text-white font-semibold rounded-xl text-sm flex items-center justify-center gap-2 hover:bg-slate-700 transition-colors">
+                            <i class="fa-solid fa-camera"></i> Scan & Capture Face
+                        </button>
+                    </div>
+
+                    <button type="submit" id="saveEmpBtn" class="btn-corporate mt-4 !bg-emerald-500 hover:!bg-emerald-600 disabled:!bg-slate-300">
+                        <i class="fa-solid fa-cloud-arrow-up"></i> Save Employee to Database
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="notification" class="toast">
+        <i id="notifIcon" class="fa-solid fa-info-circle"></i>
+        <span id="notifText">Message</span>
+    </div>
+
+    <script>
+        // Supabase Configuration
+        const supabaseUrl = 'https://qetbmdibqnbpjbkiozxx.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFldGJtZGlicW5icGpia2lvenh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MjA1NTEsImV4cCI6MjA5NDI5NjU1MX0.TXBg-O77tDIUdFhMZBUU3-6vIUUDNcfWVjsF4f6Wkzc';
+        const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        // UI Elements
+        const video = document.getElementById('video');
+        const toggleCamBtn = document.getElementById('toggleCamBtn');
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const playPauseIcon = document.getElementById('playPauseIcon');
+        const statusText = document.getElementById('statusText');
+        const statusDot = document.getElementById('statusDot');
+        const scannerWrapper = document.getElementById('scannerWrapper');
+        const reticle = document.getElementById('reticle');
+        const verifyUI = document.getElementById('verifyUI');
+        const verifyProgress = document.getElementById('verifyProgress');
+        
+        const setupState = document.getElementById('setupState');
+        const scannerState = document.getElementById('scannerState');
+        const loadingMsg = document.getElementById('loadingMsg');
+        const loadingProgress = document.getElementById('loadingProgress');
+        
+        const successModal = document.getElementById('successModal');
+        const modalInner = document.getElementById('modalInner');
+        
+        // System Variables
+        let isSystemReady = false;
+        let isDetecting = false;
+        let labeledFaceDescriptors = [];
+        let faceMatcher = null;
+        let employeeDataMap = new Map();
+        let lastPunchTime = new Map();
+        let currentLocation = "Unknown";
+        let canvas;
+        
+        let matchConfidence = 0; 
+        let currentTarget = null;
+        const CONFIDENCE_THRESHOLD = 80;
+
+        let currentFacingMode = 'user';
+        let mediaStream = null;
+
+        // --- Utility Functions ---
+        function speakText(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel(); // Stop any previous speech
+                const utterance = new SpeechSynthesisUtterance(text);
+                
+                // Hindi language (hi-IN) set kar di hai
+                utterance.lang = 'hi-IN'; 
+                
+                // System me Hindi voice dhoondh kar set karna
+                const voices = window.speechSynthesis.getVoices();
+                const hindiVoice = voices.find(v => v.lang === 'hi-IN');
+                if(hindiVoice) {
+                    utterance.voice = hindiVoice;
+                }
+
+                utterance.rate = 1.0; // Normal speed
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        function notify(message, type = 'info') {
+            const notif = document.getElementById('notification');
+            const notifText = document.getElementById('notifText');
+            const notifIcon = document.getElementById('notifIcon');
+            
+            notifText.innerText = message;
+            notifIcon.className = '';
+            
+            if(type === 'success') {
+                notifIcon.classList.add('fa-solid', 'fa-check-circle', 'text-emerald-400');
+            } else if(type === 'error') {
+                notifIcon.classList.add('fa-solid', 'fa-circle-exclamation', 'text-red-400');
+            } else {
+                notifIcon.classList.add('fa-solid', 'fa-info-circle', 'text-blue-400');
+            }
+            
+            notif.classList.add('show');
+            setTimeout(() => notif.classList.remove('show'), 3000);
+        }
+
+        function setSystemStatus(status) {
+            if (status === 'loading') {
+                statusText.innerText = "STANDBY";
+                statusDot.className = "w-2 h-2 rounded-full bg-yellow-400 animate-pulse";
+            } else if (status === 'ready') {
+                statusText.innerText = "LIVE";
+                statusDot.className = "w-2 h-2 rounded-full bg-red-500 animate-pulse"; // Standard live recording dot
+                isSystemReady = true;
+            } else if (status === 'error') {
+                statusText.innerText = "ERROR";
+                statusDot.className = "w-2 h-2 rounded-full bg-slate-400";
+            }
+        }
+
+        function updateLoading(percent, msg) {
+            loadingProgress.style.width = `${percent}%`;
+            loadingMsg.innerText = msg;
+        }
+
+        function initLocation() {
+            const gpsText = document.getElementById('gpsText');
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const lat = position.coords.latitude.toFixed(3);
+                        const lon = position.coords.longitude.toFixed(3);
+                        currentLocation = `${lat}, ${lon}`;
+                        gpsText.innerText = `${lat}`;
+                    },
+                    (error) => {
+                        gpsText.innerText = "OFF";
+                    }
+                );
+            }
+        }
+
+        function dataURItoBlob(dataURI) {
+            const byteString = atob(dataURI.split(',')[1]);
+            const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
+            const ab = new ArrayBuffer(byteString.length);
+            const ia = new Uint8Array(ab);
+            for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+            return new Blob([ab], {type: mimeString});
+        }
+
+        // --- STREAMING_CHUNK: Lightweight AI Initialization ---
+        async function fetchEmployeesData(isSilent = false) {
+            try {
+                let data = null;
+
+                // Try fetching live data if online
+                if (navigator.onLine) {
+                    try {
+                        const response = await supabaseClient.from('employees').select('*').eq('Status', 'Active');
+                        if (response.error) throw response.error;
+                        data = response.data;
+                        // Cache data locally for offline usage
+                        localStorage.setItem('cached_employees_data', JSON.stringify(data));
+                    } catch (dbErr) {
+                        console.warn("DB Fetch failed, trying cache...", dbErr);
+                    }
+                }
+
+                // If offline or DB fetch failed, load from cache
+                if (!data) {
+                    const cachedStr = localStorage.getItem('cached_employees_data');
+                    if (cachedStr) {
+                        data = JSON.parse(cachedStr);
+                        if (!isSilent) notify("Offline Mode Active", "info");
+                    } else {
+                        throw new Error("No offline data available. Connect to internet first.");
+                    }
+                }
+
+                if (!data || data.length === 0) throw new Error("No employee records");
+
+                labeledFaceDescriptors = [];
+                employeeDataMap.clear();
+
+                data.forEach(emp => {
+                    try {
+                        if (emp.Descriptor) {
+                            const descArray = JSON.parse(emp.Descriptor);
+                            const float32Desc = new Float32Array(descArray);
+                            labeledFaceDescriptors.push(new faceapi.LabeledFaceDescriptors(emp['Employee code'], [float32Desc]));
+                            employeeDataMap.set(emp['Employee code'], emp);
+                        }
+                    } catch(e) {}
+                });
+
+                if(labeledFaceDescriptors.length > 0) {
+                    faceMatcher = new faceapi.FaceMatcher(labeledFaceDescriptors, 0.45); 
+                    if (!isSilent) {
+                        updateLoading(100, "System Ready");
+                        
+                        setTimeout(() => {
+                            setupState.classList.add('hidden');
+                            scannerState.classList.remove('hidden');
+                            scannerState.classList.add('flex');
+                            setSystemStatus('ready');
+                            initLocation();
+                            startCamera(); // Auto start camera as soon as ready
+                        }, 600);
+                    }
+                } else {
+                    if (!isSilent) throw new Error("No face data found");
+                }
+            } catch (err) {
+                console.error("Fetch Error:", err);
+                if (!isSilent) {
+                    setSystemStatus('error');
+                    updateLoading(100, "DB Error: " + (err.message || "Connection Failed"));
+                    notify("Database connection failed. Check your Supabase project.", "error");
+                }
+            }
+        }
+
+        async function initSystem() {
+            setSystemStatus('loading');
+            try {
+                updateLoading(15, "Initializing hardware...");
+                await faceapi.tf.setBackend('webgl');
+                await faceapi.tf.ready();
+
+                // Switched to a more reliable CDN for models to fix 'Failed to fetch' error
+                const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
+                
+                updateLoading(40, "Loading optimized models...");
+                await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+                await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+                await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+                
+                updateLoading(70, "Syncing employee directory...");
+                await fetchEmployeesData();
+                
+            } catch (err) {
+                console.error("Init Error:", err);
+                setSystemStatus('error');
+                updateLoading(100, "Init Failed: " + (err.message || "Failed to fetch models"));
+                notify("System error. Check internet connection or CORS.", "error");
+            }
+        }
+
+        // --- STREAMING_CHUNK: Camera & Scanning Engine ---
+        async function startCamera() {
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(t => t.stop());
+            }
+            try {
+                mediaStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: currentFacingMode } // Removed strict width/height to fix Android camera stretching and crashes
+                });
+                
+                video.srcObject = mediaStream;
+                video.style.transform = currentFacingMode === 'user' ? 'scaleX(-1)' : 'scaleX(1)';
+                
+                video.onloadedmetadata = () => {
+                    scannerWrapper.classList.add('active-scan');
+                    playPauseIcon.className = 'fa-solid fa-pause text-xl';
+                    playPauseBtn.className = 'w-14 h-14 rounded-full bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-100 transition-colors shadow-sm border border-red-100';
+                    setSystemStatus('ready');
+                    
+                    if(!isDetecting) {
+                        isDetecting = true;
+                        startDetectionLoop();
+                    }
+                };
+            } catch (err) {
+                console.error("Camera:", err);
+                notify("Camera permission denied", "error");
+                speakText("Camera ki permission nahi mili hai. Kripya allow karein.");
+            }
+        }
+
+        toggleCamBtn.addEventListener('click', () => {
+            currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+            startCamera();
+        });
+
+        playPauseBtn.addEventListener('click', () => {
+            if (isDetecting) {
+                // Stop/Pause Camera Logic
+                isDetecting = false;
+                if(mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+                scannerWrapper.classList.remove('active-scan');
+                playPauseIcon.className = 'fa-solid fa-play text-xl';
+                playPauseBtn.className = 'w-14 h-14 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-100 transition-colors shadow-sm border border-emerald-100';
+                setSystemStatus('loading');
+                statusText.innerText = "PAUSED";
+                statusDot.className = "w-2 h-2 rounded-full bg-slate-400";
+            } else {
+                // Resume Camera Logic
+                startCamera();
+            }
+        });
+
+        function startDetectionLoop() {
+            if(canvas) canvas.remove();
+            canvas = faceapi.createCanvasFromMedia(video);
+            scannerWrapper.appendChild(canvas);
+            
+            const displaySize = { width: video.clientWidth, height: video.clientHeight };
+            faceapi.matchDimensions(canvas, displaySize);
+            const detectorOptions = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 });
+            
+            isDetecting = true;
+            
+            async function scanFrame() {
+                if (!isDetecting) return;
+
+                const detection = await faceapi.detectSingleFace(video, detectorOptions)
+                                              .withFaceLandmarks()
+                                              .withFaceDescriptor();
+
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                if (detection) {
+                    reticle.classList.add('detecting');
+
+                    const match = faceMatcher.findBestMatch(detection.descriptor);
+                    
+                    if (match.label !== 'unknown' && match.distance < 0.45) {
+                        
+                        if (currentTarget === match.label) {
+                            matchConfidence += 50; // Super fast verification (1-2 frames max)
+                        } else {
+                            currentTarget = match.label;
+                            matchConfidence = 50;
+                        }
+
+                        verifyUI.classList.remove('opacity-0');
+                        verifyProgress.style.width = `${Math.min(matchConfidence, 100)}%`;
+
+                        if (matchConfidence >= CONFIDENCE_THRESHOLD) {
+                            isDetecting = false;
+                            verifyUI.classList.add('opacity-0');
+                            reticle.classList.remove('detecting');
+                            ctx.clearRect(0, 0, canvas.width, canvas.height);
+                            scannerWrapper.classList.remove('active-scan');
+                            
+                            await recordAttendance(match.label);
+                            return;
+                        }
+                    } else {
+                        resetScanState();
+                    }
+                } else {
+                    resetScanState();
+                }
+
+                if(isDetecting) requestAnimationFrame(scanFrame);
+            }
+            scanFrame();
+        }
+
+        function resetScanState() {
+            matchConfidence = 0;
+            currentTarget = null;
+
+            verifyUI.classList.add('opacity-0');
+            verifyProgress.style.width = '0%';
+            reticle.classList.remove('detecting');
+        }
+
+        // --- STREAMING_CHUNK: Attendance Business Logic ---
+        async function recordAttendance(empCode, offlineProcessData = null) {
+            if(!offlineProcessData) {
+                notify("Verifying data...", "info");
+                setSystemStatus('loading');
+            }
+
+            const empData = employeeDataMap.get(empCode) || { Name: "Employee", 'Employee code': empCode };
+            const empName = empData['Name'] || empData['name'] || empData['employee_name'] || empData['Employee Name'] || 'Employee';
+
+            const now = Date.now();
+            if (!offlineProcessData && lastPunchTime.has(empCode) && (now - lastPunchTime.get(empCode)) < 60000) {
+                notify("Attendance recently recorded.", "error");
+                speakText(empName + ", aapki haziri abhi kuch der pehle hi lag chuki hai.");
+                resumeScanning();
+                return;
+            }
+
+            const localDate = new Date();
+            const todayStr = offlineProcessData ? offlineProcessData.todayStr : `${localDate.getFullYear()}-${String(localDate.getMonth() + 1).padStart(2, '0')}-${String(localDate.getDate()).padStart(2, '0')}`;
+            const timeStr = offlineProcessData ? offlineProcessData.timeStr : `${String(localDate.getHours()).padStart(2, '0')}:${String(localDate.getMinutes()).padStart(2, '0')}:${String(localDate.getSeconds()).padStart(2, '0')}`;
+            
+            // LATE MARK LOGIC (Shift 09:30 AM)
+            const shiftStart = "09:30:00";
+            const isLate = timeStr > shiftStart;
+
+            let imageBase64 = offlineProcessData ? offlineProcessData.imageBase64 : null;
+
+            if(!offlineProcessData) {
+                // Generate professional snapshot
+                const snapCanvas = document.createElement('canvas');
+                snapCanvas.width = video.videoWidth;
+                snapCanvas.height = video.videoHeight;
+                const ctx = snapCanvas.getContext('2d');
+                ctx.translate(snapCanvas.width, 0);
+                ctx.scale(-1, 1);
+                ctx.drawImage(video, 0, 0);
+                ctx.setTransform(1, 0, 0, 1, 0, 0);
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                ctx.fillRect(0, snapCanvas.height - 40, snapCanvas.width, 40);
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '500 12px Inter, sans-serif';
+                ctx.fillText(`${empCode} • ${new Date().toLocaleTimeString()} • Loc: ${currentLocation}`, 10, snapCanvas.height - 15);
+                imageBase64 = snapCanvas.toDataURL('image/jpeg', 0.6); // Slightly compressed for local storage
+            }
+
+            const saveOfflineTask = () => {
+                let pending = JSON.parse(localStorage.getItem('pending_punches') || '[]');
+                pending.push({ empCode, todayStr, timeStr, imageBase64 });
+                localStorage.setItem('pending_punches', JSON.stringify(pending));
+                
+                notify("Saved Offline (Connection Failed)", "info");
+                lastPunchTime.set(empCode, now);
+                let msg = empName + ", aapka punch offline save ho gaya hai.";
+                if(isLate) msg += " Dhyan rahe, aap late hain.";
+                speakText(msg);
+                showSuccessUI(empData, empName, imageBase64, timeStr, "OFFLINE");
+            };
+
+            // OFFLINE LOGIC (Fast check)
+            if (!navigator.onLine && !offlineProcessData) {
+                saveOfflineTask();
+                return;
+            }
+
+            try {
+                let photoUrl = null;
+                try {
+                    const fileName = `corp_photos/${empCode}_${Date.now()}.jpg`;
+                    const blob = dataURItoBlob(imageBase64);
+                    const { error } = await supabaseClient.storage.from('attendance-photos').upload(fileName, blob, { contentType: 'image/jpeg' });
+                    if (!error) photoUrl = supabaseUrl + '/storage/v1/object/public/attendance-photos/' + fileName;
+                } catch(e) {
+                    console.warn("Photo upload warning:", e);
+                }
+
+                const { data: records, error: fetchErr } = await supabaseClient
+                    .from('attendance').select('*').eq('employee_code', empCode).eq('date', todayStr).order('created_at', { ascending: false });
+
+                if (fetchErr) throw fetchErr;
+
+                let punchType = "IN";
+                let successMessage = "";
+
+                if (records && records.length > 0) {
+                    let record = records[0];
+                    if (!record.out_time) {
+                        punchType = "OUT";
+                        let totalMs = new Date(`${todayStr}T${timeStr}`).getTime() - new Date(`${todayStr}T${record.in_time.substring(0,8)}`).getTime();
+                        let totalStr = `${String(Math.floor(totalMs / 3600000)).padStart(2,'0')}:${String(Math.floor((totalMs % 3600000) / 60000)).padStart(2,'0')}:00`;
+
+                        const { error: updateErr } = await supabaseClient.from('attendance').update({ out_time: timeStr, out_photo_url: photoUrl, total_hours: totalStr }).eq('id', record.id);
+                        if (updateErr) throw updateErr;
+                        
+                        successMessage = empName + ", aapka punch out safal raha.";
+                    } else {
+                        if(!offlineProcessData) {
+                            notify("Shift completed for today.", "info");
+                            speakText(empName + ", aaj ki aapki shift puri ho chuki hai.");
+                            resumeScanning();
+                        }
+                        return;
+                    }
+                } else {
+                    const finalInTime = isLate ? `${timeStr} (LATE)` : timeStr;
+                    const { error: insertErr } = await supabaseClient.from('attendance').insert([{ 
+                        employee_code: empCode, 
+                        Name: empName, 
+                        date: todayStr, 
+                        in_time: finalInTime, 
+                        in_photo_url: photoUrl 
+                    }]);
+                    
+                    if (insertErr) throw insertErr;
+                    
+                    successMessage = empName + ", aapka punch in safal raha.";
+                    if(isLate && !offlineProcessData) successMessage += " Dhyan rahe, aap late hain.";
+                }
+
+                if(!offlineProcessData) {
+                    speakText(successMessage);
+                    lastPunchTime.set(empCode, now);
+                    showSuccessUI(empData, empName, imageBase64, timeStr, punchType);
+                }
+
+            } catch (error) {
+                console.error("Database Save Error Detailed:", error.message || error);
+                if(!offlineProcessData) {
+                    // KISI BHI ERROR (SLOW INTERNET/FAIL) PE OFFLINE SAVE KAREGA
+                    saveOfflineTask();
+                } else {
+                    throw error; // Let sync function catch it
+                }
+            }
+        }
+
+        // OFFLINE SYNC LISTENER
+        window.addEventListener('offline', () => {
+            document.getElementById('offlineBanner').classList.remove('hidden');
+            notify("Internet disconnected. Ready for offline punches.", "error");
+        });
+
+        window.addEventListener('online', async () => {
+            document.getElementById('offlineBanner').classList.add('hidden');
+            let pending = JSON.parse(localStorage.getItem('pending_punches') || '[]');
+            if (pending.length === 0) return;
+            
+            notify(`Syncing ${pending.length} offline records...`, "info");
+            let remaining = [];
+            for(let p of pending) {
+                try {
+                    await recordAttendance(p.empCode, p);
+                } catch(e) {
+                    remaining.push(p);
+                }
+            }
+            localStorage.setItem('pending_punches', JSON.stringify(remaining));
+            if(remaining.length === 0) notify("All offline data synced!", "success");
+        });
+
+        // --- STREAMING_CHUNK: Presentation ---
+        function showSuccessUI(empData, empName, imgSrc, timeStr, punchType) {
+            setSystemStatus('ready');
+            
+            document.getElementById('userSnapshot').src = imgSrc;
+            document.getElementById('empName').innerText = empName;
+            document.getElementById('empCode').innerText = `ID: ${empData['Employee code']}`;
+            
+            // Format time nicely e.g., "10:30 AM"
+            const timeParts = timeStr.split(':');
+            const dateObj = new Date();
+            dateObj.setHours(timeParts[0], timeParts[1]);
+            document.getElementById('punchTime').innerText = dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            document.getElementById('punchTypeLabel').innerText = `Punched ${punchType}`;
+
+            successModal.classList.remove('hidden');
+            setTimeout(() => {
+                successModal.classList.remove('opacity-0');
+                modalInner.classList.remove('scale-95');
+                modalInner.classList.add('scale-100');
+            }, 10);
+
+            setTimeout(() => {
+                successModal.classList.add('opacity-0');
+                modalInner.classList.remove('scale-100');
+                modalInner.classList.add('scale-95');
+                setTimeout(() => {
+                    successModal.classList.add('hidden');
+                    resumeScanning();
+                }, 300);
+            }, 3500);
+        }
+
+        function resumeScanning() {
+            setSystemStatus('ready');
+            resetScanState();
+            if (mediaStream && mediaStream.active && video.srcObject) {
+                scannerWrapper.classList.add('active-scan');
+                isDetecting = true;
+                startDetectionLoop();
+            } else {
+                startCamera(); // Fully restarts if tracks were stopped
+            }
+        }
+
+        // ==========================================
+        // ADMIN & AUTHENTICATION LOGIC
+        // ==========================================
+        const authModal = document.getElementById('authModal');
+        const adminPanelModal = document.getElementById('adminPanelModal');
+        const adminVideo = document.getElementById('adminVideo');
+        const adminCamWrapper = document.getElementById('adminCamWrapper');
+        const faceStatus = document.getElementById('faceStatus');
+        const saveEmpBtn = document.getElementById('saveEmpBtn');
+        const tabRegister = document.getElementById('tabRegister');
+        const tabDirectory = document.getElementById('tabDirectory');
+        const tabReports = document.getElementById('tabReports'); // New Tab
+        const registerForm = document.getElementById('registerForm');
+        const directoryTabContent = document.getElementById('directoryTabContent');
+        const reportsTabContent = document.getElementById('reportsTabContent'); // New Tab Content
+        
+        let adminStream = null;
+        let adminCanvas = null;
+        let newEmpDescriptor = null;
+        let adminFacingMode = 'user'; // Tracks admin camera state
+
+        // UI Toggles
+        document.getElementById('openAuthBtn').addEventListener('click', async () => {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if(session) {
+                openAdminDashboard();
+            } else {
+                authModal.classList.add('show');
+            }
+        });
+        document.getElementById('closeAuthBtn').addEventListener('click', () => authModal.classList.remove('show'));
+        
+        document.getElementById('closeAdminBtn').addEventListener('click', () => {
+            adminPanelModal.classList.remove('show');
+            stopAdminCamera();
+            resumeScanning();
+        });
+
+        // Tab Logic & Directory Render
+        function switchTab(tab) {
+            [tabRegister, tabDirectory, tabReports].forEach(t => t.className = "flex-1 py-1.5 text-xs font-bold text-slate-500 hover:text-slate-700 transition-all");
+            [registerForm, directoryTabContent, reportsTabContent].forEach(c => c.classList.add('hidden'));
+
+            if(tab === 'register') {
+                tabRegister.className = "flex-1 py-1.5 text-xs font-bold bg-white shadow-sm rounded-md text-slate-800 transition-all";
+                registerForm.classList.remove('hidden');
+                startAdminCamera();
+            } else if(tab === 'directory') {
+                tabDirectory.className = "flex-1 py-1.5 text-xs font-bold bg-white shadow-sm rounded-md text-slate-800 transition-all";
+                directoryTabContent.classList.remove('hidden');
+                stopAdminCamera();
+                renderDirectory();
+            } else {
+                tabReports.className = "flex-1 py-1.5 text-xs font-bold bg-white shadow-sm rounded-md text-slate-800 transition-all";
+                reportsTabContent.classList.remove('hidden');
+                stopAdminCamera();
+                renderReports();
+            }
+        }
+
+        tabRegister.addEventListener('click', () => switchTab('register'));
+        tabDirectory.addEventListener('click', () => switchTab('directory'));
+        tabReports.addEventListener('click', () => switchTab('reports'));
+
+        // Delete Employee
+        async function deleteEmployee(id, name) {
+            if(!confirm(`Delete ${name} permanently?`)) return;
+            try {
+                await supabaseClient.from('employees').delete().eq('id', id);
+                notify("Employee deleted", "success");
+                renderDirectory();
+                fetchEmployeesData(true); // Update AI descriptors silently
+            } catch(e) {
+                notify("Failed to delete", "error");
+            }
+        }
+
+        async function renderDirectory() {
+            directoryTabContent.innerHTML = '<div class="flex justify-center py-6"><div class="loader-ring" style="border-color: rgba(37,99,235,0.3); border-top-color: #2563eb;"></div></div>';
+            
+            try {
+                const { data, error } = await supabaseClient.from('employees').select('*').order('created_at', { ascending: false });
+                
+                if (error) throw error;
+
+                directoryTabContent.innerHTML = '<h3 class="text-sm font-bold text-slate-700 mb-3">Registered Employees (' + (data ? data.length : 0) + ')</h3>';
+                
+                if(!data || data.length === 0) {
+                    directoryTabContent.innerHTML += '<p class="text-xs text-slate-500 bg-slate-50 p-4 rounded-xl text-center border border-slate-100">No employees found in database.</p>';
+                    return;
+                }
+                
+                let html = '<div class="flex flex-col gap-3">';
+                data.forEach(emp => {
+                    const statusColor = emp.Status === 'Active' ? 'text-emerald-700 bg-emerald-100 border-emerald-200' : 'text-red-700 bg-red-100 border-red-200';
+                    html += `<div class="p-3 bg-white border border-slate-200 rounded-xl flex justify-between items-center shadow-sm">
+                                <div>
+                                    <p class="text-sm font-bold text-slate-800">${emp.Name || emp.name || 'Unknown'}</p>
+                                    <p class="text-[10px] font-semibold text-slate-500 uppercase mt-0.5">ID: ${emp['Employee code']} • ${emp.DEPARTMENT || 'N/A'}</p>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="px-2 py-1 ${statusColor} text-[10px] font-bold rounded-md border">${emp.Status || 'Active'}</span>
+                                    <button onclick="deleteEmployee(${emp.id}, '${emp.Name}')" class="w-7 h-7 bg-red-50 text-red-500 rounded hover:bg-red-100 flex items-center justify-center"><i class="fa-solid fa-trash text-xs"></i></button>
+                                </div>
+                             </div>`;
+                });
+                html += '</div>';
+                directoryTabContent.innerHTML += html;
+
+            } catch (err) {
+                console.error("Directory fetch error:", err);
+                directoryTabContent.innerHTML = '<p class="text-xs text-red-500 bg-red-50 p-3 rounded-lg border border-red-100">Failed to load directory. Check database connection.</p>';
+            }
+        }
+
+        // Render Reports & CSV
+        let currentReportData = [];
+        async function renderReports() {
+            const list = document.getElementById('reportsList');
+            list.innerHTML = '<div class="loader-ring mx-auto" style="border-top-color: #2563eb;"></div>';
+            try {
+                const { data, error } = await supabaseClient.from('attendance').select('*').order('created_at', { ascending: false }).limit(50);
+                if (error) throw error;
+                currentReportData = data;
+                
+                if(!data || data.length === 0) {
+                    list.innerHTML = '<p class="text-xs text-center p-3 text-slate-500">No attendance data yet.</p>';
+                    return;
+                }
+
+                let html = '';
+                data.forEach(r => {
+                    const isLate = r.in_time && r.in_time.includes('LATE');
+                    html += `<div class="p-3 bg-white border border-slate-200 rounded-xl shadow-sm text-xs">
+                                <div class="flex justify-between font-bold text-slate-800 border-b border-slate-100 pb-1 mb-1">
+                                    <span>${r.Name} (${r.employee_code})</span>
+                                    <span>${r.date}</span>
+                                </div>
+                                <div class="flex justify-between text-slate-600 mt-1">
+                                    <span>In: <span class="${isLate ? 'text-red-500 font-bold' : ''}">${r.in_time}</span></span>
+                                    <span>Out: ${r.out_time || '--:--'}</span>
+                                    <span>Hrs: ${r.total_hours || '-'}</span>
+                                </div>
+                             </div>`;
+                });
+                list.innerHTML = html;
+            } catch (err) {
+                list.innerHTML = '<p class="text-xs text-red-500">Failed to load reports.</p>';
+            }
+        }
+
+        document.getElementById('exportCsvBtn').addEventListener('click', () => {
+            if(!currentReportData || currentReportData.length === 0) return notify("No data to export", "error");
+            
+            const headers = ['Name', 'Employee Code', 'Date', 'In Time', 'Out Time', 'Total Hours'];
+            const rows = currentReportData.map(d => [d.Name, d.employee_code, d.date, d.in_time, d.out_time || '', d.total_hours || '']);
+            let csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.map(i => `"${i}"`).join(","))].join("\n");
+            
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `Attendance_Report_${new Date().toLocaleDateString()}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        });
+
+        // Forgot Password 
+        document.getElementById('forgotPassBtn').addEventListener('click', async () => {
+            const email = document.getElementById('authEmail').value;
+            if(!email) return notify("Pehle apna email address daalein", "error");
+            try {
+                const { error } = await supabaseClient.auth.resetPasswordForEmail(email);
+                if(error) throw error;
+                notify("Password reset link aapke email par bhej diya gaya hai", "success");
+            } catch (err) {
+                notify(err.message, "error");
+            }
+        });
+
+        // Auth Form Submit
+        document.getElementById('authForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('authEmail').value;
+            const pass = document.getElementById('authPass').value;
+            const btn = document.getElementById('authSubmitBtn');
+
+            btn.innerHTML = `<div class="loader-ring"></div> Processing...`;
+            btn.disabled = true;
+
+            try {
+                const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password: pass });
+                if(error) throw error;
+                notify("Login Successful", "success");
+                authModal.classList.remove('show');
+                openAdminDashboard();
+            } catch (err) {
+                notify("Invalid credentials or error logging in.", "error");
+            } finally {
+                btn.innerHTML = `<i class="fa-solid fa-right-to-bracket"></i> Login as Admin`;
+                btn.disabled = false;
+            }
+        });
+
+        // Logout
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+            await supabaseClient.auth.signOut();
+            adminPanelModal.classList.remove('show');
+            stopAdminCamera();
+            notify("Logged out successfully", "info");
+            resumeScanning();
+        });
+
+        async function openAdminDashboard() {
+            adminPanelModal.classList.add('show');
+            
+            // 🛑 FIX: Properly stop and clear the main attendance camera to save resources & clear frozen frame
+            isDetecting = false;
+            if(mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+            video.srcObject = null; // Clears the frozen camera frame completely
+            scannerWrapper.classList.remove('active-scan');
+            
+            // Reset Admin Form
+            document.getElementById('registerForm').reset();
+            const uniqueCode = 'EMP-' + Math.floor(1000 + Math.random() * 9000);
+            document.getElementById('regCode').value = uniqueCode;
+            newEmpDescriptor = null;
+            faceStatus.className = "text-red-500 font-bold bg-red-50 px-2 py-0.5 rounded text-[10px]";
+            faceStatus.innerText = "Not Captured";
+            saveEmpBtn.disabled = true;
+
+            switchTab('register');
+        }
+
+        // Admin Camera Logic (Includes Back/Front Toggle)
+        async function startAdminCamera() {
+            stopAdminCamera();
+            try {
+                adminStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: adminFacingMode } });
+                adminVideo.srcObject = adminStream;
+                adminVideo.style.transform = adminFacingMode === 'user' ? 'scaleX(-1)' : 'scaleX(1)';
+            } catch (err) {
+                notify("Camera needed for registration", "error");
+            }
+        }
+
+        function stopAdminCamera() {
+            if(adminStream) adminStream.getTracks().forEach(t => t.stop());
+            if(adminCanvas) { adminCanvas.remove(); adminCanvas = null; }
+        }
+
+        document.getElementById('toggleAdminCamBtn').addEventListener('click', () => {
+            adminFacingMode = adminFacingMode === 'user' ? 'environment' : 'user';
+            startAdminCamera();
+        });
+
+        // Capture Admin Face
+        document.getElementById('captureFaceBtn').addEventListener('click', async () => {
+            const btn = document.getElementById('captureFaceBtn');
+            btn.innerHTML = `<div class="loader-ring"></div> Scanning Face...`;
+            
+            if(adminCanvas) adminCanvas.remove();
+            adminCanvas = faceapi.createCanvasFromMedia(adminVideo);
+            adminCamWrapper.appendChild(adminCanvas);
+            faceapi.matchDimensions(adminCanvas, { width: adminVideo.clientWidth, height: adminVideo.clientHeight });
+
+            const detectorOptions = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 });
+            const detection = await faceapi.detectSingleFace(adminVideo, detectorOptions).withFaceLandmarks().withFaceDescriptor();
+
+            if (detection) {
+                newEmpDescriptor = detection.descriptor;
+                
+                // Draw box
+                const resizedDetections = faceapi.resizeResults(detection, { width: adminVideo.clientWidth, height: adminVideo.clientHeight });
+                const ctx = adminCanvas.getContext('2d');
+                ctx.clearRect(0,0, adminCanvas.width, adminCanvas.height);
+                faceapi.draw.drawDetections(adminCanvas, resizedDetections);
+                
+                faceStatus.className = "text-emerald-600 font-bold bg-emerald-100 px-2 py-0.5 rounded text-[10px]";
+                faceStatus.innerHTML = `<i class="fa-solid fa-check-circle"></i> Captured`;
+                saveEmpBtn.disabled = false;
+                notify("Face Captured Successfully!", "success");
+            } else {
+                notify("No face detected. Look directly at the camera.", "error");
+                const ctx = adminCanvas.getContext('2d');
+                ctx.clearRect(0,0, adminCanvas.width, adminCanvas.height);
+            }
+            btn.innerHTML = `<i class="fa-solid fa-camera"></i> Scan & Capture Face`;
+        });
+
+        // Save Employee to DB
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if(!newEmpDescriptor) {
+                notify("Please capture face first!", "error");
+                return;
+            }
+
+            const empName = document.getElementById('regName').value;
+            const empCode = document.getElementById('regCode').value;
+            const empDOJ = document.getElementById('regDOJ').value;
+            const empDept = document.getElementById('regDept').value;
+            const empDesig = document.getElementById('regDesig').value;
+            const btn = document.getElementById('saveEmpBtn');
+
+            btn.innerHTML = `<div class="loader-ring"></div> Saving...`;
+            btn.disabled = true;
+
+            try {
+                // Formatting descriptor for database
+                const descriptorArray = Array.from(newEmpDescriptor);
+                
+                const { error } = await supabaseClient.from('employees').insert([{
+                    Name: empName,
+                    'Employee code': empCode,
+                    Descriptor: JSON.stringify(descriptorArray),
+                    Status: 'Active',
+                    DEPARTMENT: empDept,
+                    DESIGNATION: empDesig,
+                    DOJ: empDOJ
+                }]);
+
+                if(error) throw error;
+
+                notify(`Employee ${empName} Registered!`, "success");
+                document.getElementById('registerForm').reset();
+                
+                // Generate next code automatically
+                const nextUniqueCode = 'EMP-' + Math.floor(1000 + Math.random() * 9000);
+                document.getElementById('regCode').value = nextUniqueCode;
+
+                newEmpDescriptor = null;
+                faceStatus.className = "text-red-500 font-bold bg-red-50 px-2 py-0.5 rounded text-[10px]";
+                faceStatus.innerText = "Not Captured";
+                saveEmpBtn.disabled = true;
+                if(adminCanvas) adminCanvas.getContext('2d').clearRect(0,0, adminCanvas.width, adminCanvas.height);
+                
+                // Refresh models to include new employee silently
+                fetchEmployeesData(true);
+
+            } catch (err) {
+                console.error(err);
+                notify(err.message || "Failed to save employee", "error");
+            } finally {
+                btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Save Employee to Database`;
+                btn.disabled = false;
+            }
+        });
+
+        // App Start & Security Logic
+        const COMPANY_PIN = "INZO2026"; // Lock PIN
+
+        function startAppFlow() {
+            if (localStorage.getItem('inzo_device_verified') === 'true') {
+                document.getElementById('authDeviceState').classList.add('hidden');
+                document.getElementById('setupState').classList.remove('hidden');
+                initSystem();
+                async function syncOfflinePunches() {
+                    let pending = JSON.parse(localStorage.getItem('pending_punches') || '[]');
+                    if (pending.length === 0) return;
+                    
+                    notify(`Syncing ${pending.length} offline records...`, "info");
+                    let remaining = [];
+                    for(let p of pending) {
+                        try {
+                            await recordAttendance(p.empCode, p);
+                        } catch(e) {
+                            remaining.push(p);
+                        }
+                    }
+                    localStorage.setItem('pending_punches', JSON.stringify(remaining));
+                    if(remaining.length === 0) notify("All offline data synced!", "success");
+                }
+                setTimeout(syncOfflinePunches, 3000); // Auto-sync pending offline data on startup
+            } else {
+                document.getElementById('authDeviceState').classList.remove('hidden');
+                document.getElementById('authDeviceState').classList.add('flex');
+                document.getElementById('setupState').classList.add('hidden');
+            }
+        }
+
+        document.getElementById('verifyDeviceBtn').addEventListener('click', () => {
+            const pin = document.getElementById('devicePinInput').value;
+            if (pin === COMPANY_PIN) {
+                localStorage.setItem('inzo_device_verified', 'true');
+                notify("Device Verified Successfully!", "success");
+                startAppFlow();
+            } else {
+                notify("Galat PIN! Access Denied.", "error");
+            }
+        });
+
+        window.addEventListener('load', () => {
+            document.getElementById('setupState').classList.add('hidden');
+            if (!navigator.onLine) {
+                document.getElementById('offlineBanner').classList.remove('hidden');
+            }
+            startAppFlow();
+        });
     </script>
 </body>
 </html>
