@@ -147,6 +147,11 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
     <button class="nav-item" data-page="leaves"><i class="fa-solid fa-umbrella-beach"></i> Leaves</button>
     <button class="nav-item" data-page="payroll"><i class="fa-solid fa-indian-rupee-sign"></i> Payroll</button>
     <button class="nav-item" data-page="advances"><i class="fa-solid fa-hand-holding-dollar"></i> Advances</button>
+    <button class="nav-item" data-page="expenses"><i class="fa-solid fa-receipt"></i> Expenses</button>
+    <button class="nav-item" data-page="assets"><i class="fa-solid fa-laptop"></i> Assets</button>
+    <button class="nav-item" data-page="compliance"><i class="fa-solid fa-scale-balanced"></i> Compliance</button>
+    <button class="nav-item" data-page="exits"><i class="fa-solid fa-person-walking-arrow-right"></i> Exit / FnF</button>
+    <button class="nav-item" data-page="reports"><i class="fa-solid fa-chart-column"></i> Reports</button>
     <button class="nav-item" data-page="letters"><i class="fa-solid fa-file-signature"></i> Letters</button>
     <button class="nav-item" data-page="settings"><i class="fa-solid fa-gear"></i> Settings</button>
   </nav>
@@ -180,6 +185,18 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
     <div class="card">
       <h3 class="display font-bold m-0 mb-3">Late Leaderboard — This Month</h3>
       <div id="dLateBoard" class="space-y-2 text-sm"><p style="color:var(--muted)">Loading…</p></div>
+    </div>
+    <div class="card">
+      <h3 class="display font-bold m-0 mb-3"><i class="fa-solid fa-cake-candles" style="color:var(--warn)"></i> Birthdays & Anniversaries — This Month</h3>
+      <div id="dCelebrate" class="space-y-2 text-sm"><p style="color:var(--muted)">Loading…</p></div>
+    </div>
+    <div class="card">
+      <div class="flex items-center justify-between mb-3"><h3 class="display font-bold m-0"><i class="fa-solid fa-bullhorn" style="color:var(--brand)"></i> Announcements</h3></div>
+      <div class="flex gap-2 mb-3">
+        <input id="annTitle" class="inp" placeholder="Announcement title…">
+        <button id="annAddBtn" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus"></i></button>
+      </div>
+      <div id="annList" class="space-y-2 text-sm"></div>
     </div>
   </div>
 </div>
@@ -330,6 +347,113 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
   </div>
 </div>
 
+<!-- ================= EXPENSES ================= -->
+<div class="page" id="page-expenses">
+  <div class="grid lg:grid-cols-3 gap-4">
+    <div class="card">
+      <h3 class="display font-bold mt-0 mb-3">New Expense Claim</h3>
+      <label class="lbl">Employee</label><select id="exEmp" class="inp mb-3"></select>
+      <label class="lbl">Category</label>
+      <select id="exCat" class="inp mb-3"><option>TRAVEL</option><option>FOOD</option><option>FUEL</option><option>HOTEL</option><option>MOBILE</option><option>OTHER</option></select>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="lbl">Amount (₹)</label><input id="exAmt" type="number" class="inp"></div>
+        <div><label class="lbl">Date</label><input id="exDate" type="date" class="inp"></div>
+      </div>
+      <label class="lbl" style="margin-top:12px;display:block">Note</label>
+      <input id="exNote" class="inp mb-4" placeholder="Delhi client visit…">
+      <button id="exSaveBtn" class="btn btn-primary w-full justify-center"><i class="fa-solid fa-plus"></i> Add Claim</button>
+    </div>
+    <div class="card lg:col-span-2" style="padding:0;overflow:hidden">
+      <div class="p-4 border-b flex items-center justify-between" style="border-color:var(--line)">
+        <h3 class="display font-bold m-0">Claims <span class="text-xs font-normal" style="color:var(--muted)">(Pending → Approve → Paid)</span></h3>
+        <span class="chip chip-blue" id="exTotals">—</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="tbl" id="exTable">
+          <thead><tr><th>Date</th><th>Employee</th><th>Category</th><th>Amount</th><th>Note</th><th>Status</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= ASSETS ================= -->
+<div class="page" id="page-assets">
+  <div class="grid lg:grid-cols-3 gap-4">
+    <div class="card">
+      <h3 class="display font-bold mt-0 mb-3">Issue Asset</h3>
+      <label class="lbl">Employee</label><select id="asEmp" class="inp mb-3"></select>
+      <label class="lbl">Asset Type</label>
+      <select id="asType" class="inp mb-3"><option>LAPTOP</option><option>MOBILE</option><option>SIM</option><option>SHOES</option><option>UNIFORM</option><option>ID CARD</option><option>ACCESS CARD</option><option>TOOL</option><option>OTHER</option></select>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="lbl">Name / Model</label><input id="asName" class="inp" placeholder="Dell 5420 / Safety Shoes 9"></div>
+        <div><label class="lbl">Serial / Tag No.</label><input id="asSerial" class="inp"></div>
+      </div>
+      <label class="lbl" style="margin-top:12px;display:block">Issue Date</label>
+      <input id="asDate" type="date" class="inp mb-4">
+      <button id="asSaveBtn" class="btn btn-primary w-full justify-center"><i class="fa-solid fa-plus"></i> Issue Asset</button>
+    </div>
+    <div class="card lg:col-span-2" style="padding:0;overflow:hidden">
+      <div class="p-4 border-b flex items-center justify-between" style="border-color:var(--line)">
+        <h3 class="display font-bold m-0">Asset Register & History</h3>
+        <select id="asFilter" class="inp" style="max-width:220px"><option value="">All employees</option></select>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="tbl" id="asTable">
+          <thead><tr><th>Employee</th><th>Type</th><th>Asset</th><th>Serial</th><th>Issued</th><th>Returned</th><th>Condition</th><th>Status</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= COMPLIANCE ================= -->
+<div class="page" id="page-compliance">
+  <div class="card mb-4 flex items-end gap-3 flex-wrap">
+    <div><label class="lbl">Month (finalized payroll)</label><input type="month" id="cmpMonth" class="inp"></div>
+    <button id="cmpLoadBtn" class="btn btn-primary"><i class="fa-solid fa-scale-balanced"></i> Load Compliance Data</button>
+    <p class="text-[11px] m-0 ml-auto" style="color:var(--muted)">Data finalized payslips se aata hai — pehle us month ka payroll <b>Finalize</b> karo.</p>
+  </div>
+  <div id="cmpBody" class="space-y-4"><div class="card"><p style="color:var(--muted)" class="m-0">Month select karke load karo.</p></div></div>
+</div>
+
+<!-- ================= EXITS ================= -->
+<div class="page" id="page-exits">
+  <div class="grid lg:grid-cols-3 gap-4">
+    <div class="card">
+      <h3 class="display font-bold mt-0 mb-3">Record Resignation</h3>
+      <label class="lbl">Employee</label><select id="xEmp" class="inp mb-3"></select>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="lbl">Resignation Date</label><input id="xResign" type="date" class="inp"></div>
+        <div><label class="lbl">Notice Days</label><input id="xNotice" type="number" class="inp" value="30"></div>
+      </div>
+      <label class="lbl" style="margin-top:12px;display:block">Last Working Day</label>
+      <input id="xLWD" type="date" class="inp mb-3">
+      <label class="lbl">Reason</label><input id="xReason" class="inp mb-4" placeholder="Better opportunity / Personal…">
+      <button id="xSaveBtn" class="btn btn-primary w-full justify-center"><i class="fa-solid fa-check"></i> Accept Resignation</button>
+    </div>
+    <div class="card lg:col-span-2" style="padding:0;overflow:hidden">
+      <div class="p-4 border-b" style="border-color:var(--line)"><h3 class="display font-bold m-0">Exits</h3></div>
+      <table class="tbl" id="xTable">
+        <thead><tr><th>Employee</th><th>Resigned</th><th>LWD</th><th>Reason</th><th>Status</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ================= REPORTS ================= -->
+<div class="page" id="page-reports">
+  <button id="rpLoadBtn" class="btn btn-primary mb-4"><i class="fa-solid fa-rotate"></i> Refresh Analytics</button>
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4" id="rpStats"></div>
+  <div class="grid lg:grid-cols-2 gap-4 mt-4">
+    <div class="card"><h3 class="display font-bold mt-0 mb-3">Department-wise Strength</h3><div id="rpDept"></div></div>
+    <div class="card"><h3 class="display font-bold mt-0 mb-3">Payroll Trend (finalized months)</h3><div id="rpTrend"></div></div>
+  </div>
+</div>
+
 <!-- ================= LETTERS ================= -->
 <div class="page" id="page-letters">
   <div class="card mb-4 flex items-end gap-3 flex-wrap">
@@ -337,7 +461,12 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
       <select id="letterType" class="inp" style="min-width:220px">
         <option value="offer">Offer Letter (Candidate)</option>
         <option value="appointment">Appointment / Joining Letter</option>
-        <option value="relieving">Relieving & Experience Letter</option>
+        <option value="nda">NDA / Confidentiality Agreement</option>
+        <option value="warning">Warning Letter</option>
+        <option value="promotion">Promotion Letter</option>
+        <option value="revision">Salary Revision Letter</option>
+        <option value="experience">Experience Letter</option>
+        <option value="relieving">Relieving Letter</option>
       </select>
     </div>
     <div id="letterEmpWrap" class="hidden"><label class="lbl">Employee</label><select id="letterEmp" class="inp" style="min-width:220px"></select></div>
@@ -349,8 +478,15 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
       <div><label class="lbl">Joining Date</label><input id="offDOJ" type="date" class="inp"></div>
     </div>
     <div id="relieveFieldsWrap" class="hidden"><label class="lbl">Last Working Day</label><input id="relLWD" type="date" class="inp"></div>
+    <div id="warnFieldsWrap" class="hidden"><label class="lbl">Warning Reason</label><input id="warnReason" class="inp" style="min-width:260px" placeholder="Repeated late coming / misconduct…"></div>
+    <div id="promoFieldsWrap" class="hidden flex items-end gap-3">
+      <div><label class="lbl">New Designation</label><input id="promoDesig" class="inp"></div>
+      <div><label class="lbl">New Monthly Gross (₹)</label><input id="promoGross" type="number" class="inp"></div>
+      <div><label class="lbl">Effective From</label><input id="promoDate" type="date" class="inp"></div>
+    </div>
     <button id="letterGenBtn" class="btn btn-primary"><i class="fa-solid fa-wand-magic-sparkles"></i> Generate</button>
     <button id="letterPrintBtn" class="btn btn-ghost hidden"><i class="fa-solid fa-print"></i> Print / Save PDF</button>
+    <button id="letterDocBtn" class="btn btn-ghost hidden"><i class="fa-solid fa-folder-plus"></i> Save to Employee Docs</button>
   </div>
   <p class="text-xs mb-3" style="color:var(--muted)"><i class="fa-solid fa-pen"></i> Generated letter par seedha click karke text edit kar sakte ho — print se pehle.</p>
   <div class="paper-desk hidden" id="letterDesk"><div id="letterPaper"></div></div>
@@ -390,6 +526,8 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
         <div><label class="lbl">CL / Year</label><input id="setCL" type="number" class="inp" value="7"></div>
         <div><label class="lbl">SL / Year</label><input id="setSL" type="number" class="inp" value="7"></div>
         <div><label class="lbl">EL / Year</label><input id="setEL" type="number" class="inp" value="15"></div>
+        <div><label class="lbl">LWF Employee (₹/mo)</label><input id="setLWFE" type="number" class="inp" value="0"></div>
+        <div><label class="lbl">LWF Employer (₹/mo)</label><input id="setLWFR" type="number" class="inp" value="0"></div>
       </div>
       <h3 class="display font-bold mt-6 mb-3">Holidays</h3>
       <div class="flex gap-2 mb-3">
@@ -423,6 +561,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
       <div><label class="lbl">Email</label><input id="epEmail" class="inp"></div>
       <div><label class="lbl">Father's Name</label><input id="epFather" class="inp"></div>
       <div><label class="lbl">Date of Birth</label><input id="epDOB" type="date" class="inp"></div>
+      <div><label class="lbl">Gender</label><select id="epGender" class="inp"><option value="">—</option><option>Male</option><option>Female</option><option>Other</option></select></div>
       <div class="col-span-2"><label class="lbl">Address</label><input id="epAddr" class="inp"></div>
     </div>
     <h4 class="display font-bold mt-5 mb-2">Employment Details</h4>
@@ -487,7 +626,18 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
   </div>
 </div>
 
-<!-- ================= MANUAL PUNCH MODAL ================= -->
+<!-- ================= FNF MODAL ================= -->
+<div class="modal" id="fnfModal">
+  <div class="modal-box" style="max-width:640px">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="display font-bold text-lg m-0">Exit Checklist & Full-Final</h3>
+      <button class="btn btn-ghost btn-sm" data-close="fnfModal"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div id="fnfBox"></div>
+  </div>
+</div>
+
+<!-- ================= MANUAL PUNCH MODAL -->
 <div class="modal" id="fixModal">
   <div class="modal-box" style="max-width:460px">
     <div class="flex items-center justify-between mb-4">
@@ -571,7 +721,7 @@ function getSettings(){
     name:'Zooto Fashion Pvt Ltd', addr:'IMT Manesar, Gurugram, Haryana', phone:'', email:'', cin:'',
     hr:'', hrDesig:'Director', probation:6, notice:30,
     weekOff:0, latesHalf:3, pfPct:12, pfCap:15000, esiPct:0.75, esiLimit:21000, pt:0,
-    otMult:1, otAfter:30, cl:7, sl:7, el:15
+    otMult:1, otAfter:30, cl:7, sl:7, el:15, lwfE:0, lwfR:0
   }, SETTINGS || {});
 }
 function grossOf(code){
@@ -668,11 +818,15 @@ function fillEmpSelects(){
   $('letterEmp').innerHTML = opts;
   $('lvEmp').innerHTML = opts;
   $('fxEmp').innerHTML = opts;
+  $('exEmp').innerHTML = opts;
+  $('asEmp').innerHTML = opts;
+  $('xEmp').innerHTML = opts;
+  $('asFilter').innerHTML = '<option value="">All employees</option>' + opts;
   $('epShift').innerHTML = SHIFTS.map(s => `<option value="${s.id}">${esc(s.name)} (${esc(s.start_time)}–${esc(s.end_time)})</option>`).join('');
 }
 
 /* ---------------- Router ---------------- */
-const TITLES = { dashboard:'Dashboard', employees:'Employees', attendance:'Attendance Register', shifts:'Shift Master', leaves:'Leave Management', payroll:'Payroll', advances:'Advances & Loans', letters:'HR Letters', settings:'Settings' };
+const TITLES = { dashboard:'Dashboard', employees:'Employees', attendance:'Attendance Register', shifts:'Shift Master', leaves:'Leave Management', payroll:'Payroll', advances:'Advances & Loans', expenses:'Expense & Reimbursement', assets:'Asset Management', compliance:'Statutory Compliance', exits:'Exit & Full-Final', reports:'Analytics & Reports', letters:'HR Letters', settings:'Settings' };
 document.querySelectorAll('.nav-item[data-page]').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
@@ -684,12 +838,17 @@ document.querySelectorAll('.nav-item[data-page]').forEach(btn => {
     if(page === 'dashboard') loadDashboard();
     if(page === 'advances') loadAdvances();
     if(page === 'leaves') loadLeaves();
+    if(page === 'expenses') loadExpenses();
+    if(page === 'assets') loadAssets();
+    if(page === 'exits') loadExits();
+    if(page === 'reports') loadReports();
   });
 });
 document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => $(b.dataset.close).classList.remove('show')));
 
 /* ---------------- Dashboard ---------------- */
 async function loadDashboard(){
+  loadEngagement();
   const today = todayISO();
   $('dToday').innerText = fmtDate(today);
   try{
@@ -775,7 +934,7 @@ function openEmpModal(code){
   $('epNameShow').innerText = e.Name;
   $('epMetaShow').innerText = `${code} • ${e.DEPARTMENT || '—'} • ${e.DESIGNATION || '—'} • DOJ: ${e.DOJ || '—'}`;
   $('epPhone').value = p.phone || ''; $('epEmail').value = p.email || '';
-  $('epFather').value = p.father_name || ''; $('epDOB').value = p.dob || '';
+  $('epFather').value = p.father_name || ''; $('epDOB').value = p.dob || ''; $('epGender').value = p.gender || '';
   $('epAddr').value = p.address || '';
   $('epBasic').value = p.basic || 0; $('epHRA').value = p.hra || 0;
   $('epConv').value = p.conveyance || 0; $('epSpecial').value = p.special_allowance || 0;
@@ -812,7 +971,8 @@ $('epSaveBtn').addEventListener('click', async () => {
       shift_id: Number($('epShift').value) || null,
       grade: $('epGrade').value, employment_type: $('epType').value,
       reporting_manager: $('epManager').value, work_location: $('epLocation').value,
-      emergency_name: $('epEmName').value, emergency_phone: $('epEmPhone').value
+      emergency_name: $('epEmName').value, emergency_phone: $('epEmPhone').value,
+      gender: $('epGender').value || null
     };
     const { error } = await sb.from('hr_profiles').upsert(row, { onConflict: 'employee_code' });
     if(error) throw error;
@@ -973,6 +1133,7 @@ async function runPayroll(){
       const pf = p.pf_applicable !== false ? Math.round(pfBase * Number(S.pfPct) / 100) : 0;
       const esi = (p.esi_applicable !== false && fullGross <= Number(S.esiLimit)) ? Math.ceil(earnedGross * Number(S.esiPct) / 100) : 0;
       const pt = p.pt_applicable !== false ? Number(S.pt)||0 : 0;
+      const lwf = fullGross > 0 ? Number(S.lwfE)||0 : 0;
 
       const advs = advMap[code] || [];
       const advDed = advs.reduce((a,x) => a + Math.min(Number(x.emi)||0, Number(x.balance)||0), 0);
@@ -983,7 +1144,7 @@ async function runPayroll(){
         dim, present, lates, lateLOP, leaveDays, paidDays: +paidDays.toFixed(1), lop,
         shiftName: sh.name, shHrs, perHour,
         basic: Math.round(basic), hra: Math.round(hra), conv: Math.round(conv), spl: Math.round(spl),
-        earnedGross: Math.round(earnedGross), pf, esi, pt,
+        earnedGross: Math.round(earnedGross), pf, esi, pt, lwf,
         otHours, otPay: Math.round(perHour * otHours * Number(S.otMult)),
         advDed: Math.round(advDed), advRefs: advs.map(a => a.id),
         otherDed: 0, bonus: 0, hasSalary: fullGross > 0 };
@@ -995,7 +1156,7 @@ async function runPayroll(){
   finally{ btn.innerHTML = '<i class="fa-solid fa-calculator"></i> Calculate Payroll'; btn.disabled = false; }
 }
 
-function netOf(r){ return Math.max(0, Math.round(r.earnedGross + r.bonus + (r.otPay||0) - r.pf - r.esi - r.pt - r.advDed - r.otherDed)); }
+function netOf(r){ return Math.max(0, Math.round(r.earnedGross + r.bonus + (r.otPay||0) - r.pf - r.esi - r.pt - (r.lwf||0) - r.advDed - r.otherDed)); }
 
 function renderPayTable(){
   const tb = $('payTable').querySelector('tbody');
@@ -1013,7 +1174,7 @@ function renderPayTable(){
       <td class="money" id="otpay-${i}">${fmtINR(r.otPay)}</td>
       <td class="money">${fmtINR(r.pf)}</td>
       <td class="money">${fmtINR(r.esi)}</td>
-      <td class="money">${fmtINR(r.pt)}</td>
+      <td class="money" title="PT ${r.pt} + LWF ${r.lwf||0}">${fmtINR(r.pt + (r.lwf||0))}</td>
       <td class="money" style="color:${r.advDed ? 'var(--warn)' : 'inherit'}">${fmtINR(r.advDed)}</td>
       <td><input type="number" class="inp money" style="width:85px;padding:5px 8px" value="${r.otherDed}" data-pay="otherDed" data-i="${i}"></td>
       <td><input type="number" class="inp money" style="width:85px;padding:5px 8px" value="${r.bonus}" data-pay="bonus" data-i="${i}"></td>
@@ -1073,7 +1234,7 @@ function slipHTML(r){
   const S = getSettings();
   const p = PROFILES[r.code] || {};
   const net = netOf(r);
-  const totalDed = r.pf + r.esi + r.pt + r.advDed + r.otherDed;
+  const totalDed = r.pf + r.esi + r.pt + (r.lwf||0) + r.advDed + r.otherDed;
   return `<div class="paper">
     <div class="doc-head">
       <div>
@@ -1099,7 +1260,7 @@ function slipHTML(r){
         <tr><td>Conveyance</td><td style="text-align:right">${r.conv.toLocaleString('en-IN')}</td><td>Professional Tax</td><td style="text-align:right">${r.pt.toLocaleString('en-IN')}</td></tr>
         <tr><td>Special Allowance</td><td style="text-align:right">${r.spl.toLocaleString('en-IN')}</td><td>Advance Recovery</td><td style="text-align:right">${r.advDed.toLocaleString('en-IN')}</td></tr>
         <tr><td>Overtime (${r.otHours || 0} hrs)</td><td style="text-align:right">${(r.otPay||0).toLocaleString('en-IN')}</td><td>Other Deduction</td><td style="text-align:right">${r.otherDed.toLocaleString('en-IN')}</td></tr>
-        <tr><td>Bonus / Incentive</td><td style="text-align:right">${r.bonus.toLocaleString('en-IN')}</td><td></td><td></td></tr>
+        <tr><td>Bonus / Incentive</td><td style="text-align:right">${r.bonus.toLocaleString('en-IN')}</td><td>LWF</td><td style="text-align:right">${(r.lwf||0).toLocaleString('en-IN')}</td></tr>
         <tr><th>Gross Earnings</th><th style="text-align:right">${(r.earnedGross + r.bonus + (r.otPay||0)).toLocaleString('en-IN')}</th><th>Total Deductions</th><th style="text-align:right">${totalDed.toLocaleString('en-IN')}</th></tr>
       </tbody>
     </table>
@@ -1203,6 +1364,44 @@ document.body.addEventListener('click', async e => {
     await sb.from('hr_documents').delete().eq('id', el.dataset.id);
     loadDocs($('epCode').value);
   }
+  if(act === 'ex-appr'){ await sb.from('expenses').update({ status:'APPROVED' }).eq('id', el.dataset.id); loadExpenses(); }
+  if(act === 'ex-rej'){ await sb.from('expenses').update({ status:'REJECTED' }).eq('id', el.dataset.id); loadExpenses(); }
+  if(act === 'ex-paid'){ await sb.from('expenses').update({ status:'PAID' }).eq('id', el.dataset.id); notify('Reimbursement marked paid', 'success'); loadExpenses(); }
+  if(act === 'as-return'){
+    const cond = prompt('Return condition? (OK / Damaged / Lost)', 'OK');
+    if(cond === null) return;
+    const dmg = /ok/i.test(cond) ? '' : (prompt('Damage/loss note:') || '');
+    await sb.from('assets').update({ status:'RETURNED', return_date: todayISO(), return_condition: cond, damage_note: dmg }).eq('id', el.dataset.id);
+    notify('Asset returned', 'success'); loadAssets();
+  }
+  if(act === 'open-fnf') openFnF(el.dataset.id);
+  if(act === 'fnf-save') fnfPersist(false);
+  if(act === 'fnf-settle'){ if(confirm('Exit ko SETTLED mark karein? Iske baad final maana jayega.')) fnfPersist(true); }
+  if(act === 'fnf-print') printHTML(fnfSheet());
+  if(act === 'del-ann'){ await sb.from('announcements').delete().eq('id', el.dataset.id); loadEngagement(); }
+  if(act === 'cmp-print'){
+    const card = $(el.dataset.card).cloneNode(true);
+    card.querySelectorAll('.no-print').forEach(n => n.remove());
+    printHTML('<div class="paper" style="min-height:auto">' + card.innerHTML + '</div>');
+  }
+  if(act === 'cmp-ecr'){
+    const d = window._cmpData; if(!d) return;
+    const lines = d.pfRows.filter(r => r.uan).map(r =>
+      [r.uan, r.name.toUpperCase(), r.gross, r.epfWage, r.epfWage, r.epfWage, r.ee, r.eps, r.diff, r.ncp, 0].join('#~#'));
+    if(!lines.length) return notify('Kisi employee ka UAN set nahi hai — profiles mein UAN bharo', 'error');
+    dlText('ECR_' + d.ym + '.txt', lines.join('\n'), 'text/plain');
+    notify(lines.length + ' members ECR file mein — EPFO portal par upload karo', 'success');
+  }
+  if(act === 'cmp-pfcsv'){
+    const d = window._cmpData; if(!d) return;
+    dlText('PF_Challan_' + d.ym + '.csv', ['UAN,Name,Gross,EPF Wages,EE 12%,EPS 8.33%,ER Diff,NCP Days',
+      ...d.pfRows.map(r => [r.uan, '"' + r.name + '"', r.gross, r.epfWage, r.ee, r.eps, r.diff, r.ncp].join(','))].join('\n'), 'text/csv');
+  }
+  if(act === 'cmp-esicsv'){
+    const d = window._cmpData; if(!d) return;
+    dlText('ESIC_' + d.ym + '.csv', ['IP No,Name,Days,ESI Wages,EE 0.75%,ER 3.25%',
+      ...d.esiRows.map(r => [r.ip, '"' + r.name + '"', r.days, r.wage, r.ee, r.er].join(','))].join('\n'), 'text/csv');
+  }
 });
 
 /* ---------------- LETTERS ---------------- */
@@ -1210,7 +1409,10 @@ $('letterType').addEventListener('change', () => {
   const t = $('letterType').value;
   $('offerFieldsWrap').classList.toggle('hidden', t !== 'offer');
   $('letterEmpWrap').classList.toggle('hidden', t === 'offer');
-  $('relieveFieldsWrap').classList.toggle('hidden', t !== 'relieving');
+  $('relieveFieldsWrap').classList.toggle('hidden', t !== 'relieving' && t !== 'experience');
+  $('warnFieldsWrap').classList.toggle('hidden', t !== 'warning');
+  $('promoFieldsWrap').classList.toggle('hidden', t !== 'promotion');
+  $('promoFieldsWrap').classList.toggle('flex', t === 'promotion');
 });
 
 function annexureHTML(gross, code){
@@ -1305,20 +1507,93 @@ $('letterGenBtn').addEventListener('click', () => {
         <p>We welcome you to <b>${esc(S.name)}</b> and wish you a long and successful career with us.</p>
         ${annexureHTML(gross, code)}`);
     }
+    if(t === 'experience'){
+      const lwd = $('relLWD').value;
+      if(!lwd) return notify('Last working day select karo', 'error');
+      html = letterShell('EXPERIENCE CERTIFICATE', `${(S.name||'CO').split(' ')[0].toUpperCase()}/HR/EXP/${yr}/${esc(code)}`,
+        `<p><b>TO WHOMSOEVER IT MAY CONCERN</b></p>
+        <p>This is to certify that <b>${esc(e.Name)}</b>${p.father_name ? ' (S/o / D/o ' + esc(p.father_name) + ')' : ''}, Employee Code <b>${esc(code)}</b>, was employed with <b>${esc(S.name)}</b> as <b>${esc(e.DESIGNATION || '—')}</b> in the <b>${esc(e.DEPARTMENT || '—')}</b> department from <b>${esc(e.DOJ || '—')}</b> to <b>${fmtDate(lwd)}</b>.</p>
+        <p>During this period, we found ${esc(e.Name)} to be sincere, hardworking and professional. ${esc(e.Name)}'s conduct and performance remained satisfactory throughout the tenure.</p>
+        <p>We wish ${esc(e.Name)} success in all future endeavours.</p>`);
+    }
     if(t === 'relieving'){
       const lwd = $('relLWD').value;
       if(!lwd) return notify('Last working day select karo', 'error');
-      html = letterShell('RELIEVING & EXPERIENCE CERTIFICATE', `${(S.name||'CO').split(' ')[0].toUpperCase()}/HR/REL/${yr}/${esc(code)}`,
-        `<p><b>TO WHOMSOEVER IT MAY CONCERN</b></p>
-        <p>This is to certify that <b>${esc(e.Name)}</b>${p.father_name ? ' (S/o / D/o ' + esc(p.father_name) + ')' : ''}, Employee Code <b>${esc(code)}</b>, was employed with <b>${esc(S.name)}</b> as <b>${esc(e.DESIGNATION || '—')}</b> in the <b>${esc(e.DEPARTMENT || '—')}</b> department from <b>${esc(e.DOJ || '—')}</b> to <b>${fmtDate(lwd)}</b>.</p>
-        <p>During the tenure of employment, we found ${esc(e.Name)} to be sincere, hardworking and professional in conduct. All dues have been settled and ${esc(e.Name)} stands relieved from the services of the company with effect from the close of business hours on <b>${fmtDate(lwd)}</b>.</p>
-        <p>We wish ${esc(e.Name)} success in all future endeavours.</p>`);
+      html = letterShell('RELIEVING LETTER', `${(S.name||'CO').split(' ')[0].toUpperCase()}/HR/REL/${yr}/${esc(code)}`,
+        `<p>Dear <b>${esc(e.Name)}</b>,</p>
+        <p>This is with reference to your resignation from the position of <b>${esc(e.DESIGNATION || '—')}</b>, <b>${esc(e.DEPARTMENT || '—')}</b> department. Your resignation has been accepted by the management.</p>
+        <p>You stand relieved from the services of <b>${esc(S.name)}</b> with effect from the close of business hours on <b>${fmtDate(lwd)}</b>.</p>
+        <p>Your full and final settlement will be processed as per company policy, subject to completion of the exit formalities and clearance process. You are requested to return all company assets, documents and property in your possession, if not already done.</p>
+        <p>We thank you for your services and contribution to the company and wish you the very best for your future.</p>`);
+    }
+    if(t === 'nda'){
+      html = letterShell('NON-DISCLOSURE & CONFIDENTIALITY AGREEMENT', `${(S.name||'CO').split(' ')[0].toUpperCase()}/HR/NDA/${yr}/${esc(code)}`,
+        `<p>This Agreement is made between <b>${esc(S.name)}</b> ("the Company") and <b>${esc(e.Name)}</b>, Employee Code <b>${esc(code)}</b>, ${esc(e.DESIGNATION || '')} ("the Employee").</p>
+        <ol style="padding-left:18px">
+          <li><b>Confidential Information:</b> The Employee acknowledges access to confidential information including but not limited to designs, samples, patterns, costing sheets, vendor and buyer details, production processes, pricing, business plans and software systems of the Company.</li>
+          <li><b>Non-Disclosure:</b> The Employee shall not, during employment or at any time thereafter, disclose, copy, or use any confidential information for any purpose other than the Company's business.</li>
+          <li><b>Company Property:</b> All documents, samples, data and materials created or received during employment remain the sole property of the Company and shall be returned upon separation.</li>
+          <li><b>Non-Solicitation:</b> For a period of 12 months after separation, the Employee shall not solicit the Company's buyers, vendors or employees.</li>
+          <li><b>Breach:</b> Any breach of this Agreement shall entitle the Company to legal remedies including injunction and damages.</li>
+        </ol>
+        <p>The Employee has read, understood and voluntarily accepts the above terms.</p>`);
+    }
+    if(t === 'warning'){
+      const reason = $('warnReason').value.trim();
+      if(!reason) return notify('Warning reason likho', 'error');
+      html = letterShell('WARNING LETTER', `${(S.name||'CO').split(' ')[0].toUpperCase()}/HR/WRN/${yr}/${esc(code)}`,
+        `<p>Dear <b>${esc(e.Name)}</b> (${esc(code)}, ${esc(e.DESIGNATION || '—')}),</p>
+        <p>It has been brought to the notice of the management that: <b>${esc(reason)}</b>.</p>
+        <p>Such conduct is against the discipline and policies of <b>${esc(S.name)}</b> and cannot be accepted. You are hereby warned to immediately correct this behaviour.</p>
+        <p>Please note that repetition of such conduct will invite strict disciplinary action, which may include suspension or termination of your services without further notice.</p>
+        <p>You may submit a written explanation to the HR department within 48 hours of receipt of this letter. This warning will be placed in your personal file.</p>`);
+    }
+    if(t === 'promotion'){
+      const nd = $('promoDesig').value.trim(), ng = Number($('promoGross').value), eff = $('promoDate').value;
+      if(!nd || !ng || !eff) return notify('New designation, gross aur effective date required', 'error');
+      html = letterShell('PROMOTION LETTER', `${(S.name||'CO').split(' ')[0].toUpperCase()}/HR/PRM/${yr}/${esc(code)}`,
+        `<p>Dear <b>${esc(e.Name)}</b>,</p>
+        <p>We are pleased to inform you that in recognition of your performance and contribution, the management has decided to promote you from <b>${esc(e.DESIGNATION || '—')}</b> to <b>${esc(nd)}</b>, effective <b>${fmtDate(eff)}</b>.</p>
+        <p>Your revised gross salary will be <b>₹${ng.toLocaleString('en-IN')}/- per month</b> (Rupees ${esc(numToWords(ng))} Only) with effect from the same date, as detailed in Annexure A. All other terms and conditions of your appointment remain unchanged.</p>
+        <p>We congratulate you on this promotion and look forward to your continued contribution in your new role.</p>
+        ${annexureHTML(ng, null)}`);
+      sb.from('salary_revisions').insert([{ employee_code: code, old_gross: gross, new_gross: ng, effective_date: eff, note: 'Promotion to ' + nd }]).then(() => {});
+    }
+    if(t === 'revision'){
+      const ng = Number($('promoGross').value) || Number(prompt('New monthly gross (₹)?'));
+      const eff = $('promoDate').value || prompt('Effective date (YYYY-MM-DD)?');
+      if(!ng || !eff) return notify('New gross aur effective date required', 'error');
+      html = letterShell('SALARY REVISION LETTER', `${(S.name||'CO').split(' ')[0].toUpperCase()}/HR/REV/${yr}/${esc(code)}`,
+        `<p>Dear <b>${esc(e.Name)}</b>,</p>
+        <p>We are pleased to inform you that your compensation has been reviewed and revised. Your gross salary stands revised from <b>₹${gross.toLocaleString('en-IN')}/-</b> to <b>₹${ng.toLocaleString('en-IN')}/- per month</b> (Rupees ${esc(numToWords(ng))} Only), effective <b>${fmtDate(eff)}</b>, as per Annexure A.</p>
+        <p>Any arrears arising out of this revision will be paid along with the next payroll cycle. All other terms and conditions of your employment remain unchanged.</p>
+        <p>We thank you for your continued dedication and contribution to <b>${esc(S.name)}</b>.</p>
+        ${annexureHTML(ng, null)}`);
+      sb.from('salary_revisions').insert([{ employee_code: code, old_gross: gross, new_gross: ng, effective_date: eff, note: 'Salary revision' }]).then(() => {});
     }
   }
   $('letterPaper').innerHTML = html;
   $('letterDesk').classList.remove('hidden');
   $('letterPrintBtn').classList.remove('hidden');
+  const isEmpLetter = t !== 'offer';
+  window._letterCtx = isEmpLetter ? { code: $('letterEmp').value, type: t.toUpperCase() + '_LETTER' } : null;
+  $('letterDocBtn').classList.toggle('hidden', !isEmpLetter);
   $('letterDesk').scrollIntoView({ behavior:'smooth' });
+});
+$('letterDocBtn').addEventListener('click', async () => {
+  const ctx = window._letterCtx; if(!ctx) return;
+  const btn = $('letterDocBtn');
+  btn.innerHTML = '<div class="loader-ring loader-dark"></div>'; btn.disabled = true;
+  try{
+    const full = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif;font-size:13px;line-height:1.65;max-width:800px;margin:20px auto;padding:0 20px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #999;padding:6px 10px;text-align:left}</style></head><body>' + $('letterPaper').innerHTML + '</body></html>';
+    const path = ctx.code + '/' + ctx.type + '_' + Date.now() + '.html';
+    const { error: upErr } = await sb.storage.from('hr-docs').upload(path, new Blob([full], { type:'text/html' }));
+    if(upErr) throw upErr;
+    const { error } = await sb.from('hr_documents').insert([{ employee_code: ctx.code, doc_type: ctx.type, file_path: path, file_name: ctx.type + '_' + new Date().toLocaleDateString('en-IN') + '.html' }]);
+    if(error) throw error;
+    notify('Letter employee documents mein save ho gaya', 'success');
+  }catch(err){ notify(err.message, 'error'); }
+  finally{ btn.innerHTML = '<i class="fa-solid fa-folder-plus"></i> Save to Employee Docs'; btn.disabled = false; }
 });
 $('letterPrintBtn').addEventListener('click', () => printHTML($('letterPaper').innerHTML));
 
@@ -1333,6 +1608,7 @@ function fillSettingsForm(){
   $('setESI').value = S.esiPct; $('setESILimit').value = S.esiLimit; $('setPT').value = S.pt;
   $('setOTMult').value = S.otMult; $('setOTAfter').value = S.otAfter;
   $('setCL').value = S.cl; $('setSL').value = S.sl; $('setEL').value = S.el;
+  $('setLWFE').value = S.lwfE; $('setLWFR').value = S.lwfR;
 }
 $('setSaveBtn').addEventListener('click', async () => {
   const btn = $('setSaveBtn');
@@ -1346,7 +1622,8 @@ $('setSaveBtn').addEventListener('click', async () => {
       pfPct: Number($('setPF').value)||0, pfCap: Number($('setPFCap').value)||0,
       esiPct: Number($('setESI').value)||0, esiLimit: Number($('setESILimit').value)||0, pt: Number($('setPT').value)||0,
       otMult: Number($('setOTMult').value)||1, otAfter: Number($('setOTAfter').value)||30,
-      cl: Number($('setCL').value)||0, sl: Number($('setSL').value)||0, el: Number($('setEL').value)||0
+      cl: Number($('setCL').value)||0, sl: Number($('setSL').value)||0, el: Number($('setEL').value)||0,
+      lwfE: Number($('setLWFE').value)||0, lwfR: Number($('setLWFR').value)||0
     };
     const { error } = await sb.from('company_settings').upsert({ id: 1, data: SETTINGS });
     if(error) throw error;
@@ -1536,6 +1813,386 @@ $('docUploadBtn').addEventListener('click', async () => {
   }catch(err){ notify(err.message, 'error'); }
   finally{ btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> Upload'; btn.disabled = false; }
 });
+
+/* ================= EXPENSES ================= */
+$('exDate') && ($('exDate').value = todayISO());
+async function loadExpenses(){
+  const { data, error } = await sb.from('expenses').select('*').order('created_at', { ascending:false }).limit(200);
+  if(error) return notify(error.message + ' — V3 SQL run kiya?', 'error');
+  const tb = $('exTable').querySelector('tbody');
+  let pend = 0, appr = 0;
+  tb.innerHTML = (data && data.length) ? data.map(x => {
+    if(x.status === 'PENDING') pend += Number(x.amount);
+    if(x.status === 'APPROVED') appr += Number(x.amount);
+    const emp = EMP.find(e => e['Employee code'] === x.employee_code);
+    const st = { PENDING:'chip-warn', APPROVED:'chip-blue', PAID:'chip-ok', REJECTED:'chip-bad' }[x.status] || 'chip-gray';
+    let btns = '';
+    if(x.status === 'PENDING') btns = `<button class="btn btn-ghost btn-sm" data-act="ex-appr" data-id="${x.id}"><i class="fa-solid fa-check"></i></button> <button class="btn btn-danger btn-sm" data-act="ex-rej" data-id="${x.id}"><i class="fa-solid fa-xmark"></i></button>`;
+    if(x.status === 'APPROVED') btns = `<button class="btn btn-primary btn-sm" data-act="ex-paid" data-id="${x.id}"><i class="fa-solid fa-money-bill-wave"></i> Mark Paid</button>`;
+    return `<tr><td>${fmtDate(x.expense_date)}</td>
+      <td><div class="font-semibold">${esc(emp ? emp.Name : x.employee_code)}</div><div class="text-[10px]" style="color:var(--muted)">${esc(x.employee_code)}</div></td>
+      <td><span class="chip chip-gray">${esc(x.category)}</span></td>
+      <td class="money font-semibold">${fmtINR(x.amount)}</td>
+      <td>${esc(x.note || '—')}</td>
+      <td><span class="chip ${st}">${esc(x.status)}</span></td><td>${btns}</td></tr>`;
+  }).join('') : '<tr><td colspan="7" class="text-center py-8" style="color:var(--muted)">Koi claim nahi.</td></tr>';
+  $('exTotals').innerText = 'Pending ' + fmtINR(pend) + ' • To Pay ' + fmtINR(appr);
+}
+$('exSaveBtn').addEventListener('click', async () => {
+  if(!$('exEmp').value || !Number($('exAmt').value)) return notify('Employee aur amount required', 'error');
+  const { error } = await sb.from('expenses').insert([{ employee_code: $('exEmp').value, category: $('exCat').value, amount: Number($('exAmt').value), expense_date: $('exDate').value || todayISO(), note: $('exNote').value }]);
+  if(error) return notify(error.message, 'error');
+  $('exAmt').value = ''; $('exNote').value = '';
+  notify('Claim added (Pending)', 'success'); loadExpenses();
+});
+
+/* ================= ASSETS ================= */
+$('asDate') && ($('asDate').value = todayISO());
+let ASSETS = [];
+async function loadAssets(){
+  const { data, error } = await sb.from('assets').select('*').order('created_at', { ascending:false }).limit(500);
+  if(error) return notify(error.message + ' — V3 SQL run kiya?', 'error');
+  ASSETS = data || []; renderAssets();
+}
+function renderAssets(){
+  const f = $('asFilter').value;
+  const list = ASSETS.filter(a => !f || a.employee_code === f);
+  const tb = $('asTable').querySelector('tbody');
+  tb.innerHTML = list.length ? list.map(a => {
+    const emp = EMP.find(e => e['Employee code'] === a.employee_code);
+    const issued = a.status === 'ISSUED';
+    return `<tr>
+      <td><div class="font-semibold">${esc(emp ? emp.Name : a.employee_code)}</div><div class="text-[10px]" style="color:var(--muted)">${esc(a.employee_code)}</div></td>
+      <td><span class="chip chip-gray">${esc(a.asset_type)}</span></td>
+      <td>${esc(a.asset_name || '—')}</td><td>${esc(a.serial_no || '—')}</td>
+      <td>${fmtDate(a.issue_date)}</td><td>${a.return_date ? fmtDate(a.return_date) : '—'}</td>
+      <td>${esc(a.return_condition || '—')}${a.damage_note ? ' <span class="chip chip-bad">Damage</span>' : ''}</td>
+      <td><span class="chip ${issued ? 'chip-warn' : 'chip-ok'}">${esc(a.status)}</span></td>
+      <td>${issued ? `<button class="btn btn-ghost btn-sm" data-act="as-return" data-id="${a.id}"><i class="fa-solid fa-rotate-left"></i> Return</button>` : ''}</td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="9" class="text-center py-8" style="color:var(--muted)">Koi asset issue nahi hua.</td></tr>';
+}
+$('asFilter').addEventListener('change', renderAssets);
+$('asSaveBtn').addEventListener('click', async () => {
+  if(!$('asEmp').value) return notify('Employee select karo', 'error');
+  const { error } = await sb.from('assets').insert([{ employee_code: $('asEmp').value, asset_type: $('asType').value, asset_name: $('asName').value, serial_no: $('asSerial').value, issue_date: $('asDate').value || todayISO() }]);
+  if(error) return notify(error.message, 'error');
+  $('asName').value = ''; $('asSerial').value = '';
+  notify('Asset issued', 'success'); loadAssets();
+});
+
+/* ================= COMPLIANCE ================= */
+$('cmpMonth').value = todayISO().slice(0,7);
+let CMP = [];
+$('cmpLoadBtn').addEventListener('click', async () => {
+  const ym = $('cmpMonth').value;
+  const { data, error } = await sb.from('payslips').select('*').eq('month', ym);
+  if(error) return notify(error.message, 'error');
+  if(!data || !data.length){ $('cmpBody').innerHTML = '<div class="card"><p class="m-0" style="color:var(--bad)">Is month ki koi finalized payslip nahi mili. Pehle Payroll → Calculate → <b>Finalize & Save All</b> karo.</p></div>'; return; }
+  CMP = data.map(s => Object.assign({ code: s.employee_code, month: s.month, net: s.net_pay }, s.data));
+  const S = getSettings();
+  let pfEE = 0, pfEPS = 0, pfDiff = 0, esiEE = 0, esiER = 0, ptT = 0, lwfE = 0, gross = 0;
+  const pfRows = [], esiRows = [];
+  CMP.forEach(r => {
+    const p = PROFILES[r.code] || {};
+    gross += r.earnedGross;
+    if(r.pf > 0){
+      const epfWage = Number(S.pfCap) > 0 ? Math.min(r.basic, Number(S.pfCap)) : r.basic;
+      const eps = Math.round(epfWage * 8.33 / 100);
+      const diff = r.pf - eps;
+      pfEE += r.pf; pfEPS += eps; pfDiff += diff;
+      pfRows.push({ uan: p.uan || '', name: r.name, gross: r.earnedGross, epfWage, ee: r.pf, eps, diff, ncp: Math.round(r.lop) });
+    }
+    if(r.esi > 0){
+      const er = Math.ceil(r.earnedGross * 3.25 / 100);
+      esiEE += r.esi; esiER += er;
+      esiRows.push({ ip: p.esi_no || '', name: r.name, days: r.paidDays, wage: r.earnedGross, ee: r.esi, er });
+    }
+    ptT += r.pt || 0; lwfE += r.lwf || 0;
+  });
+  const admin = Math.round(pfEE * 0.5 / 100), edli = Math.round(pfEE * 0.5 / 100);
+  const lwfR = CMP.length * (Number(S.lwfR)||0);
+  const pfBody = pfRows.map(r => `<tr><td>${esc(r.uan)}</td><td>${esc(r.name)}</td><td class="money" style="text-align:right">${r.gross.toLocaleString('en-IN')}</td><td class="money" style="text-align:right">${r.epfWage.toLocaleString('en-IN')}</td><td class="money" style="text-align:right">${r.ee.toLocaleString('en-IN')}</td><td class="money" style="text-align:right">${r.eps.toLocaleString('en-IN')}</td><td class="money" style="text-align:right">${r.diff.toLocaleString('en-IN')}</td><td style="text-align:right">${r.ncp}</td></tr>`).join('');
+  const esiBody = esiRows.map(r => `<tr><td>${esc(r.ip)}</td><td>${esc(r.name)}</td><td style="text-align:right">${r.days}</td><td class="money" style="text-align:right">${r.wage.toLocaleString('en-IN')}</td><td class="money" style="text-align:right">${r.ee.toLocaleString('en-IN')}</td><td class="money" style="text-align:right">${r.er.toLocaleString('en-IN')}</td></tr>`).join('');
+  $('cmpBody').innerHTML = `
+  <div class="card" id="pfCard">
+    <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+      <h3 class="display font-bold m-0">PF Challan — ${monthLabel(ym)} <span class="text-xs font-normal" style="color:var(--muted)">(${pfRows.length} members)</span></h3>
+      <div class="no-print">
+        <button class="btn btn-ghost btn-sm" data-act="cmp-ecr"><i class="fa-solid fa-file-export"></i> ECR File (.txt)</button>
+        <button class="btn btn-ghost btn-sm" data-act="cmp-pfcsv"><i class="fa-solid fa-file-csv"></i> CSV</button>
+        <button class="btn btn-ghost btn-sm" data-act="cmp-print" data-card="pfCard"><i class="fa-solid fa-print"></i></button>
+      </div>
+    </div>
+    <div style="overflow-x:auto"><table class="tbl"><thead><tr><th>UAN</th><th>Name</th><th style="text-align:right">Gross</th><th style="text-align:right">EPF Wages</th><th style="text-align:right">EE 12%</th><th style="text-align:right">EPS 8.33%</th><th style="text-align:right">ER Diff 3.67%</th><th style="text-align:right">NCP Days</th></tr></thead>
+    <tbody>${pfBody}</tbody>
+    <tfoot><tr class="font-bold"><td colspan="4">TOTAL</td><td class="money" style="text-align:right">${pfEE.toLocaleString('en-IN')}</td><td class="money" style="text-align:right">${pfEPS.toLocaleString('en-IN')}</td><td class="money" style="text-align:right">${pfDiff.toLocaleString('en-IN')}</td><td></td></tr></tfoot></table></div>
+    <div class="mt-3 text-sm p-3 rounded-xl" style="background:#f8fafc">
+      A/c 1 (EE+ER EPF): <b class="money">${(pfEE + pfDiff).toLocaleString('en-IN')}</b> • A/c 10 (EPS): <b class="money">${pfEPS.toLocaleString('en-IN')}</b> • A/c 2 Admin 0.5%: <b class="money">${admin.toLocaleString('en-IN')}</b> • A/c 21 EDLI 0.5%: <b class="money">${edli.toLocaleString('en-IN')}</b> • <b>Total Remittance: <span class="money">${fmtINR(pfEE + pfDiff + pfEPS + admin + edli)}</span></b>
+    </div>
+    <p class="text-[11px] mt-2" style="color:var(--muted)">ECR file EPFO unified portal par upload format mein hai (UAN#~#NAME#~#…). Missing UAN waale employees ECR se skip honge — profile mein UAN bharo.</p>
+  </div>
+  <div class="card" id="esiCard">
+    <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+      <h3 class="display font-bold m-0">ESIC Contribution — ${monthLabel(ym)} <span class="text-xs font-normal" style="color:var(--muted)">(${esiRows.length} IPs)</span></h3>
+      <div class="no-print">
+        <button class="btn btn-ghost btn-sm" data-act="cmp-esicsv"><i class="fa-solid fa-file-csv"></i> CSV</button>
+        <button class="btn btn-ghost btn-sm" data-act="cmp-print" data-card="esiCard"><i class="fa-solid fa-print"></i></button>
+      </div>
+    </div>
+    <div style="overflow-x:auto"><table class="tbl"><thead><tr><th>IP No.</th><th>Name</th><th style="text-align:right">Days</th><th style="text-align:right">ESI Wages</th><th style="text-align:right">EE 0.75%</th><th style="text-align:right">ER 3.25%</th></tr></thead>
+    <tbody>${esiBody}</tbody>
+    <tfoot><tr class="font-bold"><td colspan="4">TOTAL</td><td class="money" style="text-align:right">${esiEE.toLocaleString('en-IN')}</td><td class="money" style="text-align:right">${esiER.toLocaleString('en-IN')}</td></tr></tfoot></table></div>
+    <div class="mt-3 text-sm p-3 rounded-xl" style="background:#f8fafc"><b>Total ESIC Payable: <span class="money">${fmtINR(esiEE + esiER)}</span></b></div>
+  </div>
+  <div class="card">
+    <h3 class="display font-bold mt-0 mb-3">PT & LWF Summary — ${monthLabel(ym)}</h3>
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div><p class="lbl m-0">Professional Tax</p><div class="stat-num money" style="font-size:22px">${fmtINR(ptT)}</div></div>
+      <div><p class="lbl m-0">LWF Employee</p><div class="stat-num money" style="font-size:22px">${fmtINR(lwfE)}</div></div>
+      <div><p class="lbl m-0">LWF Employer</p><div class="stat-num money" style="font-size:22px">${fmtINR(lwfR)}</div></div>
+      <div><p class="lbl m-0">Total Gross Paid</p><div class="stat-num money" style="font-size:22px">${fmtINR(gross)}</div></div>
+    </div>
+  </div>`;
+  window._cmpData = { pfRows, esiRows, ym };
+});
+/* ================= EXITS & FULL-FINAL ================= */
+let EXITS = [];
+function calcLWD(){
+  if($('xResign').value && $('xNotice').value){
+    const d = new Date($('xResign').value + 'T00:00:00');
+    d.setDate(d.getDate() + Number($('xNotice').value));
+    $('xLWD').value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+}
+$('xResign').addEventListener('change', calcLWD);
+$('xNotice').addEventListener('input', calcLWD);
+async function loadExits(){
+  const { data, error } = await sb.from('exits').select('*').order('created_at', { ascending:false });
+  if(error) return notify(error.message + ' — V3 SQL run kiya?', 'error');
+  EXITS = data || [];
+  const tb = $('xTable').querySelector('tbody');
+  tb.innerHTML = EXITS.length ? EXITS.map(x => {
+    const emp = EMP.find(e => e['Employee code'] === x.employee_code);
+    return `<tr>
+      <td><div class="font-semibold">${esc(emp ? emp.Name : x.employee_code)}</div><div class="text-[10px]" style="color:var(--muted)">${esc(x.employee_code)}</div></td>
+      <td>${fmtDate(x.resign_date)}</td><td class="font-semibold">${fmtDate(x.lwd)}</td>
+      <td>${esc(x.reason || '—')}</td>
+      <td><span class="chip ${x.status === 'SETTLED' ? 'chip-ok' : 'chip-warn'}">${esc(x.status)}</span></td>
+      <td><button class="btn btn-ghost btn-sm" data-act="open-fnf" data-id="${x.id}"><i class="fa-solid fa-file-invoice-dollar"></i> Checklist & FnF</button></td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="6" class="text-center py-8" style="color:var(--muted)">Koi exit record nahi.</td></tr>';
+}
+$('xSaveBtn').addEventListener('click', async () => {
+  if(!$('xEmp').value || !$('xResign').value || !$('xLWD').value) return notify('Employee, resign date, LWD required', 'error');
+  const { error } = await sb.from('exits').insert([{ employee_code: $('xEmp').value, resign_date: $('xResign').value, notice_days: Number($('xNotice').value)||30, lwd: $('xLWD').value, reason: $('xReason').value }]);
+  if(error) return notify(error.message, 'error');
+  notify('Resignation recorded — Checklist & FnF se settle karo', 'success');
+  loadExits();
+});
+
+const CLEARANCES = ['Asset Clearance','Finance Clearance','IT Clearance','HR Clearance'];
+async function openFnF(id){
+  const x = EXITS.find(e => String(e.id) === String(id)); if(!x) return;
+  const emp = EMP.find(e => e['Employee code'] === x.employee_code);
+  const p = PROFILES[x.employee_code] || {};
+  const gross = grossOf(x.employee_code);
+  const S = getSettings();
+  const chk = x.checklist || {};
+  const fnf = x.fnf || {};
+  // pending assets
+  const { data: assetData } = await sb.from('assets').select('*').eq('employee_code', x.employee_code).eq('status','ISSUED');
+  // EL balance
+  const yr = new Date().getFullYear();
+  const { data: lvData } = await sb.from('leaves').select('leave_type, days').eq('employee_code', x.employee_code).eq('status','APPROVED').gte('from_date', yr + '-01-01');
+  let elUsed = 0; (lvData||[]).forEach(L => { if(L.leave_type === 'EL') elUsed += Number(L.days); });
+  const elBal = Math.max(0, Number(S.el) - elUsed);
+  // open advances
+  const { data: advData } = await sb.from('advances').select('balance').eq('employee_code', x.employee_code).eq('status','OPEN');
+  const advBal = (advData||[]).reduce((a,b) => a + Number(b.balance), 0);
+  // gratuity
+  let years = 0;
+  if(emp && emp.DOJ){ const doj = new Date(emp.DOJ); if(!isNaN(doj)) years = (new Date(x.lwd) - doj) / (365.25 * 86400000); }
+  const perDay = gross / 30;
+  const gratuity = years >= 5 ? Math.round((15/26) * (Number(p.basic)||0) * Math.round(years)) : 0;
+
+  const assetsHtml = (assetData && assetData.length)
+    ? assetData.map(a => `<label class="flex items-center gap-2"><input type="checkbox" class="fnf-chk" data-k="asset_${a.id}" ${chk['asset_'+a.id] ? 'checked' : ''}> ${esc(a.asset_type)} — ${esc(a.asset_name||'')} ${esc(a.serial_no||'')} return</label>`).join('')
+    : '<p class="text-xs m-0" style="color:var(--muted)">Koi asset issued nahi hai.</p>';
+
+  $('slipPaper').innerHTML = '';
+  $('fnfBox').innerHTML = `
+    <input type="hidden" id="fnfId" value="${x.id}">
+    <div class="p-3 rounded-xl mb-3" style="background:var(--brand-soft)">
+      <b>${esc(emp ? emp.Name : x.employee_code)}</b> (${esc(x.employee_code)}) • DOJ ${esc(emp ? emp.DOJ : '—')} → LWD ${fmtDate(x.lwd)} • Tenure ${years.toFixed(1)} saal
+    </div>
+    <h4 class="display font-bold mb-2 mt-0">Exit Checklist</h4>
+    <div class="grid grid-cols-2 gap-1 text-sm">${assetsHtml}
+      ${CLEARANCES.map(c => `<label class="flex items-center gap-2"><input type="checkbox" class="fnf-chk" data-k="${c}" ${chk[c] ? 'checked' : ''}> ${c}</label>`).join('')}
+    </div>
+    <h4 class="display font-bold mb-2 mt-4">Full & Final Settlement</h4>
+    <div class="grid grid-cols-2 gap-3 text-sm">
+      <div><label class="lbl">Pending Salary Days (last month)</label><input id="fnfDays" type="number" class="inp fnf-in" value="${fnf.days ?? 0}"></div>
+      <div><label class="lbl">EL Encashment Days (bal: ${elBal})</label><input id="fnfEL" type="number" class="inp fnf-in" value="${fnf.el ?? elBal}"></div>
+      <div><label class="lbl">Bonus / Incentive (₹)</label><input id="fnfBonus" type="number" class="inp fnf-in" value="${fnf.bonus ?? 0}"></div>
+      <div><label class="lbl">Gratuity (₹) ${years >= 5 ? '(auto: 15/26 × basic × yrs)' : '(<5 saal — 0)'}</label><input id="fnfGrat" type="number" class="inp fnf-in" value="${fnf.grat ?? gratuity}"></div>
+      <div><label class="lbl">Advance Recovery (₹) (open bal: ${fmtINR(advBal)})</label><input id="fnfAdv" type="number" class="inp fnf-in" value="${fnf.adv ?? advBal}"></div>
+      <div><label class="lbl">Notice Shortfall Recovery Days</label><input id="fnfNotice" type="number" class="inp fnf-in" value="${fnf.notice ?? 0}"></div>
+      <div><label class="lbl">Other Recovery (₹)</label><input id="fnfOther" type="number" class="inp fnf-in" value="${fnf.other ?? 0}"></div>
+    </div>
+    <div class="flex items-center justify-between mt-4 p-3 rounded-xl" style="background:#f8fafc;border:1px solid var(--line)">
+      <span class="font-semibold">Net Settlement <span class="text-[10px]" style="color:var(--muted)">(per-day = gross/30 = ${fmtINR(perDay)})</span></span>
+      <span class="money font-bold text-lg" id="fnfNet">₹0</span>
+    </div>
+    <div class="flex gap-2 mt-4">
+      <button class="btn btn-primary" data-act="fnf-save" data-perday="${perDay}"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+      <button class="btn btn-ghost" data-act="fnf-settle" data-perday="${perDay}"><i class="fa-solid fa-lock"></i> Mark SETTLED</button>
+      <button class="btn btn-ghost" data-act="fnf-print" data-perday="${perDay}"><i class="fa-solid fa-print"></i> Settlement Sheet</button>
+    </div>`;
+  window._fnfCtx = { x, emp, p, perDay, elBal };
+  document.querySelectorAll('.fnf-in').forEach(i => i.addEventListener('input', fnfRecalc));
+  fnfRecalc();
+  $('fnfModal').classList.add('show');
+}
+function fnfVals(){
+  return { days: Number($('fnfDays').value)||0, el: Number($('fnfEL').value)||0, bonus: Number($('fnfBonus').value)||0,
+    grat: Number($('fnfGrat').value)||0, adv: Number($('fnfAdv').value)||0, notice: Number($('fnfNotice').value)||0, other: Number($('fnfOther').value)||0 };
+}
+function fnfNet(perDay){
+  const v = fnfVals();
+  return Math.round(v.days*perDay + v.el*perDay + v.bonus + v.grat - v.adv - v.notice*perDay - v.other);
+}
+function fnfRecalc(){ $('fnfNet').innerText = fmtINR(fnfNet(window._fnfCtx.perDay)); }
+function fnfChecklist(){
+  const chk = {};
+  document.querySelectorAll('.fnf-chk').forEach(c => { chk[c.dataset.k] = c.checked; });
+  return chk;
+}
+async function fnfPersist(settle){
+  const { x, perDay } = window._fnfCtx;
+  const upd = { checklist: fnfChecklist(), fnf: Object.assign(fnfVals(), { net: fnfNet(perDay), perDay }) };
+  if(settle) upd.status = 'SETTLED';
+  const { error } = await sb.from('exits').update(upd).eq('id', x.id);
+  if(error) return notify(error.message, 'error');
+  notify(settle ? 'Exit SETTLED' : 'Saved', 'success');
+  loadExits();
+  if(settle) $('fnfModal').classList.remove('show');
+}
+function fnfSheet(){
+  const { x, emp, perDay } = window._fnfCtx;
+  const v = fnfVals(); const S = getSettings(); const net = fnfNet(perDay);
+  const row = (l, amt, neg) => `<tr><td>${l}</td><td style="text-align:right;${neg ? 'color:#b91c1c' : ''}">${neg ? '−' : ''}${Math.round(amt).toLocaleString('en-IN')}</td></tr>`;
+  return `<div class="paper">
+    <div class="doc-head"><div><h1 style="margin:0;font-size:20px">${esc(S.name)}</h1><p style="margin:2px 0 0;font-size:11px;color:#64748b">${esc(S.addr)}</p></div>
+    <div style="text-align:right"><h2 style="margin:0;font-size:14px">FULL & FINAL SETTLEMENT</h2><p style="margin:2px 0 0;font-size:11px;color:#64748b">${new Date().toLocaleDateString('en-IN')}</p></div></div>
+    <table class="ann"><tbody>
+      <tr><th style="width:25%">Employee</th><td>${esc(emp ? emp.Name : x.employee_code)} (${esc(x.employee_code)})</td></tr>
+      <tr><th>Date of Joining</th><td>${esc(emp ? emp.DOJ : '—')}</td></tr>
+      <tr><th>Last Working Day</th><td>${fmtDate(x.lwd)}</td></tr>
+    </tbody></table>
+    <table class="ann"><thead><tr><th>Particulars</th><th style="text-align:right">Amount (₹)</th></tr></thead><tbody>
+      ${row('Pending Salary (' + v.days + ' days × ' + Math.round(perDay) + ')', v.days*perDay)}
+      ${row('Earned Leave Encashment (' + v.el + ' days)', v.el*perDay)}
+      ${row('Bonus / Incentive', v.bonus)}
+      ${row('Gratuity', v.grat)}
+      ${row('Advance / Loan Recovery', v.adv, true)}
+      ${row('Notice Shortfall (' + v.notice + ' days)', v.notice*perDay, true)}
+      ${row('Other Recovery', v.other, true)}
+      <tr><th>NET SETTLEMENT PAYABLE</th><th style="text-align:right">₹ ${net.toLocaleString('en-IN')}</th></tr>
+    </tbody></table>
+    <p style="font-size:11px;color:#64748b">Rupees ${esc(numToWords(net))} Only. Employee confirms receipt of full and final settlement and has no further claims against the company.</p>
+    <div style="margin-top:44px;display:flex;justify-content:space-between">
+      <p style="border-top:1px solid #94a3b8;padding-top:5px">Authorised Signatory<br><b>${esc(S.hr || '')}</b></p>
+      <p style="border-top:1px solid #94a3b8;padding-top:5px">Employee Signature</p>
+    </div>
+  </div>`;
+}
+
+/* ================= REPORTS ================= */
+async function loadReports(){
+  $('rpStats').innerHTML = '<div class="card"><div class="loader-ring loader-dark"></div></div>';
+  try{
+    const ym = todayISO().slice(0,7);
+    const [slipRes, attRes, exitRes] = await Promise.all([
+      sb.from('payslips').select('month, net_pay, data').order('month', { ascending:true }),
+      sb.from('attendance').select('date, employee_code').gte('date', ym + '-01').lte('date', ym + '-31'),
+      sb.from('exits').select('lwd, status')
+    ]);
+    const emps = activeEmps();
+    const total = emps.length;
+    const joiners = emps.filter(e => { const d = new Date(e.DOJ); return !isNaN(d) && `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}` === ym; }).length;
+    const yr = new Date().getFullYear();
+    const exitsThisYear = (exitRes.data||[]).filter(x => x.lwd && x.lwd.startsWith(String(yr))).length;
+    const attrition = total ? ((exitsThisYear / total) * 100).toFixed(1) : 0;
+    let male = 0, female = 0;
+    Object.values(PROFILES).forEach(p => { if(p.gender === 'Male') male++; if(p.gender === 'Female') female++; });
+    const daysElapsed = Number(todayISO().slice(8,10));
+    const attPct = total ? Math.min(100, Math.round(((attRes.data||[]).length / (total * daysElapsed)) * 100)) : 0;
+    // payroll aggregates by month
+    const byMonth = {};
+    (slipRes.data||[]).forEach(s => {
+      const m = byMonth[s.month] = byMonth[s.month] || { gross:0, net:0, pf:0, esi:0, ot:0 };
+      m.net += Number(s.net_pay)||0;
+      const d = s.data || {};
+      m.gross += Number(d.earnedGross)||0; m.pf += Number(d.pf)||0; m.esi += Number(d.esi)||0; m.ot += Number(d.otPay)||0;
+    });
+    const months = Object.keys(byMonth).sort().slice(-6);
+    const last = months.length ? byMonth[months[months.length-1]] : { gross:0, net:0, pf:0, esi:0, ot:0 };
+    const stat = (label, val, color) => `<div class="card"><p class="lbl m-0">${label}</p><div class="stat-num" style="font-size:24px;color:${color||'var(--ink)'}">${val}</div></div>`;
+    $('rpStats').innerHTML =
+      stat('Total Employees', total, 'var(--brand)') +
+      stat('New Joiners (' + ym + ')', joiners, 'var(--ok)') +
+      stat('Attrition ' + yr, exitsThisYear + ' (' + attrition + '%)', 'var(--bad)') +
+      stat('Gender M / F', male + ' / ' + female) +
+      stat('Attendance % (MTD)', attPct + '%', attPct >= 90 ? 'var(--ok)' : 'var(--warn)') +
+      stat('Last Month Gross', fmtINR(last.gross)) +
+      stat('PF + ESI (last)', fmtINR(last.pf + last.esi)) +
+      stat('OT Cost (last)', fmtINR(last.ot), 'var(--warn)');
+    // dept bars
+    const dept = {};
+    emps.forEach(e => { const d = e.DEPARTMENT || 'Other'; dept[d] = (dept[d]||0) + 1; });
+    const maxD = Math.max(1, ...Object.values(dept));
+    $('rpDept').innerHTML = Object.entries(dept).sort((a,b) => b[1]-a[1]).map(([d,n]) =>
+      `<div class="mb-2"><div class="flex justify-between text-xs mb-1"><span class="font-semibold">${esc(d)}</span><span>${n}</span></div>
+      <div class="progress-track"><div class="progress-fill" style="width:${Math.round(n/maxD*100)}%"></div></div></div>`).join('') || '<p style="color:var(--muted)">No data</p>';
+    // trend bars
+    const maxN = Math.max(1, ...months.map(m => byMonth[m].net));
+    $('rpTrend').innerHTML = months.length ? months.map(m =>
+      `<div class="mb-2"><div class="flex justify-between text-xs mb-1"><span class="font-semibold">${monthLabel(m)}</span><span class="money">Net ${fmtINR(byMonth[m].net)} • PF ${fmtINR(byMonth[m].pf)} • ESI ${fmtINR(byMonth[m].esi)}</span></div>
+      <div class="progress-track"><div class="progress-fill" style="width:${Math.round(byMonth[m].net/maxN*100)}%"></div></div></div>`).join('')
+      : '<p style="color:var(--muted)">Abhi koi finalized payroll nahi — Payroll → Finalize karo.</p>';
+  }catch(err){ notify(err.message, 'error'); }
+}
+
+/* ================= ENGAGEMENT (dashboard) ================= */
+async function loadEngagement(){
+  const mm = todayISO().slice(5,7);
+  const items = [];
+  EMP.forEach(e => {
+    const p = PROFILES[e['Employee code']] || {};
+    if(p.dob && p.dob.slice(5,7) === mm) items.push({ d: p.dob.slice(8,10), txt: `🎂 ${e.Name} — Birthday (${fmtDate(p.dob).slice(0,6)})` });
+    if(e.DOJ){ const d = new Date(e.DOJ); if(!isNaN(d) && String(d.getMonth()+1).padStart(2,'0') === mm){ const yrs = new Date().getFullYear() - d.getFullYear(); if(yrs > 0) items.push({ d: String(d.getDate()).padStart(2,'0'), txt: `🏆 ${e.Name} — ${yrs} saal complete (Work Anniversary)` }); } }
+  });
+  $('dCelebrate').innerHTML = items.length ? items.sort((a,b) => a.d.localeCompare(b.d)).map(i => `<div class="p-2 rounded-lg" style="background:#f8fafc">${esc(i.txt)}</div>`).join('') : '<p style="color:var(--muted)">Is month koi birthday/anniversary nahi.</p>';
+  try{
+    const { data } = await sb.from('announcements').select('*').order('created_at', { ascending:false }).limit(5);
+    $('annList').innerHTML = (data && data.length) ? data.map(a =>
+      `<div class="p-2 rounded-lg flex items-center justify-between" style="background:var(--brand-soft)"><span><b>${esc(a.title)}</b> <span class="text-[10px]" style="color:var(--muted)">${fmtDate(a.created_at.slice(0,10))}</span></span>
+      <button class="btn btn-ghost btn-sm" data-act="del-ann" data-id="${a.id}"><i class="fa-solid fa-xmark"></i></button></div>`).join('') : '<p class="text-xs" style="color:var(--muted)">Koi announcement nahi.</p>';
+  }catch(e){ /* V3 SQL pending */ }
+}
+$('annAddBtn').addEventListener('click', async () => {
+  if(!$('annTitle').value.trim()) return;
+  const { error } = await sb.from('announcements').insert([{ title: $('annTitle').value.trim() }]);
+  if(error) return notify(error.message, 'error');
+  $('annTitle').value = ''; loadEngagement();
+});
+
+function dlText(name, content, mime){
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], { type: mime || 'text/plain' }));
+  a.download = name; document.body.appendChild(a); a.click(); a.remove();
+}
 
 $('holAddBtn').addEventListener('click', async () => {
   if(!$('holDate').value) return notify('Date select karo', 'error');
