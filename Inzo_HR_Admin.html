@@ -27,6 +27,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
 .nav-item i{width:18px;text-align:center}
 .nav-item:hover{color:#fff;background:rgba(255,255,255,.06)}
 .nav-item.active{color:#fff;background:var(--brand)}
+.nav-sec{font-size:9.5px;font-weight:700;letter-spacing:.12em;color:#475569;padding:14px 20px 4px}
 .topbar{background:var(--surface);border-bottom:1px solid var(--line);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:30}
 .page{display:none;padding:26px 28px;flex:1}
 .page.show{display:block}
@@ -97,6 +98,13 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
   .paper{box-shadow:none;width:auto;min-height:auto;padding:10mm 8mm;page-break-after:always}
   .no-print{display:none !important}
 }
+.idcard{width:54mm;height:85.6mm;background:#fff;border-radius:3.2mm;overflow:hidden;box-shadow:0 8px 20px rgba(15,23,42,.18);font-size:8.5px;line-height:1.35;position:relative;display:flex;flex-direction:column;color:#0f172a}
+.idcard .id-head{background:var(--brand);color:#fff;text-align:center;padding:3mm 2mm 6mm}
+.idcard .id-photo{width:22mm;height:22mm;border-radius:50%;object-fit:cover;border:1.2mm solid #fff;background:#e2e8f0;margin:-11mm auto 0;display:block;position:relative;z-index:2}
+.idcard .id-photo-fallback{width:22mm;height:22mm;border-radius:50%;border:1.2mm solid #fff;background:var(--brand-soft);margin:-11mm auto 0;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:var(--brand);position:relative;z-index:2}
+.idcard table{width:100%;border-collapse:collapse}
+.idcard td{padding:.6mm 0;vertical-align:top}
+@media print{ .idcard{box-shadow:none;border:.3mm solid #cbd5e1;page-break-inside:avoid} #idWrap,#idWrap *{visibility:visible} }
 .loader-ring{width:15px;height:15px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
 .loader-dark{border-color:#cbd5e1;border-top-color:var(--brand)}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -139,20 +147,26 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
       <div class="text-[10px] mt-1" style="color:#64748b">PAYROLL CONSOLE</div>
     </div>
   </div>
-  <nav class="mt-2 flex-1">
+  <nav class="mt-2 flex-1" style="overflow-y:auto">
+    <div class="nav-sec">OVERVIEW</div>
     <button class="nav-item active" data-page="dashboard"><i class="fa-solid fa-gauge-high"></i> Dashboard</button>
+    <button class="nav-item" data-page="reports"><i class="fa-solid fa-chart-column"></i> Analytics</button>
+    <div class="nav-sec">WORKFORCE</div>
     <button class="nav-item" data-page="employees"><i class="fa-solid fa-users"></i> Employees</button>
     <button class="nav-item" data-page="attendance"><i class="fa-solid fa-calendar-days"></i> Attendance</button>
     <button class="nav-item" data-page="shifts"><i class="fa-solid fa-clock-rotate-left"></i> Shifts</button>
     <button class="nav-item" data-page="leaves"><i class="fa-solid fa-umbrella-beach"></i> Leaves</button>
+    <div class="nav-sec">PAYROLL & FINANCE</div>
     <button class="nav-item" data-page="payroll"><i class="fa-solid fa-indian-rupee-sign"></i> Payroll</button>
     <button class="nav-item" data-page="advances"><i class="fa-solid fa-hand-holding-dollar"></i> Advances</button>
     <button class="nav-item" data-page="expenses"><i class="fa-solid fa-receipt"></i> Expenses</button>
-    <button class="nav-item" data-page="assets"><i class="fa-solid fa-laptop"></i> Assets</button>
     <button class="nav-item" data-page="compliance"><i class="fa-solid fa-scale-balanced"></i> Compliance</button>
-    <button class="nav-item" data-page="exits"><i class="fa-solid fa-person-walking-arrow-right"></i> Exit / FnF</button>
-    <button class="nav-item" data-page="reports"><i class="fa-solid fa-chart-column"></i> Reports</button>
+    <div class="nav-sec">OPERATIONS</div>
+    <button class="nav-item" data-page="assets"><i class="fa-solid fa-laptop"></i> Assets</button>
     <button class="nav-item" data-page="letters"><i class="fa-solid fa-file-signature"></i> Letters</button>
+    <button class="nav-item" data-page="idcards"><i class="fa-solid fa-id-card"></i> ID Cards</button>
+    <button class="nav-item" data-page="exits"><i class="fa-solid fa-person-walking-arrow-right"></i> Exit / FnF</button>
+    <div class="nav-sec">SYSTEM</div>
     <button class="nav-item" data-page="settings"><i class="fa-solid fa-gear"></i> Settings</button>
   </nav>
   <button id="logoutBtn" class="nav-item mb-4" style="color:#f87171"><i class="fa-solid fa-power-off"></i> Logout</button>
@@ -241,11 +255,11 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
         <div><label class="lbl">Start Time</label><input id="shStart" type="time" class="inp" value="09:30"></div>
         <div><label class="lbl">End Time</label><input id="shEnd" type="time" class="inp" value="18:00"></div>
       </div>
-      <label class="lbl mt-3" style="margin-top:12px;display:block">Grace (minutes) — iske baad Late</label>
+      <label class="lbl mt-3" style="margin-top:12px;display:block">Grace (minutes) — late after this</label>
       <input id="shGrace" type="number" class="inp mb-3" value="10">
-      <label class="flex items-center gap-2 text-sm mb-4"><input type="checkbox" id="shNight"> Night shift (agle din khatam hoti hai)</label>
+      <label class="flex items-center gap-2 text-sm mb-4"><input type="checkbox" id="shNight"> Night shift (ends next day)</label>
       <button id="shSaveBtn" class="btn btn-primary w-full justify-center"><i class="fa-solid fa-plus"></i> Save Shift</button>
-      <p class="text-[11px] mt-3" style="color:var(--muted)">Employee ko shift assign karne ke liye Employees → Profile kholo. Late ab assigned shift ke start + grace se calculate hota hai.</p>
+      <p class="text-[11px] mt-3" style="color:var(--muted)">Assign shifts from Employees → Profile. Late is calculated from the assigned shift's start time + grace.</p>
     </div>
     <div class="card lg:col-span-2" style="padding:0;overflow:hidden">
       <div class="p-4 border-b" style="border-color:var(--line)"><h3 class="display font-bold m-0">Shifts</h3></div>
@@ -314,7 +328,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
         <thead><tr>
           <th>Employee</th><th>Paid Days</th><th>Leave</th><th>LOP</th><th>Earned Gross</th><th>OT Hrs</th><th>OT Pay</th><th>PF</th><th>ESI</th><th>PT</th><th>Advance</th><th>Other Ded.</th><th>Bonus</th><th>Net Pay</th><th></th>
         </tr></thead>
-        <tbody><tr><td colspan="15" class="text-center py-8" style="color:var(--muted)">Run payroll to see calculations. Salary structure Employees page se set hoti hai.</td></tr></tbody>
+        <tbody><tr><td colspan="15" class="text-center py-8" style="color:var(--muted)">Run payroll to see calculations. Salary structures are set on the Employees page.</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -414,9 +428,9 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
   <div class="card mb-4 flex items-end gap-3 flex-wrap">
     <div><label class="lbl">Month (finalized payroll)</label><input type="month" id="cmpMonth" class="inp"></div>
     <button id="cmpLoadBtn" class="btn btn-primary"><i class="fa-solid fa-scale-balanced"></i> Load Compliance Data</button>
-    <p class="text-[11px] m-0 ml-auto" style="color:var(--muted)">Data finalized payslips se aata hai — pehle us month ka payroll <b>Finalize</b> karo.</p>
+    <p class="text-[11px] m-0 ml-auto" style="color:var(--muted)">Data comes from finalized payslips — <b>finalize</b> that month's payroll first.</p>
   </div>
-  <div id="cmpBody" class="space-y-4"><div class="card"><p style="color:var(--muted)" class="m-0">Month select karke load karo.</p></div></div>
+  <div id="cmpBody" class="space-y-4"><div class="card"><p style="color:var(--muted)" class="m-0">Select a month and load the data.</p></div></div>
 </div>
 
 <!-- ================= EXITS ================= -->
@@ -488,15 +502,27 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
     <button id="letterPrintBtn" class="btn btn-ghost hidden"><i class="fa-solid fa-print"></i> Print / Save PDF</button>
     <button id="letterDocBtn" class="btn btn-ghost hidden"><i class="fa-solid fa-folder-plus"></i> Save to Employee Docs</button>
   </div>
-  <p class="text-xs mb-3" style="color:var(--muted)"><i class="fa-solid fa-pen"></i> Generated letter par seedha click karke text edit kar sakte ho — print se pehle.</p>
+  <p class="text-xs mb-3" style="color:var(--muted)"><i class="fa-solid fa-pen"></i> Click directly on the generated letter to edit any text before printing.</p>
   <div class="paper-desk hidden" id="letterDesk"><div id="letterPaper"></div></div>
+</div>
+
+<!-- ================= ID CARDS ================= -->
+<div class="page" id="page-idcards">
+  <div class="card mb-4 flex items-end gap-3 flex-wrap">
+    <div><label class="lbl">Employee</label><select id="idEmp" class="inp" style="min-width:240px"><option value="ALL">— All Active Employees —</option></select></div>
+    <div><label class="lbl">Valid Till</label><input id="idValid" type="date" class="inp"></div>
+    <button id="idGenBtn" class="btn btn-primary"><i class="fa-solid fa-id-card"></i> Generate</button>
+    <button id="idPrintBtn" class="btn btn-ghost hidden"><i class="fa-solid fa-print"></i> Print Cards</button>
+    <p class="text-[11px] m-0 ml-auto" style="color:var(--muted)">Photo is taken from the employee's uploaded PHOTO document. Standard CR80 card size (54 × 85.6 mm), front & back.</p>
+  </div>
+  <div class="paper-desk hidden" id="idDesk" style="padding:20px"><div id="idWrap" class="flex flex-wrap gap-4 justify-center"></div></div>
 </div>
 
 <!-- ================= SETTINGS ================= -->
 <div class="page" id="page-settings">
   <div class="grid lg:grid-cols-2 gap-4">
     <div class="card">
-      <h3 class="display font-bold mt-0 mb-4">Company Profile <span class="text-[10px] font-normal" style="color:var(--muted)">(letters & payslips par print hota hai)</span></h3>
+      <h3 class="display font-bold mt-0 mb-4">Company Profile <span class="text-[10px] font-normal" style="color:var(--muted)">(printed on letters & payslips)</span></h3>
       <div class="grid grid-cols-2 gap-3">
         <div class="col-span-2"><label class="lbl">Company Name</label><input id="setName" class="inp" placeholder="Zooto Fashion Pvt Ltd"></div>
         <div class="col-span-2"><label class="lbl">Address</label><input id="setAddr" class="inp" placeholder="Plot No…, IMT Manesar, Gurugram"></div>
@@ -515,7 +541,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
         <div><label class="lbl">Week Off Day</label>
           <select id="setWeekOff" class="inp"><option value="0">Sunday</option><option value="1">Monday</option><option value="2">Tuesday</option><option value="3">Wednesday</option><option value="4">Thursday</option><option value="5">Friday</option><option value="6">Saturday</option></select>
         </div>
-        <div><label class="lbl">Lates = Half Day LOP</label><input id="setLates" type="number" class="inp" value="3" title="Itne lates par aadha din katega"></div>
+        <div><label class="lbl">Lates = Half Day LOP</label><input id="setLates" type="number" class="inp" value="3" title="Half-day LOP after this many lates"></div>
         <div><label class="lbl">PF % (of Basic)</label><input id="setPF" type="number" step="0.01" class="inp" value="12"></div>
         <div><label class="lbl">PF Basic Cap (₹, 0 = no cap)</label><input id="setPFCap" type="number" class="inp" value="15000"></div>
         <div><label class="lbl">ESI % (of Gross)</label><input id="setESI" type="number" step="0.01" class="inp" value="0.75"></div>
@@ -600,12 +626,15 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
       <div><label class="lbl">UAN (PF)</label><input id="epUAN" class="inp"></div>
       <div><label class="lbl">ESI No.</label><input id="epESINo" class="inp"></div>
     </div>
-    <h4 class="display font-bold mt-5 mb-2">Documents <span class="text-[10px] font-normal" style="color:var(--muted)">(private storage — sirf login ke baad accessible)</span></h4>
+    <h4 class="display font-bold mt-5 mb-2">Documents <span class="text-[10px] font-normal" style="color:var(--muted)">(private storage — accessible only after login)</span></h4>
     <div class="flex gap-2 items-end flex-wrap">
       <div><label class="lbl">Type</label>
         <select id="docType" class="inp" style="min-width:140px">
           <option>AADHAAR</option><option>PAN</option><option>PHOTO</option><option>SIGNATURE</option>
-          <option>BANK</option><option>UAN</option><option>ESIC</option><option>EDUCATION</option><option>EXPERIENCE</option><option>OTHER</option>
+          <option>BANK PASSBOOK</option><option>UAN</option><option>ESIC</option><option>VOTER ID</option>
+          <option>DRIVING LICENSE</option><option>PASSPORT</option><option>RATION CARD</option>
+          <option>EDUCATION CERTIFICATE</option><option>EXPERIENCE LETTER</option><option>MEDICAL REPORT</option>
+          <option>POLICE VERIFICATION</option><option>RESUME</option><option>OTHER</option>
         </select></div>
       <div style="flex:1;min-width:160px"><label class="lbl">File</label><input id="docFile" type="file" class="inp" accept="image/*,.pdf"></div>
       <button id="docUploadBtn" class="btn btn-ghost"><i class="fa-solid fa-cloud-arrow-up"></i> Upload</button>
@@ -650,7 +679,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
       <div><label class="lbl">In Time</label><input id="fxIn" type="time" class="inp"></div>
       <div><label class="lbl">Out Time (optional)</label><input id="fxOut" type="time" class="inp"></div>
     </div>
-    <p class="text-[11px] mt-2" style="color:var(--muted)">Agar us din ka record already hai to update hoga (missing punch fix), warna naya banega. Late shift ke hisaab se auto-lagega.</p>
+    <p class="text-[11px] mt-2" style="color:var(--muted)">If a record already exists for that day it will be updated (missing punch fix), otherwise a new one is created. Late is applied automatically based on the shift.</p>
     <button id="fxSaveBtn" class="btn btn-primary w-full justify-center mt-4"><i class="fa-solid fa-floppy-disk"></i> Save Punch</button>
   </div>
 </div>
@@ -659,7 +688,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
 
 <script>
 /* =====================================================
-   CONFIG — apni attendance app waali SAME values daalo
+   CONFIG — same Supabase project as the attendance app
    ===================================================== */
 const SUPABASE_URL = "https://qetbmdibqnbpjbkiozxx.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFldGJtZGlicW5icGpia2lvenh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MjA1NTEsImV4cCI6MjA5NDI5NjU1MX0.TXBg-O77tDIUdFhMZBUU3-6vIUUDNcfWVjsF4f6Wkzc";
@@ -808,7 +837,7 @@ async function loadCore(){
     renderShifts();
   }catch(err){
     console.error(err);
-    notify('Data load failed: ' + err.message + ' — SQL setup run kiya?', 'error');
+    notify('Data load failed: ' + err.message + ' — have you run the setup SQL?', 'error');
   }
 }
 function activeEmps(){ return EMP.filter(e => String(e.Status).toUpperCase() === 'ACTIVE'); }
@@ -822,11 +851,12 @@ function fillEmpSelects(){
   $('asEmp').innerHTML = opts;
   $('xEmp').innerHTML = opts;
   $('asFilter').innerHTML = '<option value="">All employees</option>' + opts;
+  $('idEmp').innerHTML = '<option value="ALL">— All Active Employees —</option>' + opts;
   $('epShift').innerHTML = SHIFTS.map(s => `<option value="${s.id}">${esc(s.name)} (${esc(s.start_time)}–${esc(s.end_time)})</option>`).join('');
 }
 
 /* ---------------- Router ---------------- */
-const TITLES = { dashboard:'Dashboard', employees:'Employees', attendance:'Attendance Register', shifts:'Shift Master', leaves:'Leave Management', payroll:'Payroll', advances:'Advances & Loans', expenses:'Expense & Reimbursement', assets:'Asset Management', compliance:'Statutory Compliance', exits:'Exit & Full-Final', reports:'Analytics & Reports', letters:'HR Letters', settings:'Settings' };
+const TITLES = { dashboard:'Dashboard', employees:'Employees', attendance:'Attendance Register', shifts:'Shift Master', leaves:'Leave Management', payroll:'Payroll', advances:'Advances & Loans', expenses:'Expense & Reimbursement', assets:'Asset Management', compliance:'Statutory Compliance', exits:'Exit & Full-Final', reports:'Analytics & Reports', letters:'HR Letters', idcards:'ID Card Generator', settings:'Settings' };
 document.querySelectorAll('.nav-item[data-page]').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
@@ -884,7 +914,7 @@ async function loadDashboard(){
           ${r.out_time ? `<span class="chip chip-gray ml-1">OUT ${esc(r.out_time.substring(0,5))}</span>` : ''}
         </div>
       </div>`;
-    }).join('') : '<p style="color:var(--muted)">Aaj koi punch nahi hua.</p>';
+    }).join('') : '<p style="color:var(--muted)">No punches recorded today.</p>';
 
     const lateMap = {};
     (monthRes.data || []).forEach(r => {
@@ -898,7 +928,7 @@ async function loadDashboard(){
       `<div class="flex items-center justify-between p-2 rounded-lg" style="background:#fffbeb">
         <span class="font-semibold text-xs">${esc(v.name)} <span style="color:var(--muted)">(${esc(code)})</span></span>
         <span class="chip chip-warn">${v.n} late</span>
-      </div>`).join('') : '<p style="color:var(--muted)">Is month koi late nahi. 👏</p>';
+      </div>`).join('') : '<p style="color:var(--muted)">No late arrivals this month. 👏</p>';
   }catch(err){ console.error(err); }
 }
 
@@ -1031,7 +1061,7 @@ $('attLoadBtn').addEventListener('click', loadRegister);
 let REG_CSV = [];
 
 async function loadRegister(){
-  const ym = $('attMonth').value; if(!ym) return notify('Month select karo', 'error');
+  const ym = $('attMonth').value; if(!ym) return notify('Please select a month', 'error');
   const wrap = $('attRegisterWrap');
   wrap.innerHTML = '<div class="loader-ring loader-dark"></div>';
   try{
@@ -1066,7 +1096,7 @@ async function loadRegister(){
   }catch(err){ wrap.innerHTML = ''; notify(err.message, 'error'); }
 }
 $('attCsvBtn').addEventListener('click', () => {
-  if(!REG_CSV.length) return notify('Pehle register load karo', 'error');
+  if(!REG_CSV.length) return notify('Load the register first', 'error');
   const csv = 'data:text/csv;charset=utf-8,' + [['Name','Code','Shift','Present','Late','Leave','Absent'].join(','), ...REG_CSV.map(r => r.join(','))].join('\n');
   const a = document.createElement('a');
   a.href = encodeURI(csv); a.download = `Attendance_Summary_${$('attMonth').value}.csv`;
@@ -1078,7 +1108,7 @@ $('payMonth').value = todayISO().slice(0,7);
 $('payRunBtn').addEventListener('click', runPayroll);
 
 async function runPayroll(){
-  const ym = $('payMonth').value; if(!ym) return notify('Month select karo', 'error');
+  const ym = $('payMonth').value; if(!ym) return notify('Please select a month', 'error');
   PAY_MONTH = ym;
   const btn = $('payRunBtn');
   btn.innerHTML = '<div class="loader-ring"></div> Calculating…'; btn.disabled = true;
@@ -1200,7 +1230,7 @@ $('payTable').addEventListener('input', e => {
 
 $('payFinalizeBtn').addEventListener('click', async () => {
   if(!PAY_ROWS.length) return;
-  if(!confirm(`${monthLabel(PAY_MONTH)} ka payroll finalize karein? Payslips save hongi aur advance balances update honge.`)) return;
+  if(!confirm(`Finalize payroll for ${monthLabel(PAY_MONTH)}? Payslips will be saved and advance balances updated.`)) return;
   const btn = $('payFinalizeBtn');
   btn.innerHTML = '<div class="loader-ring loader-dark"></div> Saving…'; btn.disabled = true;
   try{
@@ -1283,7 +1313,7 @@ function printHTML(html){
 $('slipPrintBtn').addEventListener('click', () => printHTML($('slipPaper').innerHTML));
 $('payPrintAllBtn').addEventListener('click', () => {
   const rows = PAY_ROWS.filter(r => r.hasSalary);
-  if(!rows.length) return notify('Koi payslip nahi hai', 'error');
+  if(!rows.length) return notify('No payslips to print', 'error');
   printHTML(rows.map(r => slipHTML(Object.assign({}, r, { month: PAY_MONTH }))).join(''));
 });
 
@@ -1306,13 +1336,13 @@ async function loadAdvances(){
         <td><span class="chip ${open ? 'chip-warn' : 'chip-ok'}">${esc(a.status)}</span></td>
         <td>${open ? `<button class="btn btn-danger btn-sm" data-act="close-adv" data-id="${a.id}"><i class="fa-solid fa-check"></i> Settle</button>` : ''}</td>
       </tr>`;
-    }).join('') : '<tr><td colspan="8" class="text-center py-8" style="color:var(--muted)">Koi advance record nahi.</td></tr>';
+    }).join('') : '<tr><td colspan="8" class="text-center py-8" style="color:var(--muted)">No advance records.</td></tr>';
   }catch(err){ notify(err.message, 'error'); }
 }
 $('advSaveBtn').addEventListener('click', async () => {
   const amount = Number($('advAmount').value), emi = Number($('advEmi').value);
-  if(!$('advEmp').value || !amount || !emi) return notify('Employee, amount aur EMI required', 'error');
-  if(emi > amount) return notify('EMI amount se zyada nahi ho sakti', 'error');
+  if(!$('advEmp').value || !amount || !emi) return notify('Employee, amount and EMI are required', 'error');
+  if(emi > amount) return notify('EMI cannot exceed the advance amount', 'error');
   const btn = $('advSaveBtn');
   btn.innerHTML = '<div class="loader-ring"></div> Saving…'; btn.disabled = true;
   try{
@@ -1333,7 +1363,7 @@ document.body.addEventListener('click', async e => {
   if(act === 'edit-emp') openEmpModal(el.dataset.code);
   if(act === 'view-slip') openSlip(Number(el.dataset.i));
   if(act === 'close-adv'){
-    if(!confirm('Is advance ko fully settled mark karein?')) return;
+    if(!confirm('Mark this advance as fully settled?')) return;
     await sb.from('advances').update({ balance: 0, status: 'CLOSED' }).eq('id', el.dataset.id);
     loadAdvances();
   }
@@ -1343,14 +1373,19 @@ document.body.addEventListener('click', async e => {
     renderHolidays();
   }
   if(act === 'del-shift'){
-    if(!confirm('Shift delete karein? Is shift ke employees default (pehli) shift par chale jayenge.')) return;
+    if(!confirm('Delete this shift? Employees on it will fall back to the default (first) shift.')) return;
     await sb.from('shifts').delete().eq('id', el.dataset.id);
     SHIFTS = SHIFTS.filter(s => String(s.id) !== String(el.dataset.id));
     renderShifts(); fillEmpSelects();
   }
   if(act === 'cancel-leave'){
-    if(!confirm('Leave cancel karein?')) return;
+    if(!confirm('Cancel this leave?')) return;
     await sb.from('leaves').update({ status: 'CANCELLED' }).eq('id', el.dataset.id);
+    loadLeaves();
+  }
+  if(act === 'appr-leave'){
+    await sb.from('leaves').update({ status: 'APPROVED' }).eq('id', el.dataset.id);
+    notify('Leave approved', 'success');
     loadLeaves();
   }
   if(act === 'view-doc'){
@@ -1359,7 +1394,7 @@ document.body.addEventListener('click', async e => {
     window.open(data.signedUrl, '_blank');
   }
   if(act === 'del-doc'){
-    if(!confirm('Document delete karein?')) return;
+    if(!confirm('Delete this document?')) return;
     await sb.storage.from('hr-docs').remove([el.dataset.path]);
     await sb.from('hr_documents').delete().eq('id', el.dataset.id);
     loadDocs($('epCode').value);
@@ -1376,7 +1411,7 @@ document.body.addEventListener('click', async e => {
   }
   if(act === 'open-fnf') openFnF(el.dataset.id);
   if(act === 'fnf-save') fnfPersist(false);
-  if(act === 'fnf-settle'){ if(confirm('Exit ko SETTLED mark karein? Iske baad final maana jayega.')) fnfPersist(true); }
+  if(act === 'fnf-settle'){ if(confirm('Mark this exit as SETTLED? This will be treated as final.')) fnfPersist(true); }
   if(act === 'fnf-print') printHTML(fnfSheet());
   if(act === 'del-ann'){ await sb.from('announcements').delete().eq('id', el.dataset.id); loadEngagement(); }
   if(act === 'cmp-print'){
@@ -1388,9 +1423,9 @@ document.body.addEventListener('click', async e => {
     const d = window._cmpData; if(!d) return;
     const lines = d.pfRows.filter(r => r.uan).map(r =>
       [r.uan, r.name.toUpperCase(), r.gross, r.epfWage, r.epfWage, r.epfWage, r.ee, r.eps, r.diff, r.ncp, 0].join('#~#'));
-    if(!lines.length) return notify('Kisi employee ka UAN set nahi hai — profiles mein UAN bharo', 'error');
+    if(!lines.length) return notify('No employee has a UAN on file — add UANs in employee profiles', 'error');
     dlText('ECR_' + d.ym + '.txt', lines.join('\n'), 'text/plain');
-    notify(lines.length + ' members ECR file mein — EPFO portal par upload karo', 'success');
+    notify(lines.length + ' members exported — upload the ECR file on the EPFO portal', 'success');
   }
   if(act === 'cmp-pfcsv'){
     const d = window._cmpData; if(!d) return;
@@ -1470,7 +1505,7 @@ $('letterGenBtn').addEventListener('click', () => {
   if(t === 'offer'){
     const name = $('offName').value.trim(), desig = $('offDesig').value.trim(), dept = $('offDept').value.trim();
     const gross = Number($('offGross').value), doj = $('offDOJ').value;
-    if(!name || !desig || !gross || !doj) return notify('Candidate name, designation, gross aur joining date required', 'error');
+    if(!name || !desig || !gross || !doj) return notify('Candidate name, designation, gross salary and joining date are required', 'error');
     html = letterShell('OFFER OF EMPLOYMENT', `${(S.name||'CO').split(' ')[0].toUpperCase()}/HR/OFR/${yr}/${Math.floor(100+Math.random()*900)}`,
       `<p>Dear <b>${esc(name)}</b>,</p>
       <p>Further to your application and the subsequent interview you had with us, we are pleased to offer you the position of <b>${esc(desig)}</b>${dept ? ' in our <b>' + esc(dept) + '</b> department' : ''} at ${esc(S.name)}, on the following terms:</p>
@@ -1486,12 +1521,12 @@ $('letterGenBtn').addEventListener('click', () => {
   } else {
     const code = $('letterEmp').value;
     const e = EMP.find(x => x['Employee code'] === code);
-    if(!e) return notify('Employee select karo', 'error');
+    if(!e) return notify('Please select an employee', 'error');
     const p = PROFILES[code] || {};
     const gross = grossOf(code);
 
     if(t === 'appointment'){
-      if(!gross) return notify(`${e.Name} ki salary structure set nahi hai — Employees page se set karo`, 'error');
+      if(!gross) return notify(`Salary structure is not set for ${e.Name} — set it on the Employees page`, 'error');
       html = letterShell('LETTER OF APPOINTMENT', `${(S.name||'CO').split(' ')[0].toUpperCase()}/HR/APT/${yr}/${esc(code)}`,
         `<p>Dear <b>${esc(e.Name)}</b>,</p>
         <p>With reference to your acceptance of our offer, we are pleased to appoint you as <b>${esc(e.DESIGNATION || '—')}</b> in the <b>${esc(e.DEPARTMENT || '—')}</b> department of ${esc(S.name)}, effective <b>${esc(e.DOJ || fmtDate(todayISO()))}</b> (Employee Code: <b>${esc(code)}</b>), on the following terms and conditions:</p>
@@ -1509,7 +1544,7 @@ $('letterGenBtn').addEventListener('click', () => {
     }
     if(t === 'experience'){
       const lwd = $('relLWD').value;
-      if(!lwd) return notify('Last working day select karo', 'error');
+      if(!lwd) return notify('Please select the last working day', 'error');
       html = letterShell('EXPERIENCE CERTIFICATE', `${(S.name||'CO').split(' ')[0].toUpperCase()}/HR/EXP/${yr}/${esc(code)}`,
         `<p><b>TO WHOMSOEVER IT MAY CONCERN</b></p>
         <p>This is to certify that <b>${esc(e.Name)}</b>${p.father_name ? ' (S/o / D/o ' + esc(p.father_name) + ')' : ''}, Employee Code <b>${esc(code)}</b>, was employed with <b>${esc(S.name)}</b> as <b>${esc(e.DESIGNATION || '—')}</b> in the <b>${esc(e.DEPARTMENT || '—')}</b> department from <b>${esc(e.DOJ || '—')}</b> to <b>${fmtDate(lwd)}</b>.</p>
@@ -1518,7 +1553,7 @@ $('letterGenBtn').addEventListener('click', () => {
     }
     if(t === 'relieving'){
       const lwd = $('relLWD').value;
-      if(!lwd) return notify('Last working day select karo', 'error');
+      if(!lwd) return notify('Please select the last working day', 'error');
       html = letterShell('RELIEVING LETTER', `${(S.name||'CO').split(' ')[0].toUpperCase()}/HR/REL/${yr}/${esc(code)}`,
         `<p>Dear <b>${esc(e.Name)}</b>,</p>
         <p>This is with reference to your resignation from the position of <b>${esc(e.DESIGNATION || '—')}</b>, <b>${esc(e.DEPARTMENT || '—')}</b> department. Your resignation has been accepted by the management.</p>
@@ -1540,7 +1575,7 @@ $('letterGenBtn').addEventListener('click', () => {
     }
     if(t === 'warning'){
       const reason = $('warnReason').value.trim();
-      if(!reason) return notify('Warning reason likho', 'error');
+      if(!reason) return notify('Please enter the warning reason', 'error');
       html = letterShell('WARNING LETTER', `${(S.name||'CO').split(' ')[0].toUpperCase()}/HR/WRN/${yr}/${esc(code)}`,
         `<p>Dear <b>${esc(e.Name)}</b> (${esc(code)}, ${esc(e.DESIGNATION || '—')}),</p>
         <p>It has been brought to the notice of the management that: <b>${esc(reason)}</b>.</p>
@@ -1550,7 +1585,7 @@ $('letterGenBtn').addEventListener('click', () => {
     }
     if(t === 'promotion'){
       const nd = $('promoDesig').value.trim(), ng = Number($('promoGross').value), eff = $('promoDate').value;
-      if(!nd || !ng || !eff) return notify('New designation, gross aur effective date required', 'error');
+      if(!nd || !ng || !eff) return notify('New designation, gross salary and effective date are required', 'error');
       html = letterShell('PROMOTION LETTER', `${(S.name||'CO').split(' ')[0].toUpperCase()}/HR/PRM/${yr}/${esc(code)}`,
         `<p>Dear <b>${esc(e.Name)}</b>,</p>
         <p>We are pleased to inform you that in recognition of your performance and contribution, the management has decided to promote you from <b>${esc(e.DESIGNATION || '—')}</b> to <b>${esc(nd)}</b>, effective <b>${fmtDate(eff)}</b>.</p>
@@ -1562,7 +1597,7 @@ $('letterGenBtn').addEventListener('click', () => {
     if(t === 'revision'){
       const ng = Number($('promoGross').value) || Number(prompt('New monthly gross (₹)?'));
       const eff = $('promoDate').value || prompt('Effective date (YYYY-MM-DD)?');
-      if(!ng || !eff) return notify('New gross aur effective date required', 'error');
+      if(!ng || !eff) return notify('New gross salary and effective date are required', 'error');
       html = letterShell('SALARY REVISION LETTER', `${(S.name||'CO').split(' ')[0].toUpperCase()}/HR/REV/${yr}/${esc(code)}`,
         `<p>Dear <b>${esc(e.Name)}</b>,</p>
         <p>We are pleased to inform you that your compensation has been reviewed and revised. Your gross salary stands revised from <b>₹${gross.toLocaleString('en-IN')}/-</b> to <b>₹${ng.toLocaleString('en-IN')}/- per month</b> (Rupees ${esc(numToWords(ng))} Only), effective <b>${fmtDate(eff)}</b>, as per Annexure A.</p>
@@ -1591,7 +1626,7 @@ $('letterDocBtn').addEventListener('click', async () => {
     if(upErr) throw upErr;
     const { error } = await sb.from('hr_documents').insert([{ employee_code: ctx.code, doc_type: ctx.type, file_path: path, file_name: ctx.type + '_' + new Date().toLocaleDateString('en-IN') + '.html' }]);
     if(error) throw error;
-    notify('Letter employee documents mein save ho gaya', 'success');
+    notify('Letter saved to employee documents', 'success');
   }catch(err){ notify(err.message, 'error'); }
   finally{ btn.innerHTML = '<i class="fa-solid fa-folder-plus"></i> Save to Employee Docs'; btn.disabled = false; }
 });
@@ -1636,7 +1671,7 @@ function renderHolidays(){
     `<div class="flex items-center justify-between p-2 rounded-lg" style="background:#f8fafc">
       <span><b>${fmtDate(h.date)}</b> — ${esc(h.name || '')}</span>
       <button class="btn btn-danger btn-sm" data-act="del-hol" data-id="${h.id}"><i class="fa-solid fa-trash"></i></button>
-    </div>`).join('') : '<p class="text-xs" style="color:var(--muted)">Koi holiday add nahi hui.</p>';
+    </div>`).join('') : '<p class="text-xs" style="color:var(--muted)">No holidays added.</p>';
 }
 /* ---------------- SHIFTS ---------------- */
 function renderShifts(){
@@ -1651,11 +1686,11 @@ function renderShifts(){
       <td>${count}</td>
       <td><button class="btn btn-danger btn-sm" data-act="del-shift" data-id="${s.id}"><i class="fa-solid fa-trash"></i></button></td>
     </tr>`;
-  }).join('') : '<tr><td colspan="6" class="text-center py-6" style="color:var(--muted)">Koi shift nahi — pehli shift add karo.</td></tr>';
+  }).join('') : '<tr><td colspan="6" class="text-center py-6" style="color:var(--muted)">No shifts yet — add your first shift.</td></tr>';
 }
 $('shSaveBtn').addEventListener('click', async () => {
   const name = $('shName').value.trim();
-  if(!name || !$('shStart').value || !$('shEnd').value) return notify('Name aur timing required', 'error');
+  if(!name || !$('shStart').value || !$('shEnd').value) return notify('Shift name and timing are required', 'error');
   try{
     const { data, error } = await sb.from('shifts').insert([{
       name, start_time: $('shStart').value, end_time: $('shEnd').value,
@@ -1690,10 +1725,11 @@ async function loadLeaves(){
         <td>${fmtDate(L.from_date)}</td><td>${fmtDate(L.to_date)}</td>
         <td class="money">${L.days}</td>
         <td>${esc(L.reason || '—')}</td>
-        <td><span class="chip ${ok ? 'chip-ok' : 'chip-gray'}">${esc(L.status)}</span></td>
-        <td>${ok ? `<button class="btn btn-danger btn-sm" data-act="cancel-leave" data-id="${L.id}"><i class="fa-solid fa-ban"></i></button>` : ''}</td>
+        <td><span class="chip ${L.status === 'APPROVED' ? 'chip-ok' : (L.status === 'PENDING' ? 'chip-warn' : 'chip-gray')}">${esc(L.status)}</span></td>
+        <td>${L.status === 'PENDING' ? `<button class="btn btn-ghost btn-sm" data-act="appr-leave" data-id="${L.id}"><i class="fa-solid fa-check"></i></button> <button class="btn btn-danger btn-sm" data-act="cancel-leave" data-id="${L.id}"><i class="fa-solid fa-xmark"></i></button>`
+          : (ok ? `<button class="btn btn-danger btn-sm" data-act="cancel-leave" data-id="${L.id}"><i class="fa-solid fa-ban"></i></button>` : '')}</td>
       </tr>`;
-    }).join('') : '<tr><td colspan="8" class="text-center py-8" style="color:var(--muted)">Is month koi leave nahi.</td></tr>';
+    }).join('') : '<tr><td colspan="8" class="text-center py-8" style="color:var(--muted)">No leave records for this month.</td></tr>';
   }catch(err){ notify(err.message, 'error'); }
 }
 async function showLeaveBalance(code){
@@ -1709,8 +1745,8 @@ async function showLeaveBalance(code){
 $('lvEmp').addEventListener('change', () => showLeaveBalance($('lvEmp').value));
 $('lvSaveBtn').addEventListener('click', async () => {
   const code = $('lvEmp').value, from = $('lvFrom').value, to = $('lvTo').value;
-  if(!code || !from || !to) return notify('Employee aur dates required', 'error');
-  if(to < from) return notify('To date From se pehle nahi ho sakti', 'error');
+  if(!code || !from || !to) return notify('Employee and dates are required', 'error');
+  if(to < from) return notify('To date cannot be before From date', 'error');
   const days = Math.round((new Date(to) - new Date(from)) / 86400000) + 1;
   const btn = $('lvSaveBtn');
   btn.innerHTML = '<div class="loader-ring"></div> Saving…'; btn.disabled = true;
@@ -1720,7 +1756,7 @@ $('lvSaveBtn').addEventListener('click', async () => {
       from_date: from, to_date: to, days, reason: $('lvReason').value, status: 'APPROVED'
     }]);
     if(error) throw error;
-    notify(`Leave approved (${days} din)`, 'success');
+    notify(`Leave approved (${days} days)`, 'success');
     $('lvFrom').value = ''; $('lvTo').value = ''; $('lvReason').value = '';
     loadLeaves(); showLeaveBalance(code);
   }catch(err){ notify(err.message, 'error'); }
@@ -1731,8 +1767,8 @@ $('lvSaveBtn').addEventListener('click', async () => {
 $('attFixBtn').addEventListener('click', () => { $('fxDate').value = todayISO(); $('fixModal').classList.add('show'); });
 $('fxSaveBtn').addEventListener('click', async () => {
   const code = $('fxEmp').value, date = $('fxDate').value, inT = $('fxIn').value, outT = $('fxOut').value;
-  if(!code || !date) return notify('Employee aur date required', 'error');
-  if(!inT && !outT) return notify('Kam se kam ek time daalo', 'error');
+  if(!code || !date) return notify('Employee and date are required', 'error');
+  if(!inT && !outT) return notify('Enter at least one time (In or Out)', 'error');
   const btn = $('fxSaveBtn');
   btn.innerHTML = '<div class="loader-ring"></div> Saving…'; btn.disabled = true;
   try{
@@ -1758,7 +1794,7 @@ $('fxSaveBtn').addEventListener('click', async () => {
       if(error) throw error;
       notify('Punch updated', 'success');
     } else {
-      if(!inT) return notify('Naye record ke liye In Time zaroori hai', 'error');
+      if(!inT) return notify('In Time is required for a new record', 'error');
       const row = { employee_code: code, Name: emp ? emp.Name : code, date, in_time: upd.in_time };
       if(upd.out_time){
         row.out_time = upd.out_time;
@@ -1789,14 +1825,14 @@ async function loadDocs(code){
           <button class="btn btn-ghost btn-sm" data-act="view-doc" data-path="${esc(d.file_path)}"><i class="fa-solid fa-eye"></i></button>
           <button class="btn btn-danger btn-sm" data-act="del-doc" data-id="${d.id}" data-path="${esc(d.file_path)}"><i class="fa-solid fa-trash"></i></button>
         </span>
-      </div>`).join('') : '<span style="color:var(--muted)">Koi document upload nahi hua.</span>';
-  }catch(err){ $('docList').innerHTML = '<span style="color:var(--bad)">' + esc(err.message) + ' — V2 SQL run kiya?</span>'; }
+      </div>`).join('') : '<span style="color:var(--muted)">No documents uploaded.</span>';
+  }catch(err){ $('docList').innerHTML = '<span style="color:var(--bad)">' + esc(err.message) + ' — have you run the V2 migration SQL?</span>'; }
 }
 $('docUploadBtn').addEventListener('click', async () => {
   const code = $('epCode').value;
   const file = $('docFile').files[0];
-  if(!file) return notify('File select karo', 'error');
-  if(file.size > 5 * 1024 * 1024) return notify('Max 5MB file allowed', 'error');
+  if(!file) return notify('Please choose a file', 'error');
+  if(file.size > 5 * 1024 * 1024) return notify('Maximum file size is 5 MB', 'error');
   const btn = $('docUploadBtn');
   btn.innerHTML = '<div class="loader-ring loader-dark"></div>'; btn.disabled = true;
   try{
@@ -1818,7 +1854,7 @@ $('docUploadBtn').addEventListener('click', async () => {
 $('exDate') && ($('exDate').value = todayISO());
 async function loadExpenses(){
   const { data, error } = await sb.from('expenses').select('*').order('created_at', { ascending:false }).limit(200);
-  if(error) return notify(error.message + ' — V3 SQL run kiya?', 'error');
+  if(error) return notify(error.message + ' — have you run the V3 migration SQL?', 'error');
   const tb = $('exTable').querySelector('tbody');
   let pend = 0, appr = 0;
   tb.innerHTML = (data && data.length) ? data.map(x => {
@@ -1835,11 +1871,11 @@ async function loadExpenses(){
       <td class="money font-semibold">${fmtINR(x.amount)}</td>
       <td>${esc(x.note || '—')}</td>
       <td><span class="chip ${st}">${esc(x.status)}</span></td><td>${btns}</td></tr>`;
-  }).join('') : '<tr><td colspan="7" class="text-center py-8" style="color:var(--muted)">Koi claim nahi.</td></tr>';
+  }).join('') : '<tr><td colspan="7" class="text-center py-8" style="color:var(--muted)">No expense claims.</td></tr>';
   $('exTotals').innerText = 'Pending ' + fmtINR(pend) + ' • To Pay ' + fmtINR(appr);
 }
 $('exSaveBtn').addEventListener('click', async () => {
-  if(!$('exEmp').value || !Number($('exAmt').value)) return notify('Employee aur amount required', 'error');
+  if(!$('exEmp').value || !Number($('exAmt').value)) return notify('Employee and amount are required', 'error');
   const { error } = await sb.from('expenses').insert([{ employee_code: $('exEmp').value, category: $('exCat').value, amount: Number($('exAmt').value), expense_date: $('exDate').value || todayISO(), note: $('exNote').value }]);
   if(error) return notify(error.message, 'error');
   $('exAmt').value = ''; $('exNote').value = '';
@@ -1851,7 +1887,7 @@ $('asDate') && ($('asDate').value = todayISO());
 let ASSETS = [];
 async function loadAssets(){
   const { data, error } = await sb.from('assets').select('*').order('created_at', { ascending:false }).limit(500);
-  if(error) return notify(error.message + ' — V3 SQL run kiya?', 'error');
+  if(error) return notify(error.message + ' — have you run the V3 migration SQL?', 'error');
   ASSETS = data || []; renderAssets();
 }
 function renderAssets(){
@@ -1870,11 +1906,11 @@ function renderAssets(){
       <td><span class="chip ${issued ? 'chip-warn' : 'chip-ok'}">${esc(a.status)}</span></td>
       <td>${issued ? `<button class="btn btn-ghost btn-sm" data-act="as-return" data-id="${a.id}"><i class="fa-solid fa-rotate-left"></i> Return</button>` : ''}</td>
     </tr>`;
-  }).join('') : '<tr><td colspan="9" class="text-center py-8" style="color:var(--muted)">Koi asset issue nahi hua.</td></tr>';
+  }).join('') : '<tr><td colspan="9" class="text-center py-8" style="color:var(--muted)">No assets issued.</td></tr>';
 }
 $('asFilter').addEventListener('change', renderAssets);
 $('asSaveBtn').addEventListener('click', async () => {
-  if(!$('asEmp').value) return notify('Employee select karo', 'error');
+  if(!$('asEmp').value) return notify('Please select an employee', 'error');
   const { error } = await sb.from('assets').insert([{ employee_code: $('asEmp').value, asset_type: $('asType').value, asset_name: $('asName').value, serial_no: $('asSerial').value, issue_date: $('asDate').value || todayISO() }]);
   if(error) return notify(error.message, 'error');
   $('asName').value = ''; $('asSerial').value = '';
@@ -1888,7 +1924,7 @@ $('cmpLoadBtn').addEventListener('click', async () => {
   const ym = $('cmpMonth').value;
   const { data, error } = await sb.from('payslips').select('*').eq('month', ym);
   if(error) return notify(error.message, 'error');
-  if(!data || !data.length){ $('cmpBody').innerHTML = '<div class="card"><p class="m-0" style="color:var(--bad)">Is month ki koi finalized payslip nahi mili. Pehle Payroll → Calculate → <b>Finalize & Save All</b> karo.</p></div>'; return; }
+  if(!data || !data.length){ $('cmpBody').innerHTML = '<div class="card"><p class="m-0" style="color:var(--bad)">No finalized payslips found for this month. Go to Payroll → Calculate → <b>Finalize & Save All</b> first.</p></div>'; return; }
   CMP = data.map(s => Object.assign({ code: s.employee_code, month: s.month, net: s.net_pay }, s.data));
   const S = getSettings();
   let pfEE = 0, pfEPS = 0, pfDiff = 0, esiEE = 0, esiER = 0, ptT = 0, lwfE = 0, gross = 0;
@@ -1927,10 +1963,16 @@ $('cmpLoadBtn').addEventListener('click', async () => {
     <div style="overflow-x:auto"><table class="tbl"><thead><tr><th>UAN</th><th>Name</th><th style="text-align:right">Gross</th><th style="text-align:right">EPF Wages</th><th style="text-align:right">EE 12%</th><th style="text-align:right">EPS 8.33%</th><th style="text-align:right">ER Diff 3.67%</th><th style="text-align:right">NCP Days</th></tr></thead>
     <tbody>${pfBody}</tbody>
     <tfoot><tr class="font-bold"><td colspan="4">TOTAL</td><td class="money" style="text-align:right">${pfEE.toLocaleString('en-IN')}</td><td class="money" style="text-align:right">${pfEPS.toLocaleString('en-IN')}</td><td class="money" style="text-align:right">${pfDiff.toLocaleString('en-IN')}</td><td></td></tr></tfoot></table></div>
-    <div class="mt-3 text-sm p-3 rounded-xl" style="background:#f8fafc">
-      A/c 1 (EE+ER EPF): <b class="money">${(pfEE + pfDiff).toLocaleString('en-IN')}</b> • A/c 10 (EPS): <b class="money">${pfEPS.toLocaleString('en-IN')}</b> • A/c 2 Admin 0.5%: <b class="money">${admin.toLocaleString('en-IN')}</b> • A/c 21 EDLI 0.5%: <b class="money">${edli.toLocaleString('en-IN')}</b> • <b>Total Remittance: <span class="money">${fmtINR(pfEE + pfDiff + pfEPS + admin + edli)}</span></b>
+    <div class="mt-3" style="max-width:460px">
+      <table class="tbl"><thead><tr><th>Remittance Account Head</th><th style="text-align:right">Amount (₹)</th></tr></thead><tbody>
+        <tr><td>A/c No. 01 — EPF Contribution (Employee 12% + Employer 3.67%)</td><td class="money" style="text-align:right">${(pfEE + pfDiff).toLocaleString('en-IN')}</td></tr>
+        <tr><td>A/c No. 10 — EPS Contribution (Employer 8.33%)</td><td class="money" style="text-align:right">${pfEPS.toLocaleString('en-IN')}</td></tr>
+        <tr><td>A/c No. 02 — EPF Admin Charges (0.50%)</td><td class="money" style="text-align:right">${admin.toLocaleString('en-IN')}</td></tr>
+        <tr><td>A/c No. 21 — EDLI Contribution (0.50%)</td><td class="money" style="text-align:right">${edli.toLocaleString('en-IN')}</td></tr>
+        <tr class="font-bold"><td>Total Monthly Remittance</td><td class="money" style="text-align:right">${(pfEE + pfDiff + pfEPS + admin + edli).toLocaleString('en-IN')}</td></tr>
+      </tbody></table>
     </div>
-    <p class="text-[11px] mt-2" style="color:var(--muted)">ECR file EPFO unified portal par upload format mein hai (UAN#~#NAME#~#…). Missing UAN waale employees ECR se skip honge — profile mein UAN bharo.</p>
+    <p class="text-[11px] mt-2" style="color:var(--muted)">The ECR file is generated in the EPFO Unified Portal upload format (UAN#~#MEMBER NAME#~#WAGES#~#…). Employees without a UAN on file are excluded from the ECR — add their UAN in the employee profile to include them.</p>
   </div>
   <div class="card" id="esiCard">
     <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
@@ -1969,7 +2011,7 @@ $('xResign').addEventListener('change', calcLWD);
 $('xNotice').addEventListener('input', calcLWD);
 async function loadExits(){
   const { data, error } = await sb.from('exits').select('*').order('created_at', { ascending:false });
-  if(error) return notify(error.message + ' — V3 SQL run kiya?', 'error');
+  if(error) return notify(error.message + ' — have you run the V3 migration SQL?', 'error');
   EXITS = data || [];
   const tb = $('xTable').querySelector('tbody');
   tb.innerHTML = EXITS.length ? EXITS.map(x => {
@@ -1981,13 +2023,13 @@ async function loadExits(){
       <td><span class="chip ${x.status === 'SETTLED' ? 'chip-ok' : 'chip-warn'}">${esc(x.status)}</span></td>
       <td><button class="btn btn-ghost btn-sm" data-act="open-fnf" data-id="${x.id}"><i class="fa-solid fa-file-invoice-dollar"></i> Checklist & FnF</button></td>
     </tr>`;
-  }).join('') : '<tr><td colspan="6" class="text-center py-8" style="color:var(--muted)">Koi exit record nahi.</td></tr>';
+  }).join('') : '<tr><td colspan="6" class="text-center py-8" style="color:var(--muted)">No exit records.</td></tr>';
 }
 $('xSaveBtn').addEventListener('click', async () => {
-  if(!$('xEmp').value || !$('xResign').value || !$('xLWD').value) return notify('Employee, resign date, LWD required', 'error');
+  if(!$('xEmp').value || !$('xResign').value || !$('xLWD').value) return notify('Employee, resignation date and LWD are required', 'error');
   const { error } = await sb.from('exits').insert([{ employee_code: $('xEmp').value, resign_date: $('xResign').value, notice_days: Number($('xNotice').value)||30, lwd: $('xLWD').value, reason: $('xReason').value }]);
   if(error) return notify(error.message, 'error');
-  notify('Resignation recorded — Checklist & FnF se settle karo', 'success');
+  notify('Resignation recorded — open Checklist & FnF to settle', 'success');
   loadExits();
 });
 
@@ -2018,13 +2060,13 @@ async function openFnF(id){
 
   const assetsHtml = (assetData && assetData.length)
     ? assetData.map(a => `<label class="flex items-center gap-2"><input type="checkbox" class="fnf-chk" data-k="asset_${a.id}" ${chk['asset_'+a.id] ? 'checked' : ''}> ${esc(a.asset_type)} — ${esc(a.asset_name||'')} ${esc(a.serial_no||'')} return</label>`).join('')
-    : '<p class="text-xs m-0" style="color:var(--muted)">Koi asset issued nahi hai.</p>';
+    : '<p class="text-xs m-0" style="color:var(--muted)">No assets issued to this employee.</p>';
 
   $('slipPaper').innerHTML = '';
   $('fnfBox').innerHTML = `
     <input type="hidden" id="fnfId" value="${x.id}">
     <div class="p-3 rounded-xl mb-3" style="background:var(--brand-soft)">
-      <b>${esc(emp ? emp.Name : x.employee_code)}</b> (${esc(x.employee_code)}) • DOJ ${esc(emp ? emp.DOJ : '—')} → LWD ${fmtDate(x.lwd)} • Tenure ${years.toFixed(1)} saal
+      <b>${esc(emp ? emp.Name : x.employee_code)}</b> (${esc(x.employee_code)}) • DOJ ${esc(emp ? emp.DOJ : '—')} → LWD ${fmtDate(x.lwd)} • Tenure ${years.toFixed(1)} yrs
     </div>
     <h4 class="display font-bold mb-2 mt-0">Exit Checklist</h4>
     <div class="grid grid-cols-2 gap-1 text-sm">${assetsHtml}
@@ -2035,7 +2077,7 @@ async function openFnF(id){
       <div><label class="lbl">Pending Salary Days (last month)</label><input id="fnfDays" type="number" class="inp fnf-in" value="${fnf.days ?? 0}"></div>
       <div><label class="lbl">EL Encashment Days (bal: ${elBal})</label><input id="fnfEL" type="number" class="inp fnf-in" value="${fnf.el ?? elBal}"></div>
       <div><label class="lbl">Bonus / Incentive (₹)</label><input id="fnfBonus" type="number" class="inp fnf-in" value="${fnf.bonus ?? 0}"></div>
-      <div><label class="lbl">Gratuity (₹) ${years >= 5 ? '(auto: 15/26 × basic × yrs)' : '(<5 saal — 0)'}</label><input id="fnfGrat" type="number" class="inp fnf-in" value="${fnf.grat ?? gratuity}"></div>
+      <div><label class="lbl">Gratuity (₹) ${years >= 5 ? '(auto: 15/26 × basic × yrs)' : '(< 5 yrs — 0)'}</label><input id="fnfGrat" type="number" class="inp fnf-in" value="${fnf.grat ?? gratuity}"></div>
       <div><label class="lbl">Advance Recovery (₹) (open bal: ${fmtINR(advBal)})</label><input id="fnfAdv" type="number" class="inp fnf-in" value="${fnf.adv ?? advBal}"></div>
       <div><label class="lbl">Notice Shortfall Recovery Days</label><input id="fnfNotice" type="number" class="inp fnf-in" value="${fnf.notice ?? 0}"></div>
       <div><label class="lbl">Other Recovery (₹)</label><input id="fnfOther" type="number" class="inp fnf-in" value="${fnf.other ?? 0}"></div>
@@ -2160,7 +2202,7 @@ async function loadReports(){
     $('rpTrend').innerHTML = months.length ? months.map(m =>
       `<div class="mb-2"><div class="flex justify-between text-xs mb-1"><span class="font-semibold">${monthLabel(m)}</span><span class="money">Net ${fmtINR(byMonth[m].net)} • PF ${fmtINR(byMonth[m].pf)} • ESI ${fmtINR(byMonth[m].esi)}</span></div>
       <div class="progress-track"><div class="progress-fill" style="width:${Math.round(byMonth[m].net/maxN*100)}%"></div></div></div>`).join('')
-      : '<p style="color:var(--muted)">Abhi koi finalized payroll nahi — Payroll → Finalize karo.</p>';
+      : '<p style="color:var(--muted)">No finalized payroll yet — go to Payroll → Finalize.</p>';
   }catch(err){ notify(err.message, 'error'); }
 }
 
@@ -2171,14 +2213,14 @@ async function loadEngagement(){
   EMP.forEach(e => {
     const p = PROFILES[e['Employee code']] || {};
     if(p.dob && p.dob.slice(5,7) === mm) items.push({ d: p.dob.slice(8,10), txt: `🎂 ${e.Name} — Birthday (${fmtDate(p.dob).slice(0,6)})` });
-    if(e.DOJ){ const d = new Date(e.DOJ); if(!isNaN(d) && String(d.getMonth()+1).padStart(2,'0') === mm){ const yrs = new Date().getFullYear() - d.getFullYear(); if(yrs > 0) items.push({ d: String(d.getDate()).padStart(2,'0'), txt: `🏆 ${e.Name} — ${yrs} saal complete (Work Anniversary)` }); } }
+    if(e.DOJ){ const d = new Date(e.DOJ); if(!isNaN(d) && String(d.getMonth()+1).padStart(2,'0') === mm){ const yrs = new Date().getFullYear() - d.getFullYear(); if(yrs > 0) items.push({ d: String(d.getDate()).padStart(2,'0'), txt: `🏆 ${e.Name} — ${yrs} years completed (Work Anniversary)` }); } }
   });
-  $('dCelebrate').innerHTML = items.length ? items.sort((a,b) => a.d.localeCompare(b.d)).map(i => `<div class="p-2 rounded-lg" style="background:#f8fafc">${esc(i.txt)}</div>`).join('') : '<p style="color:var(--muted)">Is month koi birthday/anniversary nahi.</p>';
+  $('dCelebrate').innerHTML = items.length ? items.sort((a,b) => a.d.localeCompare(b.d)).map(i => `<div class="p-2 rounded-lg" style="background:#f8fafc">${esc(i.txt)}</div>`).join('') : '<p style="color:var(--muted)">No birthdays or anniversaries this month.</p>';
   try{
     const { data } = await sb.from('announcements').select('*').order('created_at', { ascending:false }).limit(5);
     $('annList').innerHTML = (data && data.length) ? data.map(a =>
       `<div class="p-2 rounded-lg flex items-center justify-between" style="background:var(--brand-soft)"><span><b>${esc(a.title)}</b> <span class="text-[10px]" style="color:var(--muted)">${fmtDate(a.created_at.slice(0,10))}</span></span>
-      <button class="btn btn-ghost btn-sm" data-act="del-ann" data-id="${a.id}"><i class="fa-solid fa-xmark"></i></button></div>`).join('') : '<p class="text-xs" style="color:var(--muted)">Koi announcement nahi.</p>';
+      <button class="btn btn-ghost btn-sm" data-act="del-ann" data-id="${a.id}"><i class="fa-solid fa-xmark"></i></button></div>`).join('') : '<p class="text-xs" style="color:var(--muted)">No announcements.</p>';
   }catch(e){ /* V3 SQL pending */ }
 }
 $('annAddBtn').addEventListener('click', async () => {
@@ -2188,6 +2230,87 @@ $('annAddBtn').addEventListener('click', async () => {
   $('annTitle').value = ''; loadEngagement();
 });
 
+/* ================= ID CARDS ================= */
+$('idValid').value = (new Date().getFullYear() + 1) + '-03-31';
+async function photoURL(code){
+  try{
+    const { data } = await sb.from('hr_documents').select('file_path').eq('employee_code', code).eq('doc_type','PHOTO').order('uploaded_at', { ascending:false }).limit(1);
+    if(data && data.length){
+      const { data: s } = await sb.storage.from('hr-docs').createSignedUrl(data[0].file_path, 600);
+      return s ? s.signedUrl : null;
+    }
+  }catch(e){}
+  return null;
+}
+function idCardHTML(e, photo, validTill){
+  const S = getSettings();
+  const code = e['Employee code'];
+  const p = PROFILES[code] || {};
+  const qr = 'https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=' + encodeURIComponent(code);
+  const photoEl = photo ? `<img class="id-photo" src="${photo}" alt="">` : `<div class="id-photo-fallback">${esc((e.Name||'?').charAt(0).toUpperCase())}</div>`;
+  return `<div class="idcard">
+    <div class="id-head">
+      <div style="font-weight:700;font-size:10px;letter-spacing:.03em">${esc(S.name).toUpperCase()}</div>
+      <div style="font-size:6.5px;opacity:.85">${esc(S.addr)}</div>
+    </div>
+    ${photoEl}
+    <div style="text-align:center;padding:1.5mm 2mm 0">
+      <div style="font-weight:700;font-size:11px">${esc(e.Name)}</div>
+      <div style="color:var(--brand);font-weight:600;font-size:8px">${esc(e.DESIGNATION || '')}</div>
+    </div>
+    <div style="padding:1.5mm 4mm 0;flex:1">
+      <table>
+        <tr><td style="color:#64748b;width:40%">Emp Code</td><td style="font-weight:700">${esc(code)}</td></tr>
+        <tr><td style="color:#64748b">Department</td><td>${esc(e.DEPARTMENT || '—')}</td></tr>
+        <tr><td style="color:#64748b">Joining</td><td>${esc(e.DOJ || '—')}</td></tr>
+        <tr><td style="color:#64748b">Valid Till</td><td>${fmtDate(validTill)}</td></tr>
+        <tr><td style="color:#64748b">Emergency</td><td>${esc(p.emergency_phone || S.phone || '—')}</td></tr>
+      </table>
+    </div>
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;padding:0 4mm 3mm">
+      <img src="${qr}" style="width:13mm;height:13mm" alt="QR">
+      <div style="text-align:right;font-size:6.5px;color:#64748b">Authorised Signatory<br><b style="font-size:8px;color:#0f172a">${esc(S.hr || '')}</b></div>
+    </div>
+  </div>
+  <div class="idcard">
+    <div style="padding:4mm;flex:1">
+      <div style="font-weight:700;font-size:9px;border-bottom:.3mm solid #e2e8f0;padding-bottom:1.5mm;margin-bottom:2mm">TERMS OF USE</div>
+      <ol style="padding-left:4mm;margin:0;color:#334155">
+        <li>This card is the property of ${esc(S.name)} and must be returned on separation.</li>
+        <li>The card is non-transferable and must be carried at all times within the premises.</li>
+        <li>Loss of the card must be reported to HR immediately.</li>
+        <li>Misuse of this card will invite disciplinary action.</li>
+      </ol>
+      <div style="margin-top:3mm;font-size:7.5px">
+        <div style="color:#64748b">If found, please return to:</div>
+        <b>${esc(S.name)}</b><br>${esc(S.addr)}<br>${S.phone ? 'Ph: ' + esc(S.phone) : ''} ${S.email ? '• ' + esc(S.email) : ''}
+      </div>
+    </div>
+    <div style="background:#0f172a;color:#94a3b8;text-align:center;padding:2mm;font-size:6.5px">${esc(code)} • Issued ${new Date().toLocaleDateString('en-IN')}</div>
+  </div>`;
+}
+$('idGenBtn').addEventListener('click', async () => {
+  const sel = $('idEmp').value;
+  const validTill = $('idValid').value || '';
+  const list = sel === 'ALL' ? activeEmps() : activeEmps().filter(e => e['Employee code'] === sel);
+  if(!list.length) return notify('No employees found', 'error');
+  const btn = $('idGenBtn');
+  btn.innerHTML = '<div class="loader-ring"></div> Generating…'; btn.disabled = true;
+  try{
+    const parts = [];
+    for(const e of list){
+      const photo = await photoURL(e['Employee code']);
+      parts.push(idCardHTML(e, photo, validTill));
+    }
+    $('idWrap').innerHTML = parts.join('');
+    $('idDesk').classList.remove('hidden');
+    $('idPrintBtn').classList.remove('hidden');
+  }finally{
+    btn.innerHTML = '<i class="fa-solid fa-id-card"></i> Generate'; btn.disabled = false;
+  }
+});
+$('idPrintBtn').addEventListener('click', () => printHTML('<div style="display:flex;flex-wrap:wrap;gap:6mm;padding:6mm">' + $('idWrap').innerHTML + '</div>'));
+
 function dlText(name, content, mime){
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([content], { type: mime || 'text/plain' }));
@@ -2195,7 +2318,7 @@ function dlText(name, content, mime){
 }
 
 $('holAddBtn').addEventListener('click', async () => {
-  if(!$('holDate').value) return notify('Date select karo', 'error');
+  if(!$('holDate').value) return notify('Please select a date', 'error');
   try{
     const { data, error } = await sb.from('holidays').insert([{ date: $('holDate').value, name: $('holName').value }]).select();
     if(error) throw error;
