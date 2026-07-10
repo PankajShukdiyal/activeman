@@ -74,6 +74,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
 .c-A{background:#fef2f2;color:#dc2626}
 .c-WO{background:#f1f5f9;color:#94a3b8}
 .c-H{background:var(--brand-soft);color:var(--brand);font-weight:700}
+.c-LV{background:#f5f3ff;color:#7c3aed;font-weight:700}
 
 /* ---------- Toast ---------- */
 #toastWrap{position:fixed;bottom:22px;right:22px;z-index:100;display:flex;flex-direction:column;gap:8px}
@@ -142,6 +143,8 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
     <button class="nav-item active" data-page="dashboard"><i class="fa-solid fa-gauge-high"></i> Dashboard</button>
     <button class="nav-item" data-page="employees"><i class="fa-solid fa-users"></i> Employees</button>
     <button class="nav-item" data-page="attendance"><i class="fa-solid fa-calendar-days"></i> Attendance</button>
+    <button class="nav-item" data-page="shifts"><i class="fa-solid fa-clock-rotate-left"></i> Shifts</button>
+    <button class="nav-item" data-page="leaves"><i class="fa-solid fa-umbrella-beach"></i> Leaves</button>
     <button class="nav-item" data-page="payroll"><i class="fa-solid fa-indian-rupee-sign"></i> Payroll</button>
     <button class="nav-item" data-page="advances"><i class="fa-solid fa-hand-holding-dollar"></i> Advances</button>
     <button class="nav-item" data-page="letters"><i class="fa-solid fa-file-signature"></i> Letters</button>
@@ -203,11 +206,77 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
     <div><label class="lbl">Month</label><input type="month" id="attMonth" class="inp"></div>
     <button id="attLoadBtn" class="btn btn-primary mt-4"><i class="fa-solid fa-rotate"></i> Load Register</button>
     <button id="attCsvBtn" class="btn btn-ghost mt-4"><i class="fa-solid fa-file-csv"></i> Export CSV</button>
+    <button id="attFixBtn" class="btn btn-ghost mt-4"><i class="fa-solid fa-user-clock"></i> Manual Punch / Fix</button>
     <div class="ml-auto mt-4 flex gap-2 text-[11px] items-center flex-wrap">
-      <span class="chip c-P">P Present</span><span class="chip c-L">L Late</span><span class="chip c-A">A Absent</span><span class="chip c-WO">WO Week Off</span><span class="chip c-H">H Holiday</span>
+      <span class="chip c-P">P Present</span><span class="chip c-L">L Late</span><span class="chip c-A">A Absent</span><span class="chip c-WO">WO Week Off</span><span class="chip c-H">H Holiday</span><span class="chip c-LV">LV Leave</span>
     </div>
   </div>
   <div class="card reg-wrap" id="attRegisterWrap"><p style="color:var(--muted)">Select month and load the register.</p></div>
+</div>
+
+<!-- ================= SHIFTS ================= -->
+<div class="page" id="page-shifts">
+  <div class="grid lg:grid-cols-3 gap-4">
+    <div class="card">
+      <h3 class="display font-bold mt-0 mb-3">Add Shift</h3>
+      <label class="lbl">Shift Name</label><input id="shName" class="inp mb-3" placeholder="Morning / Evening / Night A">
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="lbl">Start Time</label><input id="shStart" type="time" class="inp" value="09:30"></div>
+        <div><label class="lbl">End Time</label><input id="shEnd" type="time" class="inp" value="18:00"></div>
+      </div>
+      <label class="lbl mt-3" style="margin-top:12px;display:block">Grace (minutes) — iske baad Late</label>
+      <input id="shGrace" type="number" class="inp mb-3" value="10">
+      <label class="flex items-center gap-2 text-sm mb-4"><input type="checkbox" id="shNight"> Night shift (agle din khatam hoti hai)</label>
+      <button id="shSaveBtn" class="btn btn-primary w-full justify-center"><i class="fa-solid fa-plus"></i> Save Shift</button>
+      <p class="text-[11px] mt-3" style="color:var(--muted)">Employee ko shift assign karne ke liye Employees → Profile kholo. Late ab assigned shift ke start + grace se calculate hota hai.</p>
+    </div>
+    <div class="card lg:col-span-2" style="padding:0;overflow:hidden">
+      <div class="p-4 border-b" style="border-color:var(--line)"><h3 class="display font-bold m-0">Shifts</h3></div>
+      <table class="tbl" id="shTable">
+        <thead><tr><th>Name</th><th>Timing</th><th>Grace</th><th>Hours</th><th>Employees</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ================= LEAVES ================= -->
+<div class="page" id="page-leaves">
+  <div class="grid lg:grid-cols-3 gap-4">
+    <div class="card">
+      <h3 class="display font-bold mt-0 mb-3">Apply Leave (Admin)</h3>
+      <label class="lbl">Employee</label><select id="lvEmp" class="inp mb-3"></select>
+      <label class="lbl">Leave Type</label>
+      <select id="lvType" class="inp mb-3">
+        <option value="CL">Casual Leave (Paid)</option>
+        <option value="SL">Sick Leave (Paid)</option>
+        <option value="EL">Earned Leave (Paid)</option>
+        <option value="ML">Maternity Leave (Paid)</option>
+        <option value="PL">Paternity Leave (Paid)</option>
+        <option value="LWP">Leave Without Pay</option>
+      </select>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="lbl">From</label><input id="lvFrom" type="date" class="inp"></div>
+        <div><label class="lbl">To</label><input id="lvTo" type="date" class="inp"></div>
+      </div>
+      <label class="lbl" style="margin-top:12px;display:block">Reason</label>
+      <input id="lvReason" class="inp mb-4" placeholder="Optional">
+      <button id="lvSaveBtn" class="btn btn-primary w-full justify-center"><i class="fa-solid fa-check"></i> Approve & Save</button>
+      <div id="lvBalance" class="mt-4 text-xs p-3 rounded-xl hidden" style="background:var(--brand-soft)"></div>
+    </div>
+    <div class="card lg:col-span-2" style="padding:0;overflow:hidden">
+      <div class="p-4 border-b flex items-center justify-between" style="border-color:var(--line)">
+        <h3 class="display font-bold m-0">Leave Records</h3>
+        <input type="month" id="lvMonth" class="inp" style="max-width:170px">
+      </div>
+      <div style="overflow-x:auto">
+        <table class="tbl" id="lvTable">
+          <thead><tr><th>Employee</th><th>Type</th><th>From</th><th>To</th><th>Days</th><th>Reason</th><th>Status</th><th></th></tr></thead>
+          <tbody><tr><td colspan="8" class="text-center py-8" style="color:var(--muted)">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ================= PAYROLL ================= -->
@@ -226,9 +295,9 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
     <div style="overflow-x:auto">
       <table class="tbl" id="payTable">
         <thead><tr>
-          <th>Employee</th><th>Paid Days</th><th>LOP</th><th>Earned Gross</th><th>PF</th><th>ESI</th><th>PT</th><th>Advance</th><th>Other Ded.</th><th>Bonus</th><th>Net Pay</th><th></th>
+          <th>Employee</th><th>Paid Days</th><th>Leave</th><th>LOP</th><th>Earned Gross</th><th>OT Hrs</th><th>OT Pay</th><th>PF</th><th>ESI</th><th>PT</th><th>Advance</th><th>Other Ded.</th><th>Bonus</th><th>Net Pay</th><th></th>
         </tr></thead>
-        <tbody><tr><td colspan="12" class="text-center py-8" style="color:var(--muted)">Run payroll to see calculations. Salary structure Employees page se set hoti hai.</td></tr></tbody>
+        <tbody><tr><td colspan="15" class="text-center py-8" style="color:var(--muted)">Run payroll to see calculations. Salary structure Employees page se set hoti hai.</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -316,6 +385,11 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
         <div><label class="lbl">ESI % (of Gross)</label><input id="setESI" type="number" step="0.01" class="inp" value="0.75"></div>
         <div><label class="lbl">ESI Gross Limit (₹)</label><input id="setESILimit" type="number" class="inp" value="21000"></div>
         <div><label class="lbl">Professional Tax (₹/month)</label><input id="setPT" type="number" class="inp" value="0"></div>
+        <div><label class="lbl">OT Rate Multiplier</label><input id="setOTMult" type="number" step="0.5" class="inp" value="1" title="1 = single rate, 2 = double"></div>
+        <div><label class="lbl">OT Counts After (mins beyond shift)</label><input id="setOTAfter" type="number" class="inp" value="30"></div>
+        <div><label class="lbl">CL / Year</label><input id="setCL" type="number" class="inp" value="7"></div>
+        <div><label class="lbl">SL / Year</label><input id="setSL" type="number" class="inp" value="7"></div>
+        <div><label class="lbl">EL / Year</label><input id="setEL" type="number" class="inp" value="15"></div>
       </div>
       <h3 class="display font-bold mt-6 mb-3">Holidays</h3>
       <div class="flex gap-2 mb-3">
@@ -351,6 +425,17 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
       <div><label class="lbl">Date of Birth</label><input id="epDOB" type="date" class="inp"></div>
       <div class="col-span-2"><label class="lbl">Address</label><input id="epAddr" class="inp"></div>
     </div>
+    <h4 class="display font-bold mt-5 mb-2">Employment Details</h4>
+    <div class="grid grid-cols-3 gap-3">
+      <div><label class="lbl">Shift</label><select id="epShift" class="inp"></select></div>
+      <div><label class="lbl">Grade</label><input id="epGrade" class="inp" placeholder="A / B / Worker"></div>
+      <div><label class="lbl">Employment Type</label>
+        <select id="epType" class="inp"><option>Permanent</option><option>Contract</option><option>Probation</option><option>Trainee</option><option>Piece Rate</option></select></div>
+      <div><label class="lbl">Reporting Manager</label><input id="epManager" class="inp"></div>
+      <div><label class="lbl">Work Location / Unit</label><input id="epLocation" class="inp" placeholder="IMT Manesar - Unit 1"></div>
+      <div><label class="lbl">Emergency Contact</label><input id="epEmName" class="inp" placeholder="Name"></div>
+      <div><label class="lbl">Emergency Phone</label><input id="epEmPhone" class="inp"></div>
+    </div>
     <h4 class="display font-bold mt-5 mb-2">Salary Structure (Monthly)</h4>
     <div class="grid grid-cols-4 gap-3">
       <div><label class="lbl">Basic</label><input id="epBasic" type="number" class="inp sal-part" value="0"></div>
@@ -376,6 +461,17 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
       <div><label class="lbl">UAN (PF)</label><input id="epUAN" class="inp"></div>
       <div><label class="lbl">ESI No.</label><input id="epESINo" class="inp"></div>
     </div>
+    <h4 class="display font-bold mt-5 mb-2">Documents <span class="text-[10px] font-normal" style="color:var(--muted)">(private storage — sirf login ke baad accessible)</span></h4>
+    <div class="flex gap-2 items-end flex-wrap">
+      <div><label class="lbl">Type</label>
+        <select id="docType" class="inp" style="min-width:140px">
+          <option>AADHAAR</option><option>PAN</option><option>PHOTO</option><option>SIGNATURE</option>
+          <option>BANK</option><option>UAN</option><option>ESIC</option><option>EDUCATION</option><option>EXPERIENCE</option><option>OTHER</option>
+        </select></div>
+      <div style="flex:1;min-width:160px"><label class="lbl">File</label><input id="docFile" type="file" class="inp" accept="image/*,.pdf"></div>
+      <button id="docUploadBtn" class="btn btn-ghost"><i class="fa-solid fa-cloud-arrow-up"></i> Upload</button>
+    </div>
+    <div id="docList" class="mt-3 space-y-1 text-xs"></div>
     <button id="epSaveBtn" class="btn btn-primary w-full justify-center mt-5"><i class="fa-solid fa-floppy-disk"></i> Save Profile</button>
   </div>
 </div>
@@ -391,6 +487,23 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
   </div>
 </div>
 
+<!-- ================= MANUAL PUNCH MODAL ================= -->
+<div class="modal" id="fixModal">
+  <div class="modal-box" style="max-width:460px">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="display font-bold text-lg m-0">Manual Punch / Fix</h3>
+      <button class="btn btn-ghost btn-sm" data-close="fixModal"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <label class="lbl">Employee</label><select id="fxEmp" class="inp mb-3"></select>
+    <label class="lbl">Date</label><input id="fxDate" type="date" class="inp mb-3">
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="lbl">In Time</label><input id="fxIn" type="time" class="inp"></div>
+      <div><label class="lbl">Out Time (optional)</label><input id="fxOut" type="time" class="inp"></div>
+    </div>
+    <p class="text-[11px] mt-2" style="color:var(--muted)">Agar us din ka record already hai to update hoga (missing punch fix), warna naya banega. Late shift ke hisaab se auto-lagega.</p>
+    <button id="fxSaveBtn" class="btn btn-primary w-full justify-center mt-4"><i class="fa-solid fa-floppy-disk"></i> Save Punch</button>
+  </div>
+</div>
 <div id="printArea"></div>
 <div id="toastWrap"></div>
 
@@ -409,6 +522,8 @@ let SETTINGS = {};       // company_settings.data
 let HOLIDAYS = [];       // [{date,name}]
 let PAY_ROWS = [];       // current payroll calculation
 let PAY_MONTH = "";
+let SHIFTS = [];         // shift master
+let LEAVES_CACHE = [];   // month leaves for register
 const $ = id => document.getElementById(id);
 
 /* ---------------- Helpers ---------------- */
@@ -455,13 +570,39 @@ function getSettings(){
   return Object.assign({
     name:'Zooto Fashion Pvt Ltd', addr:'IMT Manesar, Gurugram, Haryana', phone:'', email:'', cin:'',
     hr:'', hrDesig:'Director', probation:6, notice:30,
-    weekOff:0, latesHalf:3, pfPct:12, pfCap:15000, esiPct:0.75, esiLimit:21000, pt:0
+    weekOff:0, latesHalf:3, pfPct:12, pfCap:15000, esiPct:0.75, esiLimit:21000, pt:0,
+    otMult:1, otAfter:30, cl:7, sl:7, el:15
   }, SETTINGS || {});
 }
 function grossOf(code){
   const p = PROFILES[code] || {};
   return (Number(p.basic)||0) + (Number(p.hra)||0) + (Number(p.conveyance)||0) + (Number(p.special_allowance)||0);
 }
+function shiftOf(code){
+  const p = PROFILES[code] || {};
+  return SHIFTS.find(s => String(s.id) === String(p.shift_id)) || SHIFTS[0] || { name:'General', start_time:'09:30', end_time:'18:00', grace_mins:10 };
+}
+function shiftHours(s){
+  const [sh,sm] = s.start_time.split(':').map(Number);
+  const [eh,em] = s.end_time.split(':').map(Number);
+  let mins = (eh*60+em) - (sh*60+sm);
+  if(mins <= 0) mins += 24*60; // night shift
+  return mins/60;
+}
+function isLateFor(inTime, s){
+  if(!inTime) return false;
+  const t = inTime.substring(0,5);
+  const [h,m] = s.start_time.split(':').map(Number);
+  const cut = h*60 + m + (Number(s.grace_mins)||0);
+  const [th,tm] = t.split(':').map(Number);
+  return (th*60+tm) > cut;
+}
+function hoursOf(hhmm){
+  if(!hhmm) return 0;
+  const [h,m] = hhmm.split(':').map(Number);
+  return (h||0) + (m||0)/60;
+}
+const PAID_LEAVES = ['CL','SL','EL','ML','PL'];
 
 /* ---------------- Auth ---------------- */
 $('loginBtn').addEventListener('click', async () => {
@@ -496,12 +637,14 @@ sb.auth.getSession().then(({ data:{ session } }) => { if(session) enterApp(); })
 /* ---------------- Core data ---------------- */
 async function loadCore(){
   try{
-    const [empRes, profRes, setRes, holRes] = await Promise.all([
+    const [empRes, profRes, setRes, holRes, shRes] = await Promise.all([
       sb.from('employees').select('Name, "Employee code", Status, DEPARTMENT, DESIGNATION, DOJ').order('Name'),
       sb.from('hr_profiles').select('*'),
       sb.from('company_settings').select('data').eq('id', 1).maybeSingle(),
-      sb.from('holidays').select('*').order('date')
+      sb.from('holidays').select('*').order('date'),
+      sb.from('shifts').select('*').order('id')
     ]);
+    SHIFTS = shRes.data || [];
     if(empRes.error) throw empRes.error;
     EMP = empRes.data || [];
     PROFILES = {};
@@ -512,6 +655,7 @@ async function loadCore(){
     fillEmpSelects();
     fillSettingsForm();
     renderHolidays();
+    renderShifts();
   }catch(err){
     console.error(err);
     notify('Data load failed: ' + err.message + ' — SQL setup run kiya?', 'error');
@@ -522,10 +666,13 @@ function fillEmpSelects(){
   const opts = activeEmps().map(e => `<option value="${esc(e['Employee code'])}">${esc(e.Name)} (${esc(e['Employee code'])})</option>`).join('');
   $('advEmp').innerHTML = opts;
   $('letterEmp').innerHTML = opts;
+  $('lvEmp').innerHTML = opts;
+  $('fxEmp').innerHTML = opts;
+  $('epShift').innerHTML = SHIFTS.map(s => `<option value="${s.id}">${esc(s.name)} (${esc(s.start_time)}–${esc(s.end_time)})</option>`).join('');
 }
 
 /* ---------------- Router ---------------- */
-const TITLES = { dashboard:'Dashboard', employees:'Employees', attendance:'Attendance Register', payroll:'Payroll', advances:'Advances & Loans', letters:'HR Letters', settings:'Settings' };
+const TITLES = { dashboard:'Dashboard', employees:'Employees', attendance:'Attendance Register', shifts:'Shift Master', leaves:'Leave Management', payroll:'Payroll', advances:'Advances & Loans', letters:'HR Letters', settings:'Settings' };
 document.querySelectorAll('.nav-item[data-page]').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
@@ -536,6 +683,7 @@ document.querySelectorAll('.nav-item[data-page]').forEach(btn => {
     $('pageTitle').innerText = TITLES[page];
     if(page === 'dashboard') loadDashboard();
     if(page === 'advances') loadAdvances();
+    if(page === 'leaves') loadLeaves();
   });
 });
 document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => $(b.dataset.close).classList.remove('show')));
@@ -634,6 +782,11 @@ function openEmpModal(code){
   $('epPF').checked = p.pf_applicable !== false; $('epESI').checked = p.esi_applicable !== false; $('epPT').checked = p.pt_applicable !== false;
   $('epBank').value = p.bank_name || ''; $('epAcc').value = p.account_no || ''; $('epIFSC').value = p.ifsc || '';
   $('epPAN').value = p.pan || ''; $('epUAN').value = p.uan || ''; $('epESINo').value = p.esi_no || '';
+  if(p.shift_id) $('epShift').value = p.shift_id;
+  $('epGrade').value = p.grade || ''; $('epType').value = p.employment_type || 'Permanent';
+  $('epManager').value = p.reporting_manager || ''; $('epLocation').value = p.work_location || '';
+  $('epEmName').value = p.emergency_name || ''; $('epEmPhone').value = p.emergency_phone || '';
+  loadDocs(code);
   updateGrossPreview();
   $('empModal').classList.add('show');
 }
@@ -655,7 +808,11 @@ $('epSaveBtn').addEventListener('click', async () => {
       conveyance: Number($('epConv').value)||0, special_allowance: Number($('epSpecial').value)||0,
       pf_applicable: $('epPF').checked, esi_applicable: $('epESI').checked, pt_applicable: $('epPT').checked,
       bank_name: $('epBank').value, account_no: $('epAcc').value, ifsc: $('epIFSC').value,
-      pan: $('epPAN').value, uan: $('epUAN').value, esi_no: $('epESINo').value
+      pan: $('epPAN').value, uan: $('epUAN').value, esi_no: $('epESINo').value,
+      shift_id: Number($('epShift').value) || null,
+      grade: $('epGrade').value, employment_type: $('epType').value,
+      reporting_manager: $('epManager').value, work_location: $('epLocation').value,
+      emergency_name: $('epEmName').value, emergency_phone: $('epEmPhone').value
     };
     const { error } = await sb.from('hr_profiles').upsert(row, { onConflict: 'employee_code' });
     if(error) throw error;
@@ -673,6 +830,24 @@ async function fetchMonthAttendance(ym){
     .gte('date', ym + '-01').lte('date', ym + '-31');
   if(error) throw error;
   return data || [];
+}
+async function fetchMonthLeaves(ym){
+  const dim = daysInMonth(ym);
+  const first = ym + '-01', last = ym + '-' + String(dim).padStart(2,'0');
+  const { data } = await sb.from('leaves').select('*').eq('status','APPROVED').lte('from_date', last).gte('to_date', first);
+  const map = {}; // code -> Set of ISO dates (paid leave only for register/payroll)
+  (data || []).forEach(L => {
+    if(!PAID_LEAVES.includes(L.leave_type)) return;
+    map[L.employee_code] = map[L.employee_code] || new Set();
+    let d = new Date(L.from_date + 'T00:00:00');
+    const end = new Date(L.to_date + 'T00:00:00');
+    while(d <= end){
+      const iso = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      if(iso.startsWith(ym)) map[L.employee_code].add(iso);
+      d.setDate(d.getDate()+1);
+    }
+  });
+  return map;
 }
 function buildDayStatus(ym, rows){
   const S = getSettings();
@@ -702,25 +877,29 @@ async function loadRegister(){
   try{
     const rows = await fetchMonthAttendance(ym);
     const { attMap, dayMeta } = buildDayStatus(ym, rows);
+    const lvMap = await fetchMonthLeaves(ym);
     const emps = activeEmps();
     REG_CSV = [];
     let head = '<tr><th class="name-cell">Employee</th>' + dayMeta.map(x => `<th>${x.d}</th>`).join('') + '<th>P</th><th>L</th><th>A</th></tr>';
     let body = emps.map(e => {
       const code = e['Employee code'];
-      let p = 0, l = 0, a = 0;
+      const sh = shiftOf(code);
+      const lvSet = lvMap[code] || new Set();
+      let p = 0, l = 0, a = 0, lv = 0;
       const cells = dayMeta.map(x => {
         const r = (attMap[code] || {})[x.iso];
         const future = x.iso > todayISO();
         let cls = '', txt = '';
-        if(r){ const isL = (r.in_time||'').includes('LATE'); cls = isL ? 'c-L' : 'c-P'; txt = isL ? 'L' : 'P'; p++; if(isL) l++; }
+        if(r){ const isL = isLateFor(r.in_time, sh); cls = isL ? 'c-L' : 'c-P'; txt = isL ? 'L' : 'P'; p++; if(isL) l++; }
+        else if(lvSet.has(x.iso) && !x.isWO && !x.isH){ cls = 'c-LV'; txt = 'LV'; lv++; }
         else if(x.isH){ cls = 'c-H'; txt = 'H'; }
         else if(x.isWO){ cls = 'c-WO'; txt = 'WO'; }
         else if(future){ txt = ''; }
         else { cls = 'c-A'; txt = 'A'; a++; }
         return `<td class="${cls}" title="${x.iso}${r ? ' | IN ' + esc(r.in_time||'') + (r.out_time ? ' OUT ' + esc(r.out_time) : '') : ''}">${txt}</td>`;
       }).join('');
-      REG_CSV.push([e.Name, code, p, l, a]);
-      return `<tr><td class="name-cell">${esc(e.Name)}<br><span class="text-[10px] font-normal" style="color:var(--muted)">${esc(code)}</span></td>${cells}
+      REG_CSV.push([e.Name, code, sh.name, p, l, lv, a]);
+      return `<tr><td class="name-cell">${esc(e.Name)}<br><span class="text-[10px] font-normal" style="color:var(--muted)">${esc(code)} • ${esc(sh.name)}</span></td>${cells}
         <td class="c-P">${p}</td><td class="c-L">${l}</td><td class="c-A">${a}</td></tr>`;
     }).join('');
     wrap.innerHTML = `<table class="reg"><thead>${head}</thead><tbody>${body}</tbody></table>`;
@@ -728,7 +907,7 @@ async function loadRegister(){
 }
 $('attCsvBtn').addEventListener('click', () => {
   if(!REG_CSV.length) return notify('Pehle register load karo', 'error');
-  const csv = 'data:text/csv;charset=utf-8,' + [['Name','Code','Present','Late','Absent'].join(','), ...REG_CSV.map(r => r.join(','))].join('\n');
+  const csv = 'data:text/csv;charset=utf-8,' + [['Name','Code','Shift','Present','Late','Leave','Absent'].join(','), ...REG_CSV.map(r => r.join(','))].join('\n');
   const a = document.createElement('a');
   a.href = encodeURI(csv); a.download = `Attendance_Summary_${$('attMonth').value}.csv`;
   document.body.appendChild(a); a.click(); a.remove();
@@ -754,14 +933,31 @@ async function runPayroll(){
     const woCount = dayMeta.filter(x => x.isWO).length;
     const hCount = dayMeta.filter(x => x.isH && !x.isWO).length;
 
+    const lvMap = await fetchMonthLeaves(ym);
+
     PAY_ROWS = activeEmps().map(e => {
       const code = e['Employee code'];
       const p = PROFILES[code] || {};
       const days = attMap[code] || {};
-      let present = 0, lates = 0;
-      dayMeta.forEach(x => { const r = days[x.iso]; if(r && !x.isWO && !x.isH){ present++; if((r.in_time||'').includes('LATE')) lates++; } });
+      const sh = shiftOf(code);
+      const shHrs = shiftHours(sh);
+      const lvSet = lvMap[code] || new Set();
+      let present = 0, lates = 0, otHours = 0, leaveDays = 0;
+      dayMeta.forEach(x => {
+        const r = days[x.iso];
+        if(r && !x.isWO && !x.isH){
+          present++;
+          if(isLateFor(r.in_time, sh)) lates++;
+          const worked = hoursOf(r.total_hours);
+          const extra = worked - shHrs;
+          if(worked > 0 && extra * 60 >= Number(S.otAfter)) otHours += extra;
+        } else if(lvSet.has(x.iso) && !x.isWO && !x.isH){
+          leaveDays++;
+        }
+      });
+      otHours = Math.round(otHours * 2) / 2; // nearest 0.5
       const lateLOP = Math.floor(lates / Math.max(1, Number(S.latesHalf))) * 0.5;
-      let paidDays = Math.min(dim, present + woCount + hCount) - lateLOP;
+      let paidDays = Math.min(dim, present + leaveDays + woCount + hCount) - lateLOP;
       paidDays = Math.max(0, paidDays);
       const lop = +(dim - paidDays).toFixed(1);
       const ratio = paidDays / dim;
@@ -781,10 +977,14 @@ async function runPayroll(){
       const advs = advMap[code] || [];
       const advDed = advs.reduce((a,x) => a + Math.min(Number(x.emi)||0, Number(x.balance)||0), 0);
 
+      const perHour = fullGross > 0 ? fullGross / (dim * shHrs) : 0;
+
       return { code, name: e.Name, dept: e.DEPARTMENT, desig: e.DESIGNATION,
-        dim, present, lates, lateLOP, paidDays: +paidDays.toFixed(1), lop,
+        dim, present, lates, lateLOP, leaveDays, paidDays: +paidDays.toFixed(1), lop,
+        shiftName: sh.name, shHrs, perHour,
         basic: Math.round(basic), hra: Math.round(hra), conv: Math.round(conv), spl: Math.round(spl),
         earnedGross: Math.round(earnedGross), pf, esi, pt,
+        otHours, otPay: Math.round(perHour * otHours * Number(S.otMult)),
         advDed: Math.round(advDed), advRefs: advs.map(a => a.id),
         otherDed: 0, bonus: 0, hasSalary: fullGross > 0 };
     });
@@ -795,7 +995,7 @@ async function runPayroll(){
   finally{ btn.innerHTML = '<i class="fa-solid fa-calculator"></i> Calculate Payroll'; btn.disabled = false; }
 }
 
-function netOf(r){ return Math.max(0, Math.round(r.earnedGross + r.bonus - r.pf - r.esi - r.pt - r.advDed - r.otherDed)); }
+function netOf(r){ return Math.max(0, Math.round(r.earnedGross + r.bonus + (r.otPay||0) - r.pf - r.esi - r.pt - r.advDed - r.otherDed)); }
 
 function renderPayTable(){
   const tb = $('payTable').querySelector('tbody');
@@ -804,10 +1004,13 @@ function renderPayTable(){
     const net = netOf(r); total += net;
     const warn = r.hasSalary ? '' : ' <span class="chip chip-bad">No salary set</span>';
     return `<tr>
-      <td><div class="font-semibold">${esc(r.name)}${warn}</div><div class="text-[10px]" style="color:var(--muted)">${esc(r.code)} • ${r.present}P / ${r.lates}L</div></td>
+      <td><div class="font-semibold">${esc(r.name)}${warn}</div><div class="text-[10px]" style="color:var(--muted)">${esc(r.code)} • ${esc(r.shiftName)} • ${r.present}P / ${r.lates}L</div></td>
       <td class="money">${r.paidDays}/${r.dim}</td>
+      <td class="money" style="color:${r.leaveDays ? '#7c3aed' : 'var(--muted)'}">${r.leaveDays}</td>
       <td class="money" style="color:${r.lop > 0 ? 'var(--bad)' : 'var(--muted)'}">${r.lop}</td>
       <td class="money font-semibold">${fmtINR(r.earnedGross)}</td>
+      <td><input type="number" step="0.5" class="inp money" style="width:70px;padding:5px 8px" value="${r.otHours}" data-pay="otHours" data-i="${i}"></td>
+      <td class="money" id="otpay-${i}">${fmtINR(r.otPay)}</td>
       <td class="money">${fmtINR(r.pf)}</td>
       <td class="money">${fmtINR(r.esi)}</td>
       <td class="money">${fmtINR(r.pt)}</td>
@@ -825,6 +1028,11 @@ $('payTable').addEventListener('input', e => {
   if(!inp.dataset.pay) return;
   const i = Number(inp.dataset.i);
   PAY_ROWS[i][inp.dataset.pay] = Number(inp.value) || 0;
+  if(inp.dataset.pay === 'otHours'){
+    const r = PAY_ROWS[i];
+    r.otPay = Math.round(r.perHour * r.otHours * Number(getSettings().otMult));
+    $('otpay-' + i).innerText = fmtINR(r.otPay);
+  }
   $('net-' + i).innerText = fmtINR(netOf(PAY_ROWS[i]));
   $('payTotal').innerText = fmtINR(PAY_ROWS.reduce((a,r) => a + netOf(r), 0));
 });
@@ -881,7 +1089,7 @@ function slipHTML(r){
       <tr><th style="width:22%">Employee</th><td style="width:28%">${esc(r.name)}</td><th style="width:22%">Employee Code</th><td>${esc(r.code)}</td></tr>
       <tr><th>Department</th><td>${esc(r.dept || '—')}</td><th>Designation</th><td>${esc(r.desig || '—')}</td></tr>
       <tr><th>Bank / A/c</th><td>${esc(p.bank_name || '—')} ${p.account_no ? '/ ' + esc(p.account_no) : ''}</td><th>PAN / UAN</th><td>${esc(p.pan || '—')} / ${esc(p.uan || '—')}</td></tr>
-      <tr><th>Days in Month</th><td>${r.dim}</td><th>Paid Days</th><td><b>${r.paidDays}</b> (LOP ${r.lop}${r.lateLOP ? ', incl. ' + r.lateLOP + ' late-cut' : ''})</td></tr>
+      <tr><th>Days in Month</th><td>${r.dim}</td><th>Paid Days</th><td><b>${r.paidDays}</b> (Leave ${r.leaveDays||0}, LOP ${r.lop}${r.lateLOP ? ', incl. ' + r.lateLOP + ' late-cut' : ''})</td></tr>
     </tbody></table>
     <table class="ann">
       <thead><tr><th style="width:35%">Earnings</th><th style="width:15%;text-align:right">Amount (₹)</th><th style="width:35%">Deductions</th><th style="width:15%;text-align:right">Amount (₹)</th></tr></thead>
@@ -890,8 +1098,9 @@ function slipHTML(r){
         <tr><td>HRA</td><td style="text-align:right">${r.hra.toLocaleString('en-IN')}</td><td>ESI</td><td style="text-align:right">${r.esi.toLocaleString('en-IN')}</td></tr>
         <tr><td>Conveyance</td><td style="text-align:right">${r.conv.toLocaleString('en-IN')}</td><td>Professional Tax</td><td style="text-align:right">${r.pt.toLocaleString('en-IN')}</td></tr>
         <tr><td>Special Allowance</td><td style="text-align:right">${r.spl.toLocaleString('en-IN')}</td><td>Advance Recovery</td><td style="text-align:right">${r.advDed.toLocaleString('en-IN')}</td></tr>
-        <tr><td>Bonus / Incentive</td><td style="text-align:right">${r.bonus.toLocaleString('en-IN')}</td><td>Other Deduction</td><td style="text-align:right">${r.otherDed.toLocaleString('en-IN')}</td></tr>
-        <tr><th>Gross Earnings</th><th style="text-align:right">${(r.earnedGross + r.bonus).toLocaleString('en-IN')}</th><th>Total Deductions</th><th style="text-align:right">${totalDed.toLocaleString('en-IN')}</th></tr>
+        <tr><td>Overtime (${r.otHours || 0} hrs)</td><td style="text-align:right">${(r.otPay||0).toLocaleString('en-IN')}</td><td>Other Deduction</td><td style="text-align:right">${r.otherDed.toLocaleString('en-IN')}</td></tr>
+        <tr><td>Bonus / Incentive</td><td style="text-align:right">${r.bonus.toLocaleString('en-IN')}</td><td></td><td></td></tr>
+        <tr><th>Gross Earnings</th><th style="text-align:right">${(r.earnedGross + r.bonus + (r.otPay||0)).toLocaleString('en-IN')}</th><th>Total Deductions</th><th style="text-align:right">${totalDed.toLocaleString('en-IN')}</th></tr>
       </tbody>
     </table>
     <div style="display:flex;justify-content:space-between;align-items:center;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:8px;padding:10px 14px;margin-top:8px">
@@ -971,6 +1180,28 @@ document.body.addEventListener('click', async e => {
     await sb.from('holidays').delete().eq('id', el.dataset.id);
     HOLIDAYS = HOLIDAYS.filter(h => String(h.id) !== String(el.dataset.id));
     renderHolidays();
+  }
+  if(act === 'del-shift'){
+    if(!confirm('Shift delete karein? Is shift ke employees default (pehli) shift par chale jayenge.')) return;
+    await sb.from('shifts').delete().eq('id', el.dataset.id);
+    SHIFTS = SHIFTS.filter(s => String(s.id) !== String(el.dataset.id));
+    renderShifts(); fillEmpSelects();
+  }
+  if(act === 'cancel-leave'){
+    if(!confirm('Leave cancel karein?')) return;
+    await sb.from('leaves').update({ status: 'CANCELLED' }).eq('id', el.dataset.id);
+    loadLeaves();
+  }
+  if(act === 'view-doc'){
+    const { data, error } = await sb.storage.from('hr-docs').createSignedUrl(el.dataset.path, 120);
+    if(error) return notify(error.message, 'error');
+    window.open(data.signedUrl, '_blank');
+  }
+  if(act === 'del-doc'){
+    if(!confirm('Document delete karein?')) return;
+    await sb.storage.from('hr-docs').remove([el.dataset.path]);
+    await sb.from('hr_documents').delete().eq('id', el.dataset.id);
+    loadDocs($('epCode').value);
   }
 });
 
@@ -1100,6 +1331,8 @@ function fillSettingsForm(){
   $('setWeekOff').value = S.weekOff; $('setLates').value = S.latesHalf;
   $('setPF').value = S.pfPct; $('setPFCap').value = S.pfCap;
   $('setESI').value = S.esiPct; $('setESILimit').value = S.esiLimit; $('setPT').value = S.pt;
+  $('setOTMult').value = S.otMult; $('setOTAfter').value = S.otAfter;
+  $('setCL').value = S.cl; $('setSL').value = S.sl; $('setEL').value = S.el;
 }
 $('setSaveBtn').addEventListener('click', async () => {
   const btn = $('setSaveBtn');
@@ -1111,7 +1344,9 @@ $('setSaveBtn').addEventListener('click', async () => {
       probation: Number($('setProbation').value)||6, notice: Number($('setNotice').value)||30,
       weekOff: Number($('setWeekOff').value), latesHalf: Number($('setLates').value)||3,
       pfPct: Number($('setPF').value)||0, pfCap: Number($('setPFCap').value)||0,
-      esiPct: Number($('setESI').value)||0, esiLimit: Number($('setESILimit').value)||0, pt: Number($('setPT').value)||0
+      esiPct: Number($('setESI').value)||0, esiLimit: Number($('setESILimit').value)||0, pt: Number($('setPT').value)||0,
+      otMult: Number($('setOTMult').value)||1, otAfter: Number($('setOTAfter').value)||30,
+      cl: Number($('setCL').value)||0, sl: Number($('setSL').value)||0, el: Number($('setEL').value)||0
     };
     const { error } = await sb.from('company_settings').upsert({ id: 1, data: SETTINGS });
     if(error) throw error;
@@ -1126,6 +1361,182 @@ function renderHolidays(){
       <button class="btn btn-danger btn-sm" data-act="del-hol" data-id="${h.id}"><i class="fa-solid fa-trash"></i></button>
     </div>`).join('') : '<p class="text-xs" style="color:var(--muted)">Koi holiday add nahi hui.</p>';
 }
+/* ---------------- SHIFTS ---------------- */
+function renderShifts(){
+  const tb = $('shTable').querySelector('tbody');
+  tb.innerHTML = SHIFTS.length ? SHIFTS.map(s => {
+    const count = Object.values(PROFILES).filter(p => String(p.shift_id) === String(s.id)).length;
+    return `<tr>
+      <td class="font-semibold">${esc(s.name)}${s.is_night ? ' <span class="chip chip-blue">Night</span>' : ''}</td>
+      <td class="money">${esc(s.start_time)} – ${esc(s.end_time)}</td>
+      <td>${s.grace_mins} min</td>
+      <td class="money">${shiftHours(s).toFixed(1)} hrs</td>
+      <td>${count}</td>
+      <td><button class="btn btn-danger btn-sm" data-act="del-shift" data-id="${s.id}"><i class="fa-solid fa-trash"></i></button></td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="6" class="text-center py-6" style="color:var(--muted)">Koi shift nahi — pehli shift add karo.</td></tr>';
+}
+$('shSaveBtn').addEventListener('click', async () => {
+  const name = $('shName').value.trim();
+  if(!name || !$('shStart').value || !$('shEnd').value) return notify('Name aur timing required', 'error');
+  try{
+    const { data, error } = await sb.from('shifts').insert([{
+      name, start_time: $('shStart').value, end_time: $('shEnd').value,
+      grace_mins: Number($('shGrace').value)||0, is_night: $('shNight').checked
+    }]).select();
+    if(error) throw error;
+    SHIFTS.push(data[0]);
+    renderShifts(); fillEmpSelects();
+    $('shName').value = '';
+    notify('Shift saved', 'success');
+  }catch(err){ notify(err.message, 'error'); }
+});
+
+/* ---------------- LEAVES ---------------- */
+$('lvMonth').value = todayISO().slice(0,7);
+$('lvMonth').addEventListener('change', loadLeaves);
+async function loadLeaves(){
+  try{
+    const ym = $('lvMonth').value;
+    const dim = daysInMonth(ym);
+    const { data, error } = await sb.from('leaves').select('*')
+      .lte('from_date', ym + '-' + String(dim).padStart(2,'0')).gte('to_date', ym + '-01')
+      .order('from_date', { ascending:false });
+    if(error) throw error;
+    const tb = $('lvTable').querySelector('tbody');
+    tb.innerHTML = (data && data.length) ? data.map(L => {
+      const emp = EMP.find(e => e['Employee code'] === L.employee_code);
+      const ok = L.status === 'APPROVED';
+      return `<tr>
+        <td><div class="font-semibold">${esc(emp ? emp.Name : L.employee_code)}</div><div class="text-[10px]" style="color:var(--muted)">${esc(L.employee_code)}</div></td>
+        <td><span class="chip ${L.leave_type === 'LWP' ? 'chip-bad' : 'chip-blue'}">${esc(L.leave_type)}</span></td>
+        <td>${fmtDate(L.from_date)}</td><td>${fmtDate(L.to_date)}</td>
+        <td class="money">${L.days}</td>
+        <td>${esc(L.reason || '—')}</td>
+        <td><span class="chip ${ok ? 'chip-ok' : 'chip-gray'}">${esc(L.status)}</span></td>
+        <td>${ok ? `<button class="btn btn-danger btn-sm" data-act="cancel-leave" data-id="${L.id}"><i class="fa-solid fa-ban"></i></button>` : ''}</td>
+      </tr>`;
+    }).join('') : '<tr><td colspan="8" class="text-center py-8" style="color:var(--muted)">Is month koi leave nahi.</td></tr>';
+  }catch(err){ notify(err.message, 'error'); }
+}
+async function showLeaveBalance(code){
+  const S = getSettings();
+  const yr = new Date().getFullYear();
+  const { data } = await sb.from('leaves').select('leave_type, days').eq('employee_code', code).eq('status','APPROVED')
+    .gte('from_date', yr + '-01-01').lte('from_date', yr + '-12-31');
+  const used = { CL:0, SL:0, EL:0 };
+  (data || []).forEach(L => { if(used[L.leave_type] !== undefined) used[L.leave_type] += Number(L.days); });
+  $('lvBalance').innerHTML = `<b>Balance ${yr}:</b> CL ${S.cl - used.CL}/${S.cl} • SL ${S.sl - used.SL}/${S.sl} • EL ${S.el - used.EL}/${S.el}`;
+  $('lvBalance').classList.remove('hidden');
+}
+$('lvEmp').addEventListener('change', () => showLeaveBalance($('lvEmp').value));
+$('lvSaveBtn').addEventListener('click', async () => {
+  const code = $('lvEmp').value, from = $('lvFrom').value, to = $('lvTo').value;
+  if(!code || !from || !to) return notify('Employee aur dates required', 'error');
+  if(to < from) return notify('To date From se pehle nahi ho sakti', 'error');
+  const days = Math.round((new Date(to) - new Date(from)) / 86400000) + 1;
+  const btn = $('lvSaveBtn');
+  btn.innerHTML = '<div class="loader-ring"></div> Saving…'; btn.disabled = true;
+  try{
+    const { error } = await sb.from('leaves').insert([{
+      employee_code: code, leave_type: $('lvType').value,
+      from_date: from, to_date: to, days, reason: $('lvReason').value, status: 'APPROVED'
+    }]);
+    if(error) throw error;
+    notify(`Leave approved (${days} din)`, 'success');
+    $('lvFrom').value = ''; $('lvTo').value = ''; $('lvReason').value = '';
+    loadLeaves(); showLeaveBalance(code);
+  }catch(err){ notify(err.message, 'error'); }
+  finally{ btn.innerHTML = '<i class="fa-solid fa-check"></i> Approve & Save'; btn.disabled = false; }
+});
+
+/* ---------------- MANUAL PUNCH ---------------- */
+$('attFixBtn').addEventListener('click', () => { $('fxDate').value = todayISO(); $('fixModal').classList.add('show'); });
+$('fxSaveBtn').addEventListener('click', async () => {
+  const code = $('fxEmp').value, date = $('fxDate').value, inT = $('fxIn').value, outT = $('fxOut').value;
+  if(!code || !date) return notify('Employee aur date required', 'error');
+  if(!inT && !outT) return notify('Kam se kam ek time daalo', 'error');
+  const btn = $('fxSaveBtn');
+  btn.innerHTML = '<div class="loader-ring"></div> Saving…'; btn.disabled = true;
+  try{
+    const emp = EMP.find(e => e['Employee code'] === code);
+    const sh = shiftOf(code);
+    const { data: recs } = await sb.from('attendance').select('*').eq('employee_code', code).eq('date', date);
+    const upd = {};
+    if(inT){
+      const inFull = inT + ':00';
+      upd.in_time = isLateFor(inFull, sh) ? inFull + ' (LATE)' : inFull;
+    }
+    if(outT) upd.out_time = outT + ':00';
+    if(recs && recs.length){
+      const r = recs[0];
+      const finalIn = upd.in_time || r.in_time;
+      const finalOut = upd.out_time || r.out_time;
+      if(finalIn && finalOut){
+        let ms = new Date(date + 'T' + finalOut.substring(0,8)) - new Date(date + 'T' + finalIn.substring(0,8));
+        if(ms < 0) ms += 86400000; // night shift cross-midnight
+        upd.total_hours = String(Math.floor(ms/3600000)).padStart(2,'0') + ':' + String(Math.floor((ms%3600000)/60000)).padStart(2,'0') + ':00';
+      }
+      const { error } = await sb.from('attendance').update(upd).eq('id', r.id);
+      if(error) throw error;
+      notify('Punch updated', 'success');
+    } else {
+      if(!inT) return notify('Naye record ke liye In Time zaroori hai', 'error');
+      const row = { employee_code: code, Name: emp ? emp.Name : code, date, in_time: upd.in_time };
+      if(upd.out_time){
+        row.out_time = upd.out_time;
+        let ms = new Date(date + 'T' + upd.out_time) - new Date(date + 'T' + inT + ':00');
+        if(ms < 0) ms += 86400000;
+        row.total_hours = String(Math.floor(ms/3600000)).padStart(2,'0') + ':' + String(Math.floor((ms%3600000)/60000)).padStart(2,'0') + ':00';
+      }
+      const { error } = await sb.from('attendance').insert([row]);
+      if(error) throw error;
+      notify('Manual punch added', 'success');
+    }
+    $('fixModal').classList.remove('show');
+    if($('attRegisterWrap').querySelector('table')) loadRegister();
+  }catch(err){ notify(err.message, 'error'); }
+  finally{ btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save Punch'; btn.disabled = false; }
+});
+
+/* ---------------- DOCUMENTS ---------------- */
+async function loadDocs(code){
+  $('docList').innerHTML = '<span style="color:var(--muted)">Loading…</span>';
+  try{
+    const { data, error } = await sb.from('hr_documents').select('*').eq('employee_code', code).order('uploaded_at', { ascending:false });
+    if(error) throw error;
+    $('docList').innerHTML = (data && data.length) ? data.map(d =>
+      `<div class="flex items-center justify-between p-2 rounded-lg" style="background:#f8fafc">
+        <span><span class="chip chip-blue">${esc(d.doc_type)}</span> ${esc(d.file_name || '')}</span>
+        <span>
+          <button class="btn btn-ghost btn-sm" data-act="view-doc" data-path="${esc(d.file_path)}"><i class="fa-solid fa-eye"></i></button>
+          <button class="btn btn-danger btn-sm" data-act="del-doc" data-id="${d.id}" data-path="${esc(d.file_path)}"><i class="fa-solid fa-trash"></i></button>
+        </span>
+      </div>`).join('') : '<span style="color:var(--muted)">Koi document upload nahi hua.</span>';
+  }catch(err){ $('docList').innerHTML = '<span style="color:var(--bad)">' + esc(err.message) + ' — V2 SQL run kiya?</span>'; }
+}
+$('docUploadBtn').addEventListener('click', async () => {
+  const code = $('epCode').value;
+  const file = $('docFile').files[0];
+  if(!file) return notify('File select karo', 'error');
+  if(file.size > 5 * 1024 * 1024) return notify('Max 5MB file allowed', 'error');
+  const btn = $('docUploadBtn');
+  btn.innerHTML = '<div class="loader-ring loader-dark"></div>'; btn.disabled = true;
+  try{
+    const type = $('docType').value;
+    const safeName = file.name.replace(/[^A-Za-z0-9._-]/g, '_');
+    const path = code + '/' + type + '_' + Date.now() + '_' + safeName;
+    const { error: upErr } = await sb.storage.from('hr-docs').upload(path, file);
+    if(upErr) throw upErr;
+    const { error } = await sb.from('hr_documents').insert([{ employee_code: code, doc_type: type, file_path: path, file_name: file.name }]);
+    if(error) throw error;
+    $('docFile').value = '';
+    notify('Document uploaded', 'success');
+    loadDocs(code);
+  }catch(err){ notify(err.message, 'error'); }
+  finally{ btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> Upload'; btn.disabled = false; }
+});
+
 $('holAddBtn').addEventListener('click', async () => {
   if(!$('holDate').value) return notify('Date select karo', 'error');
   try{
