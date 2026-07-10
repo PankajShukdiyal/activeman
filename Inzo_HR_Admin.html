@@ -104,12 +104,15 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
   .no-print{display:none !important}
 }
 .idcard{width:54mm;height:85.6mm;background:#fff;border-radius:3.2mm;overflow:hidden;box-shadow:0 8px 20px rgba(15,23,42,.18);font-size:8.5px;line-height:1.35;position:relative;display:flex;flex-direction:column;color:#0f172a}
-.idcard .id-head{background:var(--brand);color:#fff;text-align:center;padding:3mm 2mm 6mm}
+.idcard .id-head{background:var(--brand);color:#fff;text-align:center;padding:2.5mm 2mm 13mm}
+.idcard .id-head .co{font-weight:700;font-size:9px;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.idcard .id-head .ad{font-size:6px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.idcard ol{list-style:decimal;padding-left:4mm;margin:0;color:#334155}
 .idcard .id-photo{width:22mm;height:22mm;border-radius:50%;object-fit:cover;border:1.2mm solid #fff;background:#e2e8f0;margin:-11mm auto 0;display:block;position:relative;z-index:2}
 .idcard .id-photo-fallback{width:22mm;height:22mm;border-radius:50%;border:1.2mm solid #fff;background:var(--brand-soft);margin:-11mm auto 0;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:var(--brand);position:relative;z-index:2}
 .idcard table{width:100%;border-collapse:collapse}
 .idcard td{padding:.6mm 0;vertical-align:top}
-@media print{ .idcard{box-shadow:none;border:.3mm solid #cbd5e1;page-break-inside:avoid} #idWrap,#idWrap *{visibility:visible} }
+@media print{ .idcard{box-shadow:none;border:.3mm solid #cbd5e1;page-break-inside:avoid} }
 .loader-ring{width:15px;height:15px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
 .loader-dark{border-color:#cbd5e1;border-top-color:var(--brand)}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -235,7 +238,10 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
   <div class="card" style="padding:0;overflow:hidden">
     <div class="flex items-center justify-between p-4 border-b" style="border-color:var(--line)">
       <input id="empSearch" class="inp" style="max-width:280px" placeholder="Search name / code / department…">
-      <span class="chip chip-gray" id="empCount">—</span>
+      <div class="flex items-center gap-2">
+        <span class="chip chip-gray" id="empCount">—</span>
+        <button id="empAddBtn" class="btn btn-primary btn-sm"><i class="fa-solid fa-user-plus"></i> Add Employee</button>
+      </div>
     </div>
     <div style="overflow-x:auto">
       <table class="tbl" id="empTable">
@@ -528,7 +534,11 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
     <div><label class="lbl">Valid Till</label><input id="idValid" type="date" class="inp"></div>
     <button id="idGenBtn" class="btn btn-primary"><i class="fa-solid fa-id-card"></i> Generate</button>
     <button id="idPrintBtn" class="btn btn-ghost hidden"><i class="fa-solid fa-print"></i> Print Cards</button>
-    <p class="text-[11px] m-0 ml-auto" style="color:var(--muted)">Photo is taken from the employee's uploaded PHOTO document. Standard CR80 card size (54 × 85.6 mm), front & back.</p>
+    <div id="idPhotoWrap" class="hidden flex items-end gap-2">
+      <div><label class="lbl">Upload / Change Photo</label><input id="idPhotoFile" type="file" accept="image/*" class="inp" style="max-width:220px"></div>
+      <button id="idPhotoBtn" class="btn btn-ghost"><i class="fa-solid fa-camera"></i> Set Photo</button>
+    </div>
+    <p class="text-[11px] m-0 ml-auto" style="color:var(--muted)">Photo comes from the employee's PHOTO document — upload one here or in Employees → Profile → Documents. Card size: CR80 (54 × 85.6 mm), front & back.</p>
   </div>
   <div class="paper-desk hidden" id="idDesk" style="padding:20px"><div id="idWrap" class="flex flex-wrap gap-4 justify-center"></div></div>
 </div>
@@ -667,6 +677,26 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
       <button class="btn btn-ghost btn-sm" data-close="slipModal"><i class="fa-solid fa-xmark"></i> Close</button>
     </div>
     <div class="paper-desk" style="padding:10px"><div id="slipPaper"></div></div>
+  </div>
+</div>
+
+<!-- ================= ADD EMPLOYEE MODAL ================= -->
+<div class="modal" id="addEmpModal">
+  <div class="modal-box" style="max-width:460px">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="display font-bold text-lg m-0">Add Employee</h3>
+      <button class="btn btn-ghost btn-sm" data-close="addEmpModal"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <label class="lbl">Full Name</label><input id="aeName" class="inp mb-3" placeholder="Full name">
+    <label class="lbl">Employee Code</label><input id="aeCode" class="inp mb-3">
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="lbl">Department</label><input id="aeDept" class="inp" placeholder="Production"></div>
+      <div><label class="lbl">Designation</label><input id="aeDesig" class="inp" placeholder="Operator"></div>
+    </div>
+    <label class="lbl" style="margin-top:12px;display:block">Date of Joining</label>
+    <input id="aeDOJ" type="date" class="inp mb-2">
+    <p class="text-[11px] mb-3" style="color:var(--muted)"><i class="fa-solid fa-circle-info"></i> Employees added here can use every HR feature (payroll, leaves, ESS, ID card). For face-recognition punching, their face must also be registered from the Attendance app's admin panel using this same code.</p>
+    <button id="aeSaveBtn" class="btn btn-primary w-full justify-center"><i class="fa-solid fa-user-plus"></i> Add Employee</button>
   </div>
 </div>
 
@@ -974,6 +1004,33 @@ function renderEmployees(filter){
   }).join('') : '<tr><td colspan="8" class="text-center py-8" style="color:var(--muted)">No employees found.</td></tr>';
 }
 $('empSearch').addEventListener('input', e => renderEmployees(e.target.value));
+$('empAddBtn').addEventListener('click', () => {
+  $('aeName').value = ''; $('aeDept').value = ''; $('aeDesig').value = '';
+  $('aeDOJ').value = todayISO();
+  let code;
+  do { code = 'EMP-' + Math.floor(1000 + Math.random() * 9000); } while (EMP.some(e => e['Employee code'] === code));
+  $('aeCode').value = code;
+  $('addEmpModal').classList.add('show');
+});
+$('aeSaveBtn').addEventListener('click', async () => {
+  const name = $('aeName').value.trim(), code = $('aeCode').value.trim().toUpperCase();
+  if(!name || !code) return notify('Name and employee code are required', 'error');
+  if(EMP.some(e => String(e['Employee code']).toUpperCase() === code)) return notify('This employee code already exists', 'error');
+  const btn = $('aeSaveBtn');
+  btn.innerHTML = '<div class="loader-ring"></div> Adding…'; btn.disabled = true;
+  try{
+    const { error } = await sb.from('employees').insert([{
+      Name: name, 'Employee code': code, Status: 'Active',
+      DEPARTMENT: $('aeDept').value, DESIGNATION: $('aeDesig').value, DOJ: $('aeDOJ').value
+    }]);
+    if(error) throw error;
+    notify(`${name} added — now open Profile to set phone, salary and shift`, 'success');
+    $('addEmpModal').classList.remove('show');
+    await loadCore();
+    openEmpModal(code);
+  }catch(err){ notify(err.message, 'error'); }
+  finally{ btn.innerHTML = '<i class="fa-solid fa-user-plus"></i> Add Employee'; btn.disabled = false; }
+});
 
 function openEmpModal(code){
   const e = EMP.find(x => x['Employee code'] === code); if(!e) return;
@@ -2269,8 +2326,8 @@ function idCardHTML(e, photo, validTill){
   const photoEl = photo ? `<img class="id-photo" src="${photo}" alt="">` : `<div class="id-photo-fallback">${esc((e.Name||'?').charAt(0).toUpperCase())}</div>`;
   return `<div class="idcard">
     <div class="id-head">
-      <div style="font-weight:700;font-size:10px;letter-spacing:.03em">${esc(S.name).toUpperCase()}</div>
-      <div style="font-size:6.5px;opacity:.85">${esc(S.addr)}</div>
+      <div class="co">${esc(S.name).toUpperCase()}</div>
+      <div class="ad">${esc(S.addr)}</div>
     </div>
     ${photoEl}
     <div style="text-align:center;padding:1.5mm 2mm 0">
@@ -2281,9 +2338,10 @@ function idCardHTML(e, photo, validTill){
       <table>
         <tr><td style="color:#64748b;width:40%">Emp Code</td><td style="font-weight:700">${esc(code)}</td></tr>
         <tr><td style="color:#64748b">Department</td><td>${esc(e.DEPARTMENT || '—')}</td></tr>
-        <tr><td style="color:#64748b">Joining</td><td>${esc(e.DOJ || '—')}</td></tr>
+        <tr><td style="color:#64748b">Joining</td><td>${e.DOJ ? fmtDate(e.DOJ) : '—'}</td></tr>
         <tr><td style="color:#64748b">Valid Till</td><td>${fmtDate(validTill)}</td></tr>
-        <tr><td style="color:#64748b">Emergency</td><td>${esc(p.emergency_phone || S.phone || '—')}</td></tr>
+        ${(p.emergency_phone || S.phone) ? `<tr><td style="color:#64748b">Emergency</td><td>${esc(p.emergency_phone || S.phone)}</td></tr>` : ''}
+        ${p.uan ? `<tr><td style="color:#64748b">UAN</td><td>${esc(p.uan)}</td></tr>` : ''}
       </table>
     </div>
     <div style="display:flex;align-items:flex-end;justify-content:space-between;padding:0 4mm 3mm">
@@ -2294,7 +2352,7 @@ function idCardHTML(e, photo, validTill){
   <div class="idcard">
     <div style="padding:4mm;flex:1">
       <div style="font-weight:700;font-size:9px;border-bottom:.3mm solid #e2e8f0;padding-bottom:1.5mm;margin-bottom:2mm">TERMS OF USE</div>
-      <ol style="padding-left:4mm;margin:0;color:#334155">
+      <ol>
         <li>This card is the property of ${esc(S.name)} and must be returned on separation.</li>
         <li>The card is non-transferable and must be carried at all times within the premises.</li>
         <li>Loss of the card must be reported to HR immediately.</li>
@@ -2308,6 +2366,30 @@ function idCardHTML(e, photo, validTill){
     <div style="background:#0f172a;color:#94a3b8;text-align:center;padding:2mm;font-size:6.5px">${esc(code)} • Issued ${new Date().toLocaleDateString('en-IN')}</div>
   </div>`;
 }
+$('idEmp').addEventListener('change', () => {
+  $('idPhotoWrap').classList.toggle('hidden', $('idEmp').value === 'ALL');
+  $('idPhotoWrap').classList.toggle('flex', $('idEmp').value !== 'ALL');
+});
+$('idPhotoBtn').addEventListener('click', async () => {
+  const code = $('idEmp').value;
+  if(code === 'ALL') return notify('Select a single employee to set their photo', 'error');
+  const file = $('idPhotoFile').files[0];
+  if(!file) return notify('Choose an image file first', 'error');
+  if(file.size > 5 * 1024 * 1024) return notify('Maximum file size is 5 MB', 'error');
+  const btn = $('idPhotoBtn');
+  btn.innerHTML = '<div class="loader-ring loader-dark"></div>'; btn.disabled = true;
+  try{
+    const path = code + '/PHOTO_' + Date.now() + '_' + file.name.replace(/[^A-Za-z0-9._-]/g, '_');
+    const { error: upErr } = await sb.storage.from('hr-docs').upload(path, file);
+    if(upErr) throw upErr;
+    const { error } = await sb.from('hr_documents').insert([{ employee_code: code, doc_type: 'PHOTO', file_path: path, file_name: file.name }]);
+    if(error) throw error;
+    $('idPhotoFile').value = '';
+    notify('Photo saved — regenerating card', 'success');
+    $('idGenBtn').click();
+  }catch(err){ notify(err.message, 'error'); }
+  finally{ btn.innerHTML = '<i class="fa-solid fa-camera"></i> Set Photo'; btn.disabled = false; }
+});
 $('idGenBtn').addEventListener('click', async () => {
   const sel = $('idEmp').value;
   const validTill = $('idValid').value || '';
