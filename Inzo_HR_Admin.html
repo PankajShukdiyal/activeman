@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <style>
 :root{
   --brand:#2563eb; --brand-hover:#1d4ed8; --brand-soft:#eff6ff;
@@ -580,6 +581,21 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
         <div><label class="lbl">LWF Employee (₹/mo)</label><input id="setLWFE" type="number" class="inp" value="0"></div>
         <div><label class="lbl">LWF Employer (₹/mo)</label><input id="setLWFR" type="number" class="inp" value="0"></div>
       </div>
+      <h3 class="display font-bold mt-6 mb-3">Salary Components <span class="text-[10px] font-normal" style="color:var(--muted)">shown in every employee's salary structure & payslip</span></h3>
+      <p class="lbl">Earning Components <span style="text-transform:none;font-weight:400">(tick "PF" if it counts as PF wages)</span></p>
+      <div id="ecList" class="space-y-1 mb-2"></div>
+      <div class="flex gap-2 mb-4">
+        <input id="ecName" class="inp" placeholder="e.g. Attendance Incentive, Washing Allowance">
+        <label class="flex items-center gap-1 text-xs" style="white-space:nowrap"><input type="checkbox" id="ecPF"> PF</label>
+        <button id="ecAddBtn" class="btn btn-ghost btn-sm"><i class="fa-solid fa-plus"></i></button>
+      </div>
+      <p class="lbl">Custom Deduction Components <span style="text-transform:none;font-weight:400">(fixed ₹/month, amount set per employee)</span></p>
+      <div id="dcList" class="space-y-1 mb-2"></div>
+      <div class="flex gap-2 mb-2">
+        <input id="dcName" class="inp" placeholder="e.g. Canteen, Transport, Uniform Recovery">
+        <button id="dcAddBtn" class="btn btn-ghost btn-sm"><i class="fa-solid fa-plus"></i></button>
+      </div>
+      <p class="text-[11px]" style="color:var(--muted)">Removing a component hides it from salary structures and future payslips. Already-finalized payslips are not changed. Remember to click Save Settings.</p>
       <h3 class="display font-bold mt-6 mb-3">Holidays</h3>
       <div class="flex gap-2 mb-3">
         <input id="holDate" type="date" class="inp" style="max-width:170px">
@@ -626,22 +642,27 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
       <div><label class="lbl">Emergency Contact</label><input id="epEmName" class="inp" placeholder="Name"></div>
       <div><label class="lbl">Emergency Phone</label><input id="epEmPhone" class="inp"></div>
     </div>
-    <h4 class="display font-bold mt-5 mb-2">Salary Structure (Monthly)</h4>
-    <div class="grid grid-cols-4 gap-3">
-      <div><label class="lbl">Basic</label><input id="epBasic" type="number" class="inp sal-part" value="0"></div>
-      <div><label class="lbl">HRA</label><input id="epHRA" type="number" class="inp sal-part" value="0"></div>
-      <div><label class="lbl">Conveyance</label><input id="epConv" type="number" class="inp sal-part" value="0"></div>
-      <div><label class="lbl">Special All.</label><input id="epSpecial" type="number" class="inp sal-part" value="0"></div>
-    </div>
+    <h4 class="display font-bold mt-5 mb-2">Salary Structure (Monthly) <span class="text-[10px] font-normal" style="color:var(--muted)">components are managed in Settings</span></h4>
+    <div class="grid grid-cols-4 gap-3" id="epSalWrap"></div>
     <div class="flex items-center justify-between mt-3 p-3 rounded-xl" style="background:#f8fafc;border:1px solid var(--line)">
       <span class="font-semibold text-sm">Monthly Gross</span>
       <span class="money font-bold text-lg" id="epGross">₹0</span>
     </div>
-    <div class="flex gap-5 mt-3 text-sm">
+    <h4 class="display font-bold mt-4 mb-2">Statutory Deductions</h4>
+    <div class="flex gap-5 text-sm flex-wrap">
       <label class="flex items-center gap-2"><input type="checkbox" id="epPF" checked> PF</label>
       <label class="flex items-center gap-2"><input type="checkbox" id="epESI" checked> ESI</label>
       <label class="flex items-center gap-2"><input type="checkbox" id="epPT" checked> Prof. Tax</label>
+      <label class="flex items-center gap-2"><input type="checkbox" id="epLWF" checked> LWF</label>
     </div>
+    <div id="epDedWrap" class="grid grid-cols-4 gap-3 mt-3"></div>
+    <h4 class="display font-bold mt-5 mb-2">Face Registration <span class="text-[10px] font-normal" style="color:var(--muted)">for the attendance camera</span></h4>
+    <div class="flex items-end gap-2 flex-wrap">
+      <span id="epFaceStatus" class="chip chip-gray">Checking…</span>
+      <div style="flex:1;min-width:180px"><label class="lbl">Upload a clear front-facing photo</label><input id="epFaceFile" type="file" accept="image/*" class="inp"></div>
+      <button id="epFaceBtn" class="btn btn-ghost"><i class="fa-solid fa-face-viewfinder"></i> Detect & Register Face</button>
+    </div>
+    <p class="text-[11px] mt-1 mb-0" style="color:var(--muted)">One face, good light, no mask/sunglasses. The face descriptor is saved to the employees table — the attendance camera will recognise them immediately.</p>
     <h4 class="display font-bold mt-5 mb-2">Bank & Statutory</h4>
     <div class="grid grid-cols-2 gap-3">
       <div><label class="lbl">Bank Name</label><input id="epBank" class="inp"></div>
@@ -795,12 +816,30 @@ function getSettings(){
     name:'Zooto Fashion Pvt Ltd', addr:'IMT Manesar, Gurugram, Haryana', phone:'', email:'', cin:'',
     hr:'', hrDesig:'Director', probation:6, notice:30,
     weekOff:0, latesHalf:3, pfPct:12, pfCap:15000, esiPct:0.75, esiLimit:21000, pt:0,
-    otMult:1, otAfter:30, cl:7, sl:7, el:15, lwfE:0, lwfR:0
+    otMult:1, otAfter:30, cl:7, sl:7, el:15, lwfE:0, lwfR:0,
+    earnComps:[{k:'basic',name:'Basic',pf:true},{k:'hra',name:'HRA',pf:false},{k:'conveyance',name:'Conveyance',pf:false},{k:'special_allowance',name:'Special Allowance',pf:false}],
+    dedComps:[]
   }, SETTINGS || {});
 }
-function grossOf(code){
+function empSalary(code){
   const p = PROFILES[code] || {};
-  return (Number(p.basic)||0) + (Number(p.hra)||0) + (Number(p.conveyance)||0) + (Number(p.special_allowance)||0);
+  const sal = (p.salary && p.salary.earn) ? p.salary.earn : null;
+  const out = {};
+  getSettings().earnComps.forEach(c => {
+    out[c.k] = sal ? (Number(sal[c.k])||0) : (Number(p[c.k])||0); // fallback to legacy columns
+  });
+  return out;
+}
+function empDeductions(code){
+  const p = PROFILES[code] || {};
+  const ded = (p.salary && p.salary.ded) ? p.salary.ded : {};
+  const out = {};
+  getSettings().dedComps.forEach(c => { out[c.k] = Number(ded[c.k])||0; });
+  return out;
+}
+function grossOf(code){
+  const s = empSalary(code);
+  return Object.values(s).reduce((a,b) => a + b, 0);
 }
 function shiftOf(code){
   const p = PROFILES[code] || {};
@@ -1042,9 +1081,10 @@ function openEmpModal(code){
   $('epPhone').value = p.phone || ''; $('epEmail').value = p.email || '';
   $('epFather').value = p.father_name || ''; $('epDOB').value = p.dob || ''; $('epGender').value = p.gender || '';
   $('epAddr').value = p.address || '';
-  $('epBasic').value = p.basic || 0; $('epHRA').value = p.hra || 0;
-  $('epConv').value = p.conveyance || 0; $('epSpecial').value = p.special_allowance || 0;
+  buildSalaryInputs(code);
   $('epPF').checked = p.pf_applicable !== false; $('epESI').checked = p.esi_applicable !== false; $('epPT').checked = p.pt_applicable !== false;
+  $('epLWF').checked = p.lwf_applicable !== false;
+  checkFaceStatus(code);
   $('epBank').value = p.bank_name || ''; $('epAcc').value = p.account_no || ''; $('epIFSC').value = p.ifsc || '';
   $('epPAN').value = p.pan || ''; $('epUAN').value = p.uan || ''; $('epESINo').value = p.esi_no || '';
   if(p.shift_id) $('epShift').value = p.shift_id;
@@ -1055,23 +1095,39 @@ function openEmpModal(code){
   updateGrossPreview();
   $('empModal').classList.add('show');
 }
+function buildSalaryInputs(code){
+  const S = getSettings();
+  const sal = empSalary(code), ded = empDeductions(code);
+  $('epSalWrap').innerHTML = S.earnComps.map(c =>
+    `<div><label class="lbl">${esc(c.name)}${c.pf ? ' <i class="fa-solid fa-shield-halved" title="PF wages" style="color:var(--brand)"></i>' : ''}</label>
+     <input type="number" class="inp sal-part" data-comp="${esc(c.k)}" value="${sal[c.k]||0}"></div>`).join('');
+  $('epDedWrap').innerHTML = S.dedComps.length ? S.dedComps.map(c =>
+    `<div><label class="lbl">${esc(c.name)} (₹/mo)</label>
+     <input type="number" class="inp" data-dcomp="${esc(c.k)}" value="${ded[c.k]||0}"></div>`).join('') : '';
+  document.querySelectorAll('.sal-part').forEach(i => i.addEventListener('input', updateGrossPreview));
+}
 function updateGrossPreview(){
-  const g = ['epBasic','epHRA','epConv','epSpecial'].reduce((a,id) => a + (Number($(id).value)||0), 0);
+  let g = 0;
+  document.querySelectorAll('#epSalWrap .sal-part').forEach(i => { g += Number(i.value)||0; });
   $('epGross').innerText = fmtINR(g);
 }
-document.querySelectorAll('.sal-part').forEach(i => i.addEventListener('input', updateGrossPreview));
 
 $('epSaveBtn').addEventListener('click', async () => {
   const btn = $('epSaveBtn');
   btn.innerHTML = '<div class="loader-ring"></div> Saving…'; btn.disabled = true;
   try{
+    const earn = {}, ded = {};
+    document.querySelectorAll('#epSalWrap [data-comp]').forEach(i => { earn[i.dataset.comp] = Number(i.value)||0; });
+    document.querySelectorAll('#epDedWrap [data-dcomp]').forEach(i => { ded[i.dataset.dcomp] = Number(i.value)||0; });
     const row = {
       employee_code: $('epCode').value,
       phone: $('epPhone').value, email: $('epEmail').value, father_name: $('epFather').value,
       dob: $('epDOB').value || null, address: $('epAddr').value,
-      basic: Number($('epBasic').value)||0, hra: Number($('epHRA').value)||0,
-      conveyance: Number($('epConv').value)||0, special_allowance: Number($('epSpecial').value)||0,
+      salary: { earn, ded },
+      basic: Number(earn.basic)||0, hra: Number(earn.hra)||0,
+      conveyance: Number(earn.conveyance)||0, special_allowance: Number(earn.special_allowance)||0,
       pf_applicable: $('epPF').checked, esi_applicable: $('epESI').checked, pt_applicable: $('epPT').checked,
+      lwf_applicable: $('epLWF').checked,
       bank_name: $('epBank').value, account_no: $('epAcc').value, ifsc: $('epIFSC').value,
       pan: $('epPAN').value, uan: $('epUAN').value, esi_no: $('epESINo').value,
       shift_id: Number($('epShift').value) || null,
@@ -1228,18 +1284,20 @@ async function runPayroll(){
       const lop = +(dim - paidDays).toFixed(1);
       const ratio = paidDays / dim;
 
-      const basic = (Number(p.basic)||0) * ratio;
-      const hra = (Number(p.hra)||0) * ratio;
-      const conv = (Number(p.conveyance)||0) * ratio;
-      const spl = (Number(p.special_allowance)||0) * ratio;
-      const earnedGross = basic + hra + conv + spl;
+      const salMap = empSalary(code);
+      const comps = S.earnComps.map(c => ({ k: c.k, name: c.name, pf: !!c.pf, full: salMap[c.k]||0, amt: Math.round((salMap[c.k]||0) * ratio) }));
+      const earnedGross = comps.reduce((a,c) => a + c.amt, 0);
       const fullGross = grossOf(code);
+      const pfWages = comps.filter(c => c.pf).reduce((a,c) => a + c.amt, 0);
+      const basic = Number(S.pfCap) > 0 ? Math.min(pfWages, Number(S.pfCap)) : pfWages; // EPF wage base (kept as r.basic for compliance)
 
-      const pfBase = Number(S.pfCap) > 0 ? Math.min(basic, Number(S.pfCap)) : basic;
-      const pf = p.pf_applicable !== false ? Math.round(pfBase * Number(S.pfPct) / 100) : 0;
+      const pf = p.pf_applicable !== false ? Math.round(basic * Number(S.pfPct) / 100) : 0;
       const esi = (p.esi_applicable !== false && fullGross <= Number(S.esiLimit)) ? Math.ceil(earnedGross * Number(S.esiPct) / 100) : 0;
       const pt = p.pt_applicable !== false ? Number(S.pt)||0 : 0;
-      const lwf = fullGross > 0 ? Number(S.lwfE)||0 : 0;
+      const lwf = (p.lwf_applicable !== false && fullGross > 0) ? Number(S.lwfE)||0 : 0;
+      const dedMap = empDeductions(code);
+      const dedBreak = S.dedComps.map(c => ({ name: c.name, amt: (paidDays > 0 ? (dedMap[c.k]||0) : 0) })).filter(d => d.amt > 0);
+      const customDed = dedBreak.reduce((a,d) => a + d.amt, 0);
 
       const advs = advMap[code] || [];
       const advDed = advs.reduce((a,x) => a + Math.min(Number(x.emi)||0, Number(x.balance)||0), 0);
@@ -1249,7 +1307,7 @@ async function runPayroll(){
       return { code, name: e.Name, dept: e.DEPARTMENT, desig: e.DESIGNATION,
         dim, present, lates, lateLOP, leaveDays, paidDays: +paidDays.toFixed(1), lop,
         shiftName: sh.name, shHrs, perHour,
-        basic: Math.round(basic), hra: Math.round(hra), conv: Math.round(conv), spl: Math.round(spl),
+        basic: Math.round(basic), comps, dedBreak, customDed,
         earnedGross: Math.round(earnedGross), pf, esi, pt, lwf,
         otHours, otPay: Math.round(perHour * otHours * Number(S.otMult)),
         advDed: Math.round(advDed), advRefs: advs.map(a => a.id),
@@ -1262,7 +1320,7 @@ async function runPayroll(){
   finally{ btn.innerHTML = '<i class="fa-solid fa-calculator"></i> Calculate Payroll'; btn.disabled = false; }
 }
 
-function netOf(r){ return Math.max(0, Math.round(r.earnedGross + r.bonus + (r.otPay||0) - r.pf - r.esi - r.pt - (r.lwf||0) - r.advDed - r.otherDed)); }
+function netOf(r){ return Math.max(0, Math.round(r.earnedGross + r.bonus + (r.otPay||0) - r.pf - r.esi - r.pt - (r.lwf||0) - (r.customDed||0) - r.advDed - r.otherDed)); }
 
 function renderPayTable(){
   const tb = $('payTable').querySelector('tbody');
@@ -1280,7 +1338,7 @@ function renderPayTable(){
       <td class="money" id="otpay-${i}">${fmtINR(r.otPay)}</td>
       <td class="money">${fmtINR(r.pf)}</td>
       <td class="money">${fmtINR(r.esi)}</td>
-      <td class="money" title="PT ${r.pt} + LWF ${r.lwf||0}">${fmtINR(r.pt + (r.lwf||0))}</td>
+      <td class="money" title="PT ${r.pt} + LWF ${r.lwf||0} + Fixed deductions ${r.customDed||0}">${fmtINR(r.pt + (r.lwf||0) + (r.customDed||0))}</td>
       <td class="money" style="color:${r.advDed ? 'var(--warn)' : 'inherit'}">${fmtINR(r.advDed)}</td>
       <td><input type="number" class="inp money" style="width:85px;padding:5px 8px" value="${r.otherDed}" data-pay="otherDed" data-i="${i}"></td>
       <td><input type="number" class="inp money" style="width:85px;padding:5px 8px" value="${r.bonus}" data-pay="bonus" data-i="${i}"></td>
@@ -1340,7 +1398,25 @@ function slipHTML(r){
   const S = getSettings();
   const p = PROFILES[r.code] || {};
   const net = netOf(r);
-  const totalDed = r.pf + r.esi + r.pt + (r.lwf||0) + r.advDed + r.otherDed;
+  const totalDed = r.pf + r.esi + r.pt + (r.lwf||0) + (r.customDed||0) + r.advDed + r.otherDed;
+  const earnRows = [];
+  if(r.comps && r.comps.length){
+    r.comps.forEach(c => { if(c.amt > 0) earnRows.push([c.name, c.amt]); });
+  } else { // legacy payslips
+    earnRows.push(['Basic', r.basic||0], ['HRA', r.hra||0], ['Conveyance', r.conv||0], ['Special Allowance', r.spl||0]);
+  }
+  earnRows.push(['Overtime (' + (r.otHours||0) + ' hrs)', r.otPay||0]);
+  earnRows.push(['Bonus / Incentive', r.bonus||0]);
+  const dedRows = [['Provident Fund', r.pf], ['ESI', r.esi], ['Professional Tax', r.pt], ['LWF', r.lwf||0]];
+  (r.dedBreak||[]).forEach(d => dedRows.push([d.name, d.amt]));
+  dedRows.push(['Advance Recovery', r.advDed], ['Other Deduction', r.otherDed]);
+  const nRows = Math.max(earnRows.length, dedRows.length);
+  let bodyRows = '';
+  for(let i = 0; i < nRows; i++){
+    const eR = earnRows[i], dR = dedRows[i];
+    bodyRows += `<tr><td>${eR ? esc(eR[0]) : ''}</td><td style="text-align:right">${eR ? Math.round(eR[1]).toLocaleString('en-IN') : ''}</td>
+      <td>${dR ? esc(dR[0]) : ''}</td><td style="text-align:right">${dR ? Math.round(dR[1]).toLocaleString('en-IN') : ''}</td></tr>`;
+  }
   return `<div class="paper">
     <div class="doc-head">
       <div>
@@ -1361,12 +1437,7 @@ function slipHTML(r){
     <table class="ann">
       <thead><tr><th style="width:35%">Earnings</th><th style="width:15%;text-align:right">Amount (₹)</th><th style="width:35%">Deductions</th><th style="width:15%;text-align:right">Amount (₹)</th></tr></thead>
       <tbody>
-        <tr><td>Basic</td><td style="text-align:right">${r.basic.toLocaleString('en-IN')}</td><td>Provident Fund</td><td style="text-align:right">${r.pf.toLocaleString('en-IN')}</td></tr>
-        <tr><td>HRA</td><td style="text-align:right">${r.hra.toLocaleString('en-IN')}</td><td>ESI</td><td style="text-align:right">${r.esi.toLocaleString('en-IN')}</td></tr>
-        <tr><td>Conveyance</td><td style="text-align:right">${r.conv.toLocaleString('en-IN')}</td><td>Professional Tax</td><td style="text-align:right">${r.pt.toLocaleString('en-IN')}</td></tr>
-        <tr><td>Special Allowance</td><td style="text-align:right">${r.spl.toLocaleString('en-IN')}</td><td>Advance Recovery</td><td style="text-align:right">${r.advDed.toLocaleString('en-IN')}</td></tr>
-        <tr><td>Overtime (${r.otHours || 0} hrs)</td><td style="text-align:right">${(r.otPay||0).toLocaleString('en-IN')}</td><td>Other Deduction</td><td style="text-align:right">${r.otherDed.toLocaleString('en-IN')}</td></tr>
-        <tr><td>Bonus / Incentive</td><td style="text-align:right">${r.bonus.toLocaleString('en-IN')}</td><td>LWF</td><td style="text-align:right">${(r.lwf||0).toLocaleString('en-IN')}</td></tr>
+        ${bodyRows}
         <tr><th>Gross Earnings</th><th style="text-align:right">${(r.earnedGross + r.bonus + (r.otPay||0)).toLocaleString('en-IN')}</th><th>Total Deductions</th><th style="text-align:right">${totalDed.toLocaleString('en-IN')}</th></tr>
       </tbody>
     </table>
@@ -1490,6 +1561,11 @@ document.body.addEventListener('click', async e => {
   if(act === 'fnf-settle'){ if(confirm('Mark this exit as SETTLED? This will be treated as final.')) fnfPersist(true); }
   if(act === 'fnf-print') printHTML(fnfSheet());
   if(act === 'del-ann'){ await sb.from('announcements').delete().eq('id', el.dataset.id); loadEngagement(); }
+  if(act === 'ec-del'){
+    if(EARN_EDIT.length <= 1) return notify('At least one earning component is required', 'error');
+    EARN_EDIT.splice(Number(el.dataset.i), 1); renderCompMgr();
+  }
+  if(act === 'dc-del'){ DED_EDIT.splice(Number(el.dataset.i), 1); renderCompMgr(); }
   if(act === 'cmp-print'){
     const card = $(el.dataset.card).cloneNode(true);
     card.querySelectorAll('.no-print').forEach(n => n.remove());
@@ -1720,6 +1796,8 @@ function fillSettingsForm(){
   $('setOTMult').value = S.otMult; $('setOTAfter').value = S.otAfter;
   $('setCL').value = S.cl; $('setSL').value = S.sl; $('setEL').value = S.el;
   $('setLWFE').value = S.lwfE; $('setLWFR').value = S.lwfR;
+  EARN_EDIT = null; DED_EDIT = null;
+  renderCompMgr();
 }
 $('setSaveBtn').addEventListener('click', async () => {
   const btn = $('setSaveBtn');
@@ -1734,7 +1812,9 @@ $('setSaveBtn').addEventListener('click', async () => {
       esiPct: Number($('setESI').value)||0, esiLimit: Number($('setESILimit').value)||0, pt: Number($('setPT').value)||0,
       otMult: Number($('setOTMult').value)||1, otAfter: Number($('setOTAfter').value)||30,
       cl: Number($('setCL').value)||0, sl: Number($('setSL').value)||0, el: Number($('setEL').value)||0,
-      lwfE: Number($('setLWFE').value)||0, lwfR: Number($('setLWFR').value)||0
+      lwfE: Number($('setLWFE').value)||0, lwfR: Number($('setLWFR').value)||0,
+      earnComps: EARN_EDIT || getSettings().earnComps,
+      dedComps: DED_EDIT || getSettings().dedComps
     };
     const { error } = await sb.from('company_settings').upsert({ id: 1, data: SETTINGS });
     if(error) throw error;
@@ -1742,6 +1822,91 @@ $('setSaveBtn').addEventListener('click', async () => {
   }catch(err){ notify(err.message, 'error'); }
   finally{ btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save Settings'; btn.disabled = false; }
 });
+/* ---------------- Salary component manager ---------------- */
+let EARN_EDIT = null, DED_EDIT = null;
+const slug = s => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || ('c' + Date.now());
+function renderCompMgr(){
+  const S = getSettings();
+  if(!EARN_EDIT) EARN_EDIT = JSON.parse(JSON.stringify(S.earnComps));
+  if(!DED_EDIT) DED_EDIT = JSON.parse(JSON.stringify(S.dedComps));
+  $('ecList').innerHTML = EARN_EDIT.map((c, i) =>
+    `<div class="flex items-center justify-between p-2 rounded-lg text-sm" style="background:#f8fafc">
+      <span><b>${esc(c.name)}</b> ${c.pf ? '<span class="chip chip-blue">PF wages</span>' : ''}</span>
+      <button class="btn btn-danger btn-sm" data-act="ec-del" data-i="${i}"><i class="fa-solid fa-trash"></i></button>
+    </div>`).join('') || '<p class="text-xs m-0" style="color:var(--bad)">At least one earning component is required.</p>';
+  $('dcList').innerHTML = DED_EDIT.length ? DED_EDIT.map((c, i) =>
+    `<div class="flex items-center justify-between p-2 rounded-lg text-sm" style="background:#f8fafc">
+      <span><b>${esc(c.name)}</b></span>
+      <button class="btn btn-danger btn-sm" data-act="dc-del" data-i="${i}"><i class="fa-solid fa-trash"></i></button>
+    </div>`).join('') : '<p class="text-xs m-0" style="color:var(--muted)">No custom deductions defined.</p>';
+}
+$('ecAddBtn').addEventListener('click', () => {
+  const name = $('ecName').value.trim();
+  if(!name) return notify('Enter a component name', 'error');
+  const k = slug(name);
+  if(EARN_EDIT.some(c => c.k === k)) return notify('This component already exists', 'error');
+  EARN_EDIT.push({ k, name, pf: $('ecPF').checked });
+  $('ecName').value = ''; $('ecPF').checked = false;
+  renderCompMgr();
+});
+$('dcAddBtn').addEventListener('click', () => {
+  const name = $('dcName').value.trim();
+  if(!name) return notify('Enter a deduction name', 'error');
+  const k = slug(name);
+  if(DED_EDIT.some(c => c.k === k)) return notify('This deduction already exists', 'error');
+  DED_EDIT.push({ k, name });
+  $('dcName').value = '';
+  renderCompMgr();
+});
+
+/* ---------------- Face registration (photo upload) ---------------- */
+let faceModelsReady = false;
+async function ensureFaceModels(){
+  if(faceModelsReady) return;
+  const base = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights';
+  await Promise.all([
+    faceapi.nets.tinyFaceDetector.loadFromUri(base),
+    faceapi.nets.faceLandmark68Net.loadFromUri(base),
+    faceapi.nets.faceRecognitionNet.loadFromUri(base)
+  ]);
+  faceModelsReady = true;
+}
+async function checkFaceStatus(code){
+  $('epFaceStatus').className = 'chip chip-gray';
+  $('epFaceStatus').innerText = 'Checking…';
+  try{
+    const { data } = await sb.from('employees').select('Descriptor').eq('"Employee code"', code).maybeSingle();
+    const has = data && data.Descriptor && String(data.Descriptor).length > 50;
+    $('epFaceStatus').className = has ? 'chip chip-ok' : 'chip chip-bad';
+    $('epFaceStatus').innerHTML = has ? '<i class="fa-solid fa-circle-check"></i> Face registered' : '<i class="fa-solid fa-circle-xmark"></i> No face registered';
+  }catch(e){ $('epFaceStatus').innerText = 'Status unknown'; }
+}
+$('epFaceBtn').addEventListener('click', async () => {
+  const code = $('epCode').value;
+  const file = $('epFaceFile').files[0];
+  if(!file) return notify('Choose a photo first', 'error');
+  const btn = $('epFaceBtn');
+  btn.innerHTML = '<div class="loader-ring loader-dark"></div> Detecting…'; btn.disabled = true;
+  try{
+    await ensureFaceModels();
+    const img = await faceapi.bufferToImage(file);
+    let detection = await faceapi.detectSingleFace(img, new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.4 }))
+      .withFaceLandmarks().withFaceDescriptor();
+    if(!detection){
+      detection = await faceapi.detectSingleFace(img, new faceapi.TinyFaceDetectorOptions({ inputSize: 608, scoreThreshold: 0.3 }))
+        .withFaceLandmarks().withFaceDescriptor();
+    }
+    if(!detection) return notify('No face found in this photo — use a clearer, front-facing photo with good light', 'error');
+    const descriptor = JSON.stringify(Array.from(detection.descriptor));
+    const { error } = await sb.from('employees').update({ Descriptor: descriptor }).eq('"Employee code"', code);
+    if(error) throw error;
+    $('epFaceFile').value = '';
+    notify('Face registered — the attendance camera will now recognise this employee', 'success');
+    checkFaceStatus(code);
+  }catch(err){ notify(err.message, 'error'); }
+  finally{ btn.innerHTML = '<i class="fa-solid fa-face-viewfinder"></i> Detect & Register Face'; btn.disabled = false; }
+});
+
 function renderHolidays(){
   $('holList').innerHTML = HOLIDAYS.length ? HOLIDAYS.map(h =>
     `<div class="flex items-center justify-between p-2 rounded-lg" style="background:#f8fafc">
@@ -2132,7 +2297,8 @@ async function openFnF(id){
   let years = 0;
   if(emp && emp.DOJ){ const doj = new Date(emp.DOJ); if(!isNaN(doj)) years = (new Date(x.lwd) - doj) / (365.25 * 86400000); }
   const perDay = gross / 30;
-  const gratuity = years >= 5 ? Math.round((15/26) * (Number(p.basic)||0) * Math.round(years)) : 0;
+  const fnfBasic = (empSalary(x.employee_code).basic) || Number(p.basic) || Math.round(gross * 0.5);
+  const gratuity = years >= 5 ? Math.round((15/26) * fnfBasic * Math.round(years)) : 0;
 
   const assetsHtml = (assetData && assetData.length)
     ? assetData.map(a => `<label class="flex items-center gap-2"><input type="checkbox" class="fnf-chk" data-k="asset_${a.id}" ${chk['asset_'+a.id] ? 'checked' : ''}> ${esc(a.asset_type)} — ${esc(a.asset_name||'')} ${esc(a.serial_no||'')} return</label>`).join('')
