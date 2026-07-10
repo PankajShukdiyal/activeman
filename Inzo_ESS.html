@@ -34,6 +34,18 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
 .toast{background:var(--ink);color:#fff;padding:11px 16px;border-radius:12px;font-size:13px;margin-bottom:8px;box-shadow:0 10px 25px rgba(0,0,0,.25)}
 .loader-ring{width:15px;height:15px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
 @keyframes spin{to{transform:rotate(360deg)}}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;text-align:center}
+.cal .dow{font-size:10px;font-weight:600;color:var(--muted);padding:2px 0}
+.cal .day{width:38px;height:38px;max-width:100%;margin:auto;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600}
+.d-P{background:#bbf7d0;color:#166534}
+.d-L{background:#fdba74;color:#7c2d12}
+.d-A{background:#fbcfe8;color:#9d174d}
+.d-WO{background:#fef9c3;color:#854d0e}
+.d-H{background:#bfdbfe;color:#1e40af}
+.d-LV{background:#e9d5ff;color:#6b21a8}
+.d-none{color:#cbd5e1}
+.legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.legend .chip{font-size:10px}
 @media print{ body *{visibility:hidden} #slipPrint,#slipPrint *{visibility:visible} #slipPrint{position:absolute;top:0;left:0;width:100%} }
 </style>
 </head>
@@ -77,12 +89,25 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
     </div>
 
     <div class="page" id="p-att">
-      <div class="card"><h3 class="display font-bold mt-0 mb-2 text-sm">Last 35 Days</h3><div id="attBox"></div></div>
+      <div class="card">
+        <div class="flex items-center justify-between mb-3">
+          <button id="calPrev" class="chip chip-gray" style="border:none;cursor:pointer"><i class="fa-solid fa-chevron-left"></i></button>
+          <h3 class="display font-bold m-0 text-sm" id="calTitle">—</h3>
+          <button id="calNext" class="chip chip-gray" style="border:none;cursor:pointer"><i class="fa-solid fa-chevron-right"></i></button>
+        </div>
+        <div class="cal" id="calGrid"></div>
+        <div class="legend">
+          <span class="chip d-P">Present</span><span class="chip d-L">Late</span><span class="chip d-A">Absent</span>
+          <span class="chip d-WO">Week Off</span><span class="chip d-H">Holiday</span><span class="chip d-LV">Leave</span>
+        </div>
+      </div>
+      <div class="card"><h3 class="display font-bold mt-0 mb-2 text-sm">Day-wise Detail</h3><div id="attBox"></div></div>
     </div>
 
     <div class="page" id="p-leave">
       <div class="card">
         <h3 class="display font-bold mt-0 mb-3 text-sm">Apply Leave</h3>
+        <div id="lvBalChips" class="legend" style="margin:0 0 12px"></div>
         <label class="lbl">Type</label>
         <select id="lvType" class="inp mb-3">
           <option value="CL">Casual Leave</option><option value="SL">Sick Leave</option><option value="EL">Earned Leave</option>
@@ -103,6 +128,25 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
       <div class="card"><h3 class="display font-bold mt-0 mb-2 text-sm">My Payslips</h3><div id="payBox"></div></div>
     </div>
 
+    <div class="page" id="p-req">
+      <div class="card">
+        <h3 class="display font-bold mt-0 mb-3 text-sm"><i class="fa-solid fa-receipt" style="color:var(--brand)"></i> Apply Reimbursement</h3>
+        <label class="lbl">Category</label>
+        <select id="exCat" class="inp mb-3"><option>TRAVEL</option><option>FOOD</option><option>FUEL</option><option>HOTEL</option><option>MOBILE</option><option>OTHER</option></select>
+        <div class="grid grid-cols-2 gap-3 mb-3">
+          <div><label class="lbl">Amount (₹)</label><input id="exAmt" type="number" class="inp"></div>
+          <div><label class="lbl">Date</label><input id="exDate" type="date" class="inp"></div>
+        </div>
+        <label class="lbl">Note</label><input id="exNote" class="inp mb-4" placeholder="Client visit taxi fare…">
+        <button id="exBtn" class="btn btn-primary"><i class="fa-solid fa-paper-plane"></i> Submit Claim</button>
+      </div>
+      <div class="card"><h3 class="display font-bold mt-0 mb-2 text-sm">My Claims</h3><div id="exBox"></div></div>
+      <div class="card">
+        <h3 class="display font-bold mt-0 mb-3 text-sm"><i class="fa-solid fa-person-walking-arrow-right" style="color:var(--bad)"></i> Resignation</h3>
+        <div id="resBox"></div>
+      </div>
+    </div>
+
     <div class="page" id="p-me">
       <div class="card"><h3 class="display font-bold mt-0 mb-2 text-sm">My Details</h3><div id="meBox"></div></div>
       <div class="card">
@@ -119,7 +163,8 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
   <button class="tab active" data-p="home"><i class="fa-solid fa-house"></i>Home</button>
   <button class="tab" data-p="att"><i class="fa-solid fa-calendar-days"></i>Attendance</button>
   <button class="tab" data-p="leave"><i class="fa-solid fa-umbrella-beach"></i>Leaves</button>
-  <button class="tab" data-p="pay"><i class="fa-solid fa-indian-rupee-sign"></i>Payslips</button>
+  <button class="tab" data-p="pay"><i class="fa-solid fa-indian-rupee-sign"></i>Pay</button>
+  <button class="tab" data-p="req"><i class="fa-solid fa-paper-plane"></i>Requests</button>
   <button class="tab" data-p="me"><i class="fa-solid fa-user"></i>Profile</button>
 </div>
 <div id="slipPrint"></div>
@@ -199,11 +244,18 @@ function render(){
   }).join('') : '<p class="m-0" style="color:var(--muted)">No attendance in the last 35 days.</p>';
   // leaves
   renderLeaves();
+  renderLeaveBalance();
+  // requests
+  renderExpenses();
+  renderResign();
+  // calendar
+  CAL_CACHE = {}; CAL_YM = new Date().toISOString().slice(0,7);
+  renderCalendar();
   // payslips
   $('payBox').innerHTML = slips.length ? slips.map((s, i) =>
     `<div class="row"><span class="k">${esc(s.month)}</span>
      <span class="flex items-center gap-2"><b>${fmtINR(s.net_pay)}</b>
-     <button class="chip chip-blue" style="border:none;cursor:pointer" data-slip="${i}"><i class="fa-solid fa-print"></i> Payslip</button></span></div>`).join('')
+     <button class="chip chip-blue" style="border:none;cursor:pointer" data-slip="${i}"><i class="fa-solid fa-download"></i> Download / Print</button></span></div>`).join('')
     : '<p class="m-0" style="color:var(--muted)">No payslips yet.</p>';
   document.querySelectorAll('[data-slip]').forEach(b => b.addEventListener('click', () => printSlip(slips[Number(b.dataset.slip)])));
   // profile
@@ -218,6 +270,126 @@ function render(){
   $('meBox').innerHTML = rows.map(r => `<div class="row"><span class="k">${r[0]}</span><span style="text-align:right">${esc(r[1] || '—')}</span></div>`).join('');
   $('upAddr').value = p.address || ''; $('upEmail').value = p.email || '';
 }
+/* ---------- Attendance calendar ---------- */
+let CAL_YM = new Date().toISOString().slice(0,7);
+let CAL_CACHE = {};
+function shiftMonth(ym, delta){
+  const [y,m] = ym.split('-').map(Number);
+  const d = new Date(y, m-1+delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+$('calPrev').addEventListener('click', () => { CAL_YM = shiftMonth(CAL_YM, -1); renderCalendar(); });
+$('calNext').addEventListener('click', () => { CAL_YM = shiftMonth(CAL_YM, 1); renderCalendar(); });
+async function monthRows(ym){
+  if(CAL_CACHE[ym]) return CAL_CACHE[ym];
+  const { data, error } = await sb.rpc('ess_get_attendance', { p_code: CODE, p_phone: PHONE, p_month: ym });
+  if(error || (data && data.error)) return [];
+  CAL_CACHE[ym] = data.rows || [];
+  return CAL_CACHE[ym];
+}
+async function renderCalendar(){
+  const ym = CAL_YM;
+  const [y,m] = ym.split('-').map(Number);
+  $('calTitle').innerText = new Date(y, m-1, 1).toLocaleString('en-IN', { month:'long', year:'numeric' });
+  $('calGrid').innerHTML = '<div style="grid-column:1/8;padding:16px;color:var(--muted)">Loading…</div>';
+  const rows = await monthRows(ym);
+  const attMap = {}; rows.forEach(r => attMap[r.date] = r);
+  const holSet = new Set((D.holidays||[]).filter(h => String(h.date).startsWith(ym)).map(h => String(h.date)));
+  const lvSet = new Set();
+  (D.leaves||[]).forEach(L => {
+    if(L.status !== 'APPROVED') return;
+    let d = new Date(L.from_date + 'T00:00:00');
+    const end = new Date(L.to_date + 'T00:00:00');
+    while(d <= end){
+      const iso = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      if(iso.startsWith(ym)) lvSet.add(iso);
+      d.setDate(d.getDate()+1);
+    }
+  });
+  const weekOff = Number(((D.company||{}).weekOff) ?? 0);
+  const dim = new Date(y, m, 0).getDate();
+  const firstDow = new Date(y, m-1, 1).getDay();
+  const today = new Date().toISOString().slice(0,10);
+  let html = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => `<div class="dow">${d}</div>`).join('');
+  for(let i = 0; i < firstDow; i++) html += '<div></div>';
+  for(let d = 1; d <= dim; d++){
+    const iso = `${ym}-${String(d).padStart(2,'0')}`;
+    const dow = new Date(y, m-1, d).getDay();
+    const r = attMap[iso];
+    let cls = 'd-none', tip = iso;
+    if(r){ const late = (r.in_time||'').includes('LATE'); cls = late ? 'd-L' : 'd-P'; tip += ` | IN ${(r.in_time||'').substring(0,5)}${r.out_time ? ' OUT ' + r.out_time.substring(0,5) : ''}`; }
+    else if(lvSet.has(iso)) cls = 'd-LV';
+    else if(holSet.has(iso)) cls = 'd-H';
+    else if(dow === weekOff) cls = 'd-WO';
+    else if(iso <= today) cls = 'd-A';
+    html += `<div class="day ${cls}" title="${tip}">${d}</div>`;
+  }
+  $('calGrid').innerHTML = html;
+}
+
+/* ---------- Requests: expenses + resignation ---------- */
+function renderExpenses(){
+  const ex = D.expenses || [];
+  $('exBox').innerHTML = ex.length ? ex.map(x => {
+    const chip = { PENDING:'chip-warn', APPROVED:'chip-blue', PAID:'chip-ok', REJECTED:'chip-bad' }[x.status] || 'chip-gray';
+    return `<div class="row"><span><b>${esc(x.category)}</b> ${fmtDate(x.expense_date)} — ${fmtINR(x.amount)}</span><span class="chip ${chip}">${esc(x.status)}</span></div>`;
+  }).join('') : '<p class="m-0" style="color:var(--muted)">No claims yet.</p>';
+}
+function renderResign(){
+  const ex = D.exit;
+  if(ex && ex.status === 'ACTIVE'){
+    $('resBox').innerHTML = `<div class="p-3 rounded-lg" style="background:#fffbeb">
+      <b>Resignation in process.</b><br>
+      <span class="text-xs">Resigned: ${fmtDate(ex.resign_date)} • Notice: ${ex.notice_days} days • Last Working Day: <b>${fmtDate(ex.lwd)}</b></span></div>`;
+  } else if(ex && ex.status === 'SETTLED'){
+    $('resBox').innerHTML = `<div class="p-3 rounded-lg" style="background:#ecfdf5"><b>Your exit is settled.</b> LWD: ${fmtDate(ex.lwd)}</div>`;
+  } else {
+    $('resBox').innerHTML = `
+      <p class="text-xs mt-0" style="color:var(--muted)">Submitting a resignation notifies HR. Your last working day is calculated as per the company notice period. This cannot be undone from here — contact HR to withdraw.</p>
+      <label class="lbl">Reason</label><input id="resReason" class="inp mb-3" placeholder="Reason for resignation">
+      <button id="resBtn" class="btn btn-primary" style="background:var(--bad)"><i class="fa-solid fa-paper-plane"></i> Submit Resignation</button>`;
+    $('resBtn').addEventListener('click', async () => {
+      if(!confirm('Are you sure you want to submit your resignation? HR will be notified.')) return;
+      const btn = $('resBtn');
+      btn.innerHTML = '<div class="loader-ring"></div> Submitting…'; btn.disabled = true;
+      try{
+        const { data, error } = await sb.rpc('ess_apply_resignation', { p_code: CODE, p_phone: PHONE, p_reason: $('resReason').value });
+        if(error) throw error;
+        if(data && data.error) return notify(data.error);
+        notify('Resignation submitted. Last working day: ' + fmtDate(data.lwd));
+        D.exit = { resign_date: new Date().toISOString().slice(0,10), lwd: data.lwd, notice_days: data.notice, status: 'ACTIVE' };
+        renderResign();
+      }catch(err){ notify(err.message); }
+      finally{ if($('resBtn')){ $('resBtn').innerHTML = '<i class="fa-solid fa-paper-plane"></i> Submit Resignation'; $('resBtn').disabled = false; } }
+    });
+  }
+}
+$('exDate').value = new Date().toISOString().slice(0,10);
+$('exBtn').addEventListener('click', async () => {
+  if(!Number($('exAmt').value)) return notify('Enter a valid amount');
+  const btn = $('exBtn');
+  btn.innerHTML = '<div class="loader-ring"></div> Submitting…'; btn.disabled = true;
+  try{
+    const { data, error } = await sb.rpc('ess_apply_expense', { p_code: CODE, p_phone: PHONE, p_category: $('exCat').value, p_amount: Number($('exAmt').value), p_date: $('exDate').value, p_note: $('exNote').value });
+    if(error) throw error;
+    if(data && data.error) return notify(data.error);
+    notify('Claim submitted — pending approval');
+    D.expenses = [{ category: $('exCat').value, amount: Number($('exAmt').value), expense_date: $('exDate').value, status: 'PENDING' }].concat(D.expenses || []);
+    $('exAmt').value = ''; $('exNote').value = '';
+    renderExpenses();
+  }catch(err){ notify(err.message); }
+  finally{ btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Submit Claim'; btn.disabled = false; }
+});
+
+function renderLeaveBalance(){
+  const c = D.company || {};
+  const ent = { CL: Number(c.cl)||0, SL: Number(c.sl)||0, EL: Number(c.el)||0 };
+  const used = { CL:0, SL:0, EL:0 };
+  (D.leaves||[]).forEach(L => { if(L.status === 'APPROVED' && used[L.leave_type] !== undefined) used[L.leave_type] += Number(L.days); });
+  $('lvBalChips').innerHTML = ['CL','SL','EL'].map(t =>
+    `<span class="chip chip-blue">${t}: ${Math.max(0, ent[t]-used[t])} / ${ent[t]} left</span>`).join('');
+}
+
 function renderLeaves(){
   const lv = D.leaves || [];
   $('lvBox').innerHTML = lv.length ? lv.map(L => {
