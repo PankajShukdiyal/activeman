@@ -27,7 +27,12 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
 .nav-item i{width:18px;text-align:center}
 .nav-item:hover{color:#fff;background:rgba(255,255,255,.06)}
 .nav-item.active{color:#fff;background:var(--brand)}
-.nav-sec{font-size:9.5px;font-weight:700;letter-spacing:.12em;color:#475569;padding:14px 20px 4px}
+.nav-sec{display:flex;align-items:center;justify-content:space-between;width:calc(100% - 20px);margin:8px 10px 0;padding:9px 10px;border:none;background:transparent;font-size:9.5px;font-weight:700;letter-spacing:.12em;color:#64748b;cursor:pointer;border-radius:8px;font-family:'Inter',sans-serif}
+.nav-sec:hover{color:#cbd5e1;background:rgba(255,255,255,.04)}
+.nav-sec i{transition:transform .2s;font-size:10px}
+.nav-group{overflow:hidden;max-height:400px;transition:max-height .25s ease}
+.nav-group.collapsed{max-height:0}
+.nav-sec.collapsed i{transform:rotate(-90deg)}
 .topbar{background:var(--surface);border-bottom:1px solid var(--line);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:30}
 .page{display:none;padding:26px 28px;flex:1}
 .page.show{display:block}
@@ -148,26 +153,36 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
     </div>
   </div>
   <nav class="mt-2 flex-1" style="overflow-y:auto">
-    <div class="nav-sec">OVERVIEW</div>
-    <button class="nav-item active" data-page="dashboard"><i class="fa-solid fa-gauge-high"></i> Dashboard</button>
-    <button class="nav-item" data-page="reports"><i class="fa-solid fa-chart-column"></i> Analytics</button>
-    <div class="nav-sec">WORKFORCE</div>
-    <button class="nav-item" data-page="employees"><i class="fa-solid fa-users"></i> Employees</button>
-    <button class="nav-item" data-page="attendance"><i class="fa-solid fa-calendar-days"></i> Attendance</button>
-    <button class="nav-item" data-page="shifts"><i class="fa-solid fa-clock-rotate-left"></i> Shifts</button>
-    <button class="nav-item" data-page="leaves"><i class="fa-solid fa-umbrella-beach"></i> Leaves</button>
-    <div class="nav-sec">PAYROLL & FINANCE</div>
-    <button class="nav-item" data-page="payroll"><i class="fa-solid fa-indian-rupee-sign"></i> Payroll</button>
-    <button class="nav-item" data-page="advances"><i class="fa-solid fa-hand-holding-dollar"></i> Advances</button>
-    <button class="nav-item" data-page="expenses"><i class="fa-solid fa-receipt"></i> Expenses</button>
-    <button class="nav-item" data-page="compliance"><i class="fa-solid fa-scale-balanced"></i> Compliance</button>
-    <div class="nav-sec">OPERATIONS</div>
-    <button class="nav-item" data-page="assets"><i class="fa-solid fa-laptop"></i> Assets</button>
-    <button class="nav-item" data-page="letters"><i class="fa-solid fa-file-signature"></i> Letters</button>
-    <button class="nav-item" data-page="idcards"><i class="fa-solid fa-id-card"></i> ID Cards</button>
-    <button class="nav-item" data-page="exits"><i class="fa-solid fa-person-walking-arrow-right"></i> Exit / FnF</button>
-    <div class="nav-sec">SYSTEM</div>
-    <button class="nav-item" data-page="settings"><i class="fa-solid fa-gear"></i> Settings</button>
+    <button class="nav-sec" data-group="g1"><span>OVERVIEW</span><i class="fa-solid fa-chevron-down"></i></button>
+    <div class="nav-group" id="g1">
+      <button class="nav-item active" data-page="dashboard"><i class="fa-solid fa-gauge-high"></i> Dashboard</button>
+      <button class="nav-item" data-page="reports"><i class="fa-solid fa-chart-column"></i> Analytics</button>
+    </div>
+    <button class="nav-sec" data-group="g2"><span>WORKFORCE</span><i class="fa-solid fa-chevron-down"></i></button>
+    <div class="nav-group" id="g2">
+      <button class="nav-item" data-page="employees"><i class="fa-solid fa-users"></i> Employees</button>
+      <button class="nav-item" data-page="attendance"><i class="fa-solid fa-calendar-days"></i> Attendance</button>
+      <button class="nav-item" data-page="shifts"><i class="fa-solid fa-clock-rotate-left"></i> Shifts</button>
+      <button class="nav-item" data-page="leaves"><i class="fa-solid fa-umbrella-beach"></i> Leaves</button>
+    </div>
+    <button class="nav-sec collapsed" data-group="g3"><span>PAYROLL & FINANCE</span><i class="fa-solid fa-chevron-down"></i></button>
+    <div class="nav-group collapsed" id="g3">
+      <button class="nav-item" data-page="payroll"><i class="fa-solid fa-indian-rupee-sign"></i> Payroll</button>
+      <button class="nav-item" data-page="advances"><i class="fa-solid fa-hand-holding-dollar"></i> Advances</button>
+      <button class="nav-item" data-page="expenses"><i class="fa-solid fa-receipt"></i> Expenses</button>
+      <button class="nav-item" data-page="compliance"><i class="fa-solid fa-scale-balanced"></i> Compliance</button>
+    </div>
+    <button class="nav-sec collapsed" data-group="g4"><span>OPERATIONS</span><i class="fa-solid fa-chevron-down"></i></button>
+    <div class="nav-group collapsed" id="g4">
+      <button class="nav-item" data-page="assets"><i class="fa-solid fa-laptop"></i> Assets</button>
+      <button class="nav-item" data-page="letters"><i class="fa-solid fa-file-signature"></i> Letters</button>
+      <button class="nav-item" data-page="idcards"><i class="fa-solid fa-id-card"></i> ID Cards</button>
+      <button class="nav-item" data-page="exits"><i class="fa-solid fa-person-walking-arrow-right"></i> Exit / FnF</button>
+    </div>
+    <button class="nav-sec collapsed" data-group="g5"><span>SYSTEM</span><i class="fa-solid fa-chevron-down"></i></button>
+    <div class="nav-group collapsed" id="g5">
+      <button class="nav-item" data-page="settings"><i class="fa-solid fa-gear"></i> Settings</button>
+    </div>
   </nav>
   <button id="logoutBtn" class="nav-item mb-4" style="color:#f87171"><i class="fa-solid fa-power-off"></i> Logout</button>
 </aside>
@@ -875,6 +890,10 @@ document.querySelectorAll('.nav-item[data-page]').forEach(btn => {
   });
 });
 document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => $(b.dataset.close).classList.remove('show')));
+document.querySelectorAll('.nav-sec[data-group]').forEach(h => h.addEventListener('click', () => {
+  h.classList.toggle('collapsed');
+  $(h.dataset.group).classList.toggle('collapsed');
+}));
 
 /* ---------------- Dashboard ---------------- */
 async function loadDashboard(){
