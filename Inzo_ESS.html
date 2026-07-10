@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inzo — My HR</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--brand:#2563eb;--ink:#0f172a;--muted:#64748b;--line:#e2e8f0;--bg:#f1f5f9;--ok:#10b981;--warn:#f59e0b;--bad:#ef4444}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+.display{font-family:'Space Grotesk',sans-serif}
+.wrap{max-width:520px;margin:0 auto;padding:16px;padding-bottom:90px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:12px}
+.inp{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px;outline:none;box-sizing:border-box;font-family:'Inter',sans-serif}
+.inp:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+.lbl{display:block;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 16px;border-radius:12px;font-weight:600;font-size:14px;cursor:pointer;border:none;width:100%}
+.btn-primary{background:var(--brand);color:#fff}
+.btn:disabled{opacity:.5}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:600}
+.chip-ok{background:#ecfdf5;color:#047857}.chip-warn{background:#fffbeb;color:#b45309}.chip-bad{background:#fef2f2;color:#b91c1c}.chip-gray{background:#f1f5f9;color:#475569}.chip-blue{background:#eff6ff;color:#2563eb}
+.tabbar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:6px 4px calc(6px + env(safe-area-inset-bottom));z-index:50}
+.tab{flex:1;text-align:center;padding:6px 2px;border:none;background:none;color:var(--muted);font-size:10px;font-weight:600;cursor:pointer}
+.tab i{display:block;font-size:17px;margin-bottom:3px}
+.tab.active{color:var(--brand)}
+.page{display:none}.page.show{display:block}
+.row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:13px}
+.row:last-child{border-bottom:none}
+.row .k{color:var(--muted)}
+#toastWrap{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:100;width:calc(100% - 40px);max-width:420px}
+.toast{background:var(--ink);color:#fff;padding:11px 16px;border-radius:12px;font-size:13px;margin-bottom:8px;box-shadow:0 10px 25px rgba(0,0,0,.25)}
+.loader-ring{width:15px;height:15px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media print{ body *{visibility:hidden} #slipPrint,#slipPrint *{visibility:visible} #slipPrint{position:absolute;top:0;left:0;width:100%} }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <!-- LOGIN -->
+  <div id="login" class="pt-10">
+    <div class="text-center mb-6">
+      <div class="w-14 h-14 rounded-2xl inline-flex items-center justify-center text-white text-xl mb-2" style="background:var(--brand)"><i class="fa-solid fa-user-tie"></i></div>
+      <h1 class="display text-xl font-bold m-0">Employee Self Service</h1>
+      <p class="text-xs" style="color:var(--muted)">Attendance • Leaves • Payslips • Profile</p>
+    </div>
+    <div class="card">
+      <label class="lbl">Employee Code</label>
+      <input id="inCode" class="inp mb-3" placeholder="EMP-1234" autocapitalize="characters">
+      <label class="lbl">Registered Mobile Number</label>
+      <input id="inPhone" type="tel" class="inp mb-4" placeholder="98XXXXXXXX">
+      <button id="loginBtn" class="btn btn-primary"><i class="fa-solid fa-right-to-bracket"></i> View My HR</button>
+      <p class="text-[11px] mt-3 text-center" style="color:var(--muted)">Use the mobile number registered with HR. Contact HR if you cannot sign in.</p>
+    </div>
+  </div>
+
+  <!-- APP -->
+  <div id="app" class="hidden">
+    <div class="flex items-center justify-between mb-3">
+      <div>
+        <h2 class="display font-bold m-0 text-lg" id="hName">—</h2>
+        <p class="text-xs m-0" style="color:var(--muted)" id="hMeta">—</p>
+      </div>
+      <button id="logoutBtn" class="chip chip-gray" style="border:none;cursor:pointer"><i class="fa-solid fa-power-off"></i> Sign out</button>
+    </div>
+
+    <div class="page show" id="p-home">
+      <div class="grid grid-cols-2 gap-3 mb-3">
+        <div class="card m-0"><p class="lbl m-0">Present (This Month)</p><div class="display text-2xl font-bold" style="color:var(--ok)" id="stPresent">—</div></div>
+        <div class="card m-0"><p class="lbl m-0">Last Net Pay</p><div class="display text-2xl font-bold" style="color:var(--brand)" id="stNet">—</div></div>
+      </div>
+      <div class="card"><h3 class="display font-bold mt-0 mb-2 text-sm"><i class="fa-solid fa-bullhorn" style="color:var(--brand)"></i> Announcements</h3><div id="annBox" class="text-sm space-y-2"></div></div>
+      <div class="card"><h3 class="display font-bold mt-0 mb-2 text-sm"><i class="fa-solid fa-calendar-check" style="color:var(--warn)"></i> Holidays This Year</h3><div id="holBox" class="text-sm space-y-1"></div></div>
+    </div>
+
+    <div class="page" id="p-att">
+      <div class="card"><h3 class="display font-bold mt-0 mb-2 text-sm">Last 35 Days</h3><div id="attBox"></div></div>
+    </div>
+
+    <div class="page" id="p-leave">
+      <div class="card">
+        <h3 class="display font-bold mt-0 mb-3 text-sm">Apply Leave</h3>
+        <label class="lbl">Type</label>
+        <select id="lvType" class="inp mb-3">
+          <option value="CL">Casual Leave</option><option value="SL">Sick Leave</option><option value="EL">Earned Leave</option>
+          <option value="ML">Maternity Leave</option><option value="PL">Paternity Leave</option><option value="LWP">Leave Without Pay</option>
+        </select>
+        <div class="grid grid-cols-2 gap-3 mb-3">
+          <div><label class="lbl">From</label><input id="lvFrom" type="date" class="inp"></div>
+          <div><label class="lbl">To</label><input id="lvTo" type="date" class="inp"></div>
+        </div>
+        <label class="lbl">Reason</label>
+        <input id="lvReason" class="inp mb-4" placeholder="Optional">
+        <button id="lvBtn" class="btn btn-primary"><i class="fa-solid fa-paper-plane"></i> Submit for Approval</button>
+      </div>
+      <div class="card"><h3 class="display font-bold mt-0 mb-2 text-sm">My Leaves (This Year)</h3><div id="lvBox"></div></div>
+    </div>
+
+    <div class="page" id="p-pay">
+      <div class="card"><h3 class="display font-bold mt-0 mb-2 text-sm">My Payslips</h3><div id="payBox"></div></div>
+    </div>
+
+    <div class="page" id="p-me">
+      <div class="card"><h3 class="display font-bold mt-0 mb-2 text-sm">My Details</h3><div id="meBox"></div></div>
+      <div class="card">
+        <h3 class="display font-bold mt-0 mb-2 text-sm">Update Contact Details</h3>
+        <label class="lbl">Address</label><input id="upAddr" class="inp mb-3">
+        <label class="lbl">Email</label><input id="upEmail" type="email" class="inp mb-4">
+        <button id="upBtn" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Send Update</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="tabbar hidden" id="tabbar">
+  <button class="tab active" data-p="home"><i class="fa-solid fa-house"></i>Home</button>
+  <button class="tab" data-p="att"><i class="fa-solid fa-calendar-days"></i>Attendance</button>
+  <button class="tab" data-p="leave"><i class="fa-solid fa-umbrella-beach"></i>Leaves</button>
+  <button class="tab" data-p="pay"><i class="fa-solid fa-indian-rupee-sign"></i>Payslips</button>
+  <button class="tab" data-p="me"><i class="fa-solid fa-user"></i>Profile</button>
+</div>
+<div id="slipPrint"></div>
+<div id="toastWrap"></div>
+
+<script>
+const SUPABASE_URL = "https://qetbmdibqnbpjbkiozxx.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFldGJtZGlicW5icGpia2lvenh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MjA1NTEsImV4cCI6MjA5NDI5NjU1MX0.TXBg-O77tDIUdFhMZBUU3-6vIUUDNcfWVjsF4f6Wkzc";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const $ = id => document.getElementById(id);
+let D = null, CODE = '', PHONE = '';
+
+function notify(msg){
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = msg;
+  $('toastWrap').appendChild(t);
+  setTimeout(() => t.remove(), 3200);
+}
+const fmtINR = n => '₹' + Number(n||0).toLocaleString('en-IN', { maximumFractionDigits: 0 });
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmtDate = iso => { if(!iso) return '—'; const d = new Date(iso + (String(iso).length === 10 ? 'T00:00:00' : '')); return isNaN(d) ? iso : d.toLocaleDateString('en-IN', { day:'2-digit', month:'short' }); };
+
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  t.classList.add('active');
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('show'));
+  $('p-' + t.dataset.p).classList.add('show');
+  window.scrollTo(0, 0);
+}));
+
+$('loginBtn').addEventListener('click', async () => {
+  CODE = $('inCode').value.trim().toUpperCase();
+  PHONE = $('inPhone').value.trim();
+  if(!CODE || !PHONE) return notify('Enter your employee code and mobile number');
+  const btn = $('loginBtn');
+  btn.innerHTML = '<div class="loader-ring"></div> Checking…'; btn.disabled = true;
+  try{
+    const { data, error } = await sb.rpc('ess_get_data', { p_code: CODE, p_phone: PHONE });
+    if(error) throw error;
+    if(data && data.error) return notify(data.error);
+    D = data;
+    localStorage.setItem('ess_code', CODE);
+    localStorage.setItem('ess_phone', PHONE);
+    render();
+  }catch(err){ notify(err.message || 'Could not sign in'); }
+  finally{ btn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> View My HR'; btn.disabled = false; }
+});
+$('logoutBtn').addEventListener('click', () => {
+  localStorage.removeItem('ess_code'); localStorage.removeItem('ess_phone');
+  location.reload();
+});
+
+function render(){
+  $('login').classList.add('hidden');
+  $('app').classList.remove('hidden');
+  $('tabbar').classList.remove('hidden');
+  const e = D.employee || {}, p = D.profile || {};
+  $('hName').innerText = e.Name || CODE;
+  $('hMeta').innerText = `${e['Employee code'] || CODE} • ${e.DESIGNATION || ''} • ${e.DEPARTMENT || ''}`;
+  // home
+  const ym = new Date().toISOString().slice(0,7);
+  const att = D.attendance || [];
+  $('stPresent').innerText = att.filter(a => a.date && a.date.startsWith(ym)).length;
+  const slips = D.payslips || [];
+  $('stNet').innerText = slips.length ? fmtINR(slips[0].net_pay) : '—';
+  const ann = D.announcements || [];
+  $('annBox').innerHTML = ann.length ? ann.map(a => `<div class="p-2 rounded-lg" style="background:#eff6ff"><b>${esc(a.title)}</b> <span class="text-[10px]" style="color:var(--muted)">${fmtDate(a.created_at.slice(0,10))}</span></div>`).join('') : '<p class="m-0" style="color:var(--muted)">No announcements.</p>';
+  const hol = D.holidays || [];
+  $('holBox').innerHTML = hol.length ? hol.map(h => `<div class="row"><span class="k">${fmtDate(h.date)}</span><span>${esc(h.name || '')}</span></div>`).join('') : '<p class="m-0" style="color:var(--muted)">No holidays listed.</p>';
+  // attendance
+  $('attBox').innerHTML = att.length ? att.map(a => {
+    const late = (a.in_time||'').includes('LATE');
+    return `<div class="row"><span class="k">${fmtDate(a.date)}</span>
+      <span><span class="chip ${late ? 'chip-warn' : 'chip-ok'}">IN ${esc((a.in_time||'').substring(0,5))}</span>
+      ${a.out_time ? `<span class="chip chip-gray">OUT ${esc(a.out_time.substring(0,5))}</span>` : ''}
+      ${a.total_hours ? `<span class="chip chip-blue">${esc(a.total_hours.substring(0,5))} h</span>` : ''}</span></div>`;
+  }).join('') : '<p class="m-0" style="color:var(--muted)">No attendance in the last 35 days.</p>';
+  // leaves
+  renderLeaves();
+  // payslips
+  $('payBox').innerHTML = slips.length ? slips.map((s, i) =>
+    `<div class="row"><span class="k">${esc(s.month)}</span>
+     <span class="flex items-center gap-2"><b>${fmtINR(s.net_pay)}</b>
+     <button class="chip chip-blue" style="border:none;cursor:pointer" data-slip="${i}"><i class="fa-solid fa-print"></i> Payslip</button></span></div>`).join('')
+    : '<p class="m-0" style="color:var(--muted)">No payslips yet.</p>';
+  document.querySelectorAll('[data-slip]').forEach(b => b.addEventListener('click', () => printSlip(slips[Number(b.dataset.slip)])));
+  // profile
+  const rows = [
+    ['Employee Code', e['Employee code']], ['Department', e.DEPARTMENT], ['Designation', e.DESIGNATION],
+    ['Date of Joining', e.DOJ], ['Grade', p.grade], ['Employment Type', p.employment_type],
+    ['Work Location', p.work_location], ['Mobile', p.phone], ['Email', p.email], ['Address', p.address],
+    ['Bank', p.bank_name], ['Account No.', p.account_no], ['IFSC', p.ifsc],
+    ['PAN', p.pan], ['UAN', p.uan], ['ESI No.', p.esi_no],
+    ['Emergency Contact', (p.emergency_name || '') + (p.emergency_phone ? ' — ' + p.emergency_phone : '')]
+  ];
+  $('meBox').innerHTML = rows.map(r => `<div class="row"><span class="k">${r[0]}</span><span style="text-align:right">${esc(r[1] || '—')}</span></div>`).join('');
+  $('upAddr').value = p.address || ''; $('upEmail').value = p.email || '';
+}
+function renderLeaves(){
+  const lv = D.leaves || [];
+  $('lvBox').innerHTML = lv.length ? lv.map(L => {
+    const chip = L.status === 'APPROVED' ? 'chip-ok' : (L.status === 'PENDING' ? 'chip-warn' : 'chip-bad');
+    return `<div class="row"><span><b>${esc(L.leave_type)}</b> ${fmtDate(L.from_date)} → ${fmtDate(L.to_date)} (${L.days}d)</span>
+      <span class="chip ${chip}">${esc(L.status)}</span></div>`;
+  }).join('') : '<p class="m-0" style="color:var(--muted)">No leaves this year.</p>';
+}
+
+$('lvBtn').addEventListener('click', async () => {
+  if(!$('lvFrom').value || !$('lvTo').value) return notify('Select From and To dates');
+  const btn = $('lvBtn');
+  btn.innerHTML = '<div class="loader-ring"></div> Submitting…'; btn.disabled = true;
+  try{
+    const { data, error } = await sb.rpc('ess_apply_leave', {
+      p_code: CODE, p_phone: PHONE, p_type: $('lvType').value,
+      p_from: $('lvFrom').value, p_to: $('lvTo').value, p_reason: $('lvReason').value
+    });
+    if(error) throw error;
+    if(data && data.error) return notify(data.error);
+    notify(`Leave request submitted (${data.days} days) — pending HR approval`);
+    $('lvFrom').value = ''; $('lvTo').value = ''; $('lvReason').value = '';
+    const { data: fresh } = await sb.rpc('ess_get_data', { p_code: CODE, p_phone: PHONE });
+    if(fresh && !fresh.error){ D = fresh; renderLeaves(); }
+  }catch(err){ notify(err.message); }
+  finally{ btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Submit for Approval'; btn.disabled = false; }
+});
+
+$('upBtn').addEventListener('click', async () => {
+  const btn = $('upBtn');
+  btn.innerHTML = '<div class="loader-ring"></div> Saving…'; btn.disabled = true;
+  try{
+    const { data, error } = await sb.rpc('ess_update_contact', { p_code: CODE, p_phone: PHONE, p_new_address: $('upAddr').value, p_new_email: $('upEmail').value });
+    if(error) throw error;
+    if(data && data.error) return notify(data.error);
+    notify('Contact details updated');
+  }catch(err){ notify(err.message); }
+  finally{ btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Send Update'; btn.disabled = false; }
+});
+
+function printSlip(s){
+  const r = s.data || {}, c = (D.company || {});
+  const e = D.employee || {};
+  const line = (l, v) => `<tr><td style="border:1px solid #cbd5e1;padding:5px 8px">${l}</td><td style="border:1px solid #cbd5e1;padding:5px 8px;text-align:right">${Number(v||0).toLocaleString('en-IN')}</td></tr>`;
+  $('slipPrint').innerHTML = `<div style="font-family:Arial;max-width:700px;margin:auto;padding:20px;font-size:12px">
+    <div style="display:flex;justify-content:space-between;border-bottom:2px solid #0f172a;padding-bottom:8px;margin-bottom:12px">
+      <div><h2 style="margin:0">${esc(c.name || '')}</h2><small>${esc(c.addr || '')}</small></div>
+      <div style="text-align:right"><b>PAYSLIP</b><br><small>${esc(s.month)}</small></div>
+    </div>
+    <p><b>${esc(e.Name || '')}</b> (${esc(e['Employee code'] || '')}) • ${esc(e.DESIGNATION || '')} • Paid days: <b>${r.paidDays}</b>/${r.dim}</p>
+    <table style="width:100%;border-collapse:collapse">
+      <tr><th style="border:1px solid #cbd5e1;padding:5px 8px;background:#f1f5f9;text-align:left">Earnings</th><th style="border:1px solid #cbd5e1;padding:5px 8px;background:#f1f5f9;text-align:right">₹</th></tr>
+      ${line('Basic', r.basic)}${line('HRA', r.hra)}${line('Conveyance', r.conv)}${line('Special Allowance', r.spl)}${line('Overtime', r.otPay)}${line('Bonus', r.bonus)}
+      <tr><th style="border:1px solid #cbd5e1;padding:5px 8px;background:#f1f5f9;text-align:left">Deductions</th><th style="border:1px solid #cbd5e1;padding:5px 8px;background:#f1f5f9"></th></tr>
+      ${line('PF', r.pf)}${line('ESI', r.esi)}${line('Professional Tax', r.pt)}${line('LWF', r.lwf)}${line('Advance Recovery', r.advDed)}${line('Other', r.otherDed)}
+      <tr><th style="border:1px solid #cbd5e1;padding:6px 8px;text-align:left">NET PAY</th><th style="border:1px solid #cbd5e1;padding:6px 8px;text-align:right">₹ ${Number(s.net_pay||0).toLocaleString('en-IN')}</th></tr>
+    </table>
+    <p style="color:#64748b;font-size:10px;text-align:center;margin-top:20px">System generated payslip — no signature required.</p>
+  </div>`;
+  setTimeout(() => { window.print(); $('slipPrint').innerHTML = ''; }, 150);
+}
+
+// auto-login if saved
+window.addEventListener('load', () => {
+  const c = localStorage.getItem('ess_code'), p = localStorage.getItem('ess_phone');
+  if(c && p){ $('inCode').value = c; $('inPhone').value = p; $('loginBtn').click(); }
+});
+</script>
+</body>
+</html>
