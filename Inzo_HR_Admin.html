@@ -360,6 +360,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
     <button id="payRunBtn" class="btn btn-primary"><i class="fa-solid fa-calculator"></i> Calculate Payroll</button>
     <button id="payFinalizeBtn" class="btn btn-ghost hidden"><i class="fa-solid fa-lock"></i> Finalize & Save All</button>
     <button id="payPrintAllBtn" class="btn btn-ghost hidden"><i class="fa-solid fa-print"></i> Print All Payslips</button>
+    <button id="payBankBtn" class="btn btn-ghost hidden"><i class="fa-solid fa-building-columns"></i> Bank Advice</button>
     <div class="ml-auto text-right">
       <p class="lbl m-0">Total Net Payable</p>
       <div class="stat-num money" style="color:var(--brand)" id="payTotal">₹0</div>
@@ -369,9 +370,9 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
     <div style="overflow-x:auto">
       <table class="tbl" id="payTable">
         <thead><tr>
-          <th>Employee</th><th>Paid Days</th><th>Leave</th><th>LOP</th><th>Earned Gross</th><th>OT Hrs</th><th>OT Pay</th><th>PF</th><th>ESI</th><th>PT+LWF</th><th>TDS</th><th>Advance</th><th>Other Ded.</th><th>Bonus</th><th>Net Pay</th><th></th>
+          <th>Employee</th><th>Paid Days</th><th>Leave</th><th>LOP</th><th>Earned Gross</th><th>OT Hrs</th><th>OT Pay</th><th>PF</th><th>ESI</th><th>PT</th><th>LWF</th><th>TDS</th><th>Advance</th><th>Other Ded.</th><th>Bonus</th><th>Net Pay</th><th></th>
         </tr></thead>
-        <tbody><tr><td colspan="16" class="text-center py-8" style="color:var(--muted)">Run payroll to see calculations. Salary structures are set on the Employees page.</td></tr></tbody>
+        <tbody><tr><td colspan="17" class="text-center py-8" style="color:var(--muted)">Run payroll to see calculations. Salary structures are set on the Employees page.</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -1170,10 +1171,10 @@ function employerSides(gross, pfWages, pfOn, esiOn, lwfOn){
   const S = getSettings();
   const pfBase = Number(S.pfCap) > 0 ? Math.min(pfWages, Number(S.pfCap)) : pfWages;
   const erPF = pfOn ? Math.round(pfBase * Number(S.pfPct) / 100) : 0;                 // employer PF 12%
-  const erPFAdmin = pfOn ? Math.round(pfBase * 1 / 100) : 0;                          // admin 0.5% + EDLI 0.5%
+  const erPFAdmin = pfOn ? Math.round(pfBase * 1 / 100) : 0;                          // admin+EDLI — challan only, NOT in CTC
   const erESI = (esiOn && gross > 0 && gross <= Number(S.esiLimit)) ? Math.ceil(gross * 3.25 / 100) : 0;
   const erLWF = lwfOn ? (Number(S.lwfR)||0) : 0;
-  return { erPF, erPFAdmin, erESI, erLWF, total: erPF + erPFAdmin + erESI + erLWF };
+  return { erPF, erPFAdmin, erESI, erLWF, total: erPF + erESI + erLWF };
 }
 function currentPFWages(){
   const S = getSettings();
@@ -1192,7 +1193,7 @@ function updateGrossPreview(){
   const er = employerSides(g, currentPFWages(), $('epPF').checked, $('epESI').checked, $('epLWF').checked);
   const eeESI = ($('epESI').checked && g > 0 && g <= Number(S.esiLimit)) ? Math.ceil(g * Number(S.esiPct) / 100) : 0;
   const esiNote = (g > Number(S.esiLimit) && $('epESI').checked) ? ` <span class="chip chip-gray">ESI N/A — gross above ₹${Number(S.esiLimit).toLocaleString('en-IN')} limit</span>` : '';
-  $('epCTCInfo').innerHTML = `Employer side (per govt rules): PF ${fmtINR(er.erPF)} + PF Admin/EDLI ${fmtINR(er.erPFAdmin)} + ESI ${fmtINR(er.erESI)} + LWF ${fmtINR(er.erLWF)}
+  $('epCTCInfo').innerHTML = `Employer side (per govt rules): PF ${fmtINR(er.erPF)} + ESI ${fmtINR(er.erESI)} + LWF ${fmtINR(er.erLWF)}
     &nbsp;→&nbsp; <b style="color:var(--ink)">Total CTC: <span class="money">${fmtINR(g + er.total)}</span></b>${esiNote}
     <br>Employee-side deductions will be: PF ${fmtINR($('epPF').checked ? Math.round(Math.min(currentPFWages(), Number(S.pfCap)||Infinity) * Number(S.pfPct) / 100) : 0)} • ESI ${fmtINR(eeESI)} • LWF ${fmtINR($('epLWF').checked ? Number(S.lwfE)||0 : 0)}`;
 }
@@ -1495,6 +1496,7 @@ async function runPayroll(){
     renderPayTable();
     $('payFinalizeBtn').classList.remove('hidden');
     $('payPrintAllBtn').classList.remove('hidden');
+    $('payBankBtn').classList.remove('hidden');
   }catch(err){ notify(err.message, 'error'); }
   finally{ btn.innerHTML = '<i class="fa-solid fa-calculator"></i> Calculate Payroll'; btn.disabled = false; }
 }
@@ -1528,7 +1530,7 @@ function renderPayTable(){
   tb.innerHTML = PAY_ROWS.map((r, i) => {
     const net = netOf(r); total += net;
     T.gross += r.earnedGross; T.ot += r.otPay||0; T.pf += r.pf; T.esi += r.esi;
-    T.ptl += r.pt + (r.lwf||0) + (r.customDed||0); T.tds += r.tds||0; T.adv += r.advDed; T.net += net;
+    T.ptl += r.pt + (r.customDed||0); T.lwf = (T.lwf||0) + (r.lwf||0); T.tds += r.tds||0; T.adv += r.advDed; T.net += net;
     const warn = r.hasSalary ? '' : ' <span class="chip chip-bad">No salary set</span>';
     return `<tr>
       <td><div class="font-semibold">${esc(r.name)}${warn}</div><div class="text-[10px]" style="color:var(--muted)">${esc(r.code)} • ${esc(r.shiftName)} • ${r.present}P / ${r.lates}L</div></td>
@@ -1540,7 +1542,8 @@ function renderPayTable(){
       <td class="money" id="otpay-${i}">${fmtINR(r.otPay)}</td>
       <td class="money">${fmtINR(r.pf)}</td>
       <td class="money">${fmtINR(r.esi)}</td>
-      <td class="money" title="PT ${r.pt} + LWF ${r.lwf||0} + Fixed deductions ${r.customDed||0}">${fmtINR(r.pt + (r.lwf||0) + (r.customDed||0))}</td>
+      <td class="money" title="PT ${r.pt}${r.customDed ? ' + Fixed deductions ' + r.customDed : ''}">${fmtINR(r.pt + (r.customDed||0))}</td>
+      <td class="money">${fmtINR(r.lwf||0)}</td>
       <td class="money">${fmtINR(r.tds||0)}</td>
       <td class="money" style="color:${r.advDed ? 'var(--warn)' : 'inherit'}">${fmtINR(r.advDed)}</td>
       <td><input type="number" class="inp money" style="width:85px;padding:5px 8px" value="${r.otherDed}" data-pay="otherDed" data-i="${i}"></td>
@@ -1552,7 +1555,7 @@ function renderPayTable(){
     <td>TOTAL — ${PAY_ROWS.length} employees</td><td></td><td></td><td></td>
     <td class="money">${fmtINR(T.gross)}</td><td></td><td class="money">${fmtINR(T.ot)}</td>
     <td class="money">${fmtINR(T.pf)}</td><td class="money">${fmtINR(T.esi)}</td>
-    <td class="money">${fmtINR(T.ptl)}</td><td class="money">${fmtINR(T.tds)}</td>
+    <td class="money">${fmtINR(T.ptl)}</td><td class="money">${fmtINR(T.lwf||0)}</td><td class="money">${fmtINR(T.tds)}</td>
     <td class="money">${fmtINR(T.adv)}</td><td></td><td></td>
     <td class="money" style="color:var(--brand)">${fmtINR(T.net)}</td><td></td></tr>`;
   $('payTotal').innerText = fmtINR(total);
@@ -1583,6 +1586,16 @@ $('payFinalizeBtn').addEventListener('click', async () => {
     }));
     const { error } = await sb.from('payslips').upsert(slips, { onConflict: 'employee_code,month' });
     if(error) throw error;
+    // permanent employer-side contribution record
+    const S2 = getSettings();
+    const erRows = PAY_ROWS.filter(r => r.hasSalary).map(r => ({
+      employee_code: r.code, month: PAY_MONTH,
+      er_pf: r.erPF||0, er_esi: r.erESI||0, er_lwf: r.erLWF||0,
+      er_pf_admin: r.pf > 0 ? Math.round(r.basic * 1 / 100) : 0,
+      gross: r.earnedGross
+    }));
+    const { error: erErr } = await sb.from('employer_contributions').upsert(erRows, { onConflict: 'employee_code,month' });
+    if(erErr) notify('Employer contribution record: ' + erErr.message + ' — have you run the V8 migration SQL?', 'error');
     // Advance balance update
     for(const r of PAY_ROWS){
       if(r.advDed > 0){
@@ -1679,6 +1692,16 @@ function printHTML(html){
   setTimeout(() => { window.print(); $('printArea').innerHTML = ''; }, 150);
 }
 $('slipPrintBtn').addEventListener('click', () => printHTML($('slipPaper').innerHTML));
+$('payBankBtn').addEventListener('click', () => {
+  const rows = PAY_ROWS.filter(r => r.hasSalary);
+  if(!rows.length) return notify('Run payroll first', 'error');
+  const missing = rows.filter(r => !(PROFILES[r.code]||{}).account_no);
+  dlText('Bank_Advice_' + PAY_MONTH + '.csv',
+    ['Employee Code,Name,Bank,Account No,IFSC,Amount (Net Pay)',
+     ...rows.map(r => { const p = PROFILES[r.code]||{};
+       return [r.code, '"' + r.name + '"', '"' + (p.bank_name||'') + '"', p.account_no||'', p.ifsc||'', netOf(r)].join(','); })].join('\n'), 'text/csv');
+  notify('Bank advice exported' + (missing.length ? ' — ' + missing.length + ' employee(s) have no account number on file' : ''), missing.length ? 'error' : 'success');
+});
 $('payPrintAllBtn').addEventListener('click', () => {
   const rows = PAY_ROWS.filter(r => r.hasSalary);
   if(!rows.length) return notify('No payslips to print', 'error');
@@ -1817,6 +1840,12 @@ document.body.addEventListener('click', async e => {
     const d = window._cmpData; if(!d) return;
     dlText('PF_Challan_' + d.ym + '.csv', ['UAN,Name,Gross,EPF Wages,EE 12%,EPS 8.33%,ER Diff,NCP Days',
       ...d.pfRows.map(r => [r.uan, '"' + r.name + '"', r.gross, r.epfWage, r.ee, r.eps, r.diff, r.ncp].join(','))].join('\n'), 'text/csv');
+  }
+  if(act === 'cmp-ercsv'){
+    if(!CMP.length) return notify('Load compliance data first', 'error');
+    dlText('Employer_Contributions_' + PAYX().ym + '.csv', ['Code,Name,Gross,ER PF,PF Admin/EDLI,ER ESI,ER LWF,Total ER',
+      ...CMP.map(r => { const admin = r.pf > 0 ? Math.round((r.basic||0)/100) : 0;
+        return [r.code, '"' + r.name + '"', r.earnedGross||0, r.erPF||0, admin, r.erESI||0, r.erLWF||0, (r.erPF||0)+(r.erESI||0)+(r.erLWF||0)].join(','); })].join('\n'), 'text/csv');
   }
   if(act === 'cmp-tdscsv'){
     const rows = CMP.filter(r => (r.tds||0) > 0);
@@ -2479,15 +2508,6 @@ $('cmpLoadBtn').addEventListener('click', async () => {
   if(error) return notify(error.message, 'error');
   if(!data || !data.length){ $('cmpBody').innerHTML = '<div class="card"><p class="m-0" style="color:var(--bad)">No finalized payslips found for this month. Go to Payroll → Calculate → <b>Finalize & Save All</b> first.</p></div>'; return; }
   CMP = data.map(s => Object.assign({ code: s.employee_code, month: s.month, net: s.net_pay }, s.data));
-  // coverage check: which active employees are missing from this month's finalized payroll?
-  const included = new Set(CMP.map(r => r.code));
-  const missing = activeEmps().filter(e => !included.has(e['Employee code']))
-    .map(e => ({ name: e.Name, code: e['Employee code'], reason: grossOf(e['Employee code']) > 0 ? 'payroll not finalized after salary was set' : 'no salary structure set' }));
-  const coverage = missing.length ? `<div class="card" style="border-color:#fde68a;background:#fffbeb">
-    <p class="m-0 text-sm"><b><i class="fa-solid fa-triangle-exclamation" style="color:var(--warn)"></i> ${CMP.length} of ${activeEmps().length} active employees included.</b>
-    Missing: ${missing.map(m => `${esc(m.name)} <span class="text-[10px]" style="color:var(--muted)">(${esc(m.reason)})</span>`).join(', ')}.</p>
-    <p class="m-0 mt-1 text-[11px]" style="color:var(--muted)">Fix: set the salary structure in Employees → Profile, then Payroll → Calculate → <b>Finalize & Save All</b> for this month again — existing payslips are safely overwritten, and this page will show everyone.</p>
-  </div>` : '';
   const S = getSettings();
   let pfEE = 0, pfEPS = 0, pfDiff = 0, esiEE = 0, esiER = 0, ptT = 0, lwfE = 0, gross = 0;
   const pfRows = [], esiRows = [];
@@ -2512,7 +2532,7 @@ $('cmpLoadBtn').addEventListener('click', async () => {
   const lwfR = CMP.length * (Number(S.lwfR)||0);
   const pfBody = pfRows.map(r => `<tr><td>${esc(r.uan)}</td><td>${esc(r.name)}</td><td class="money" style="text-align:right">${r.gross.toLocaleString('en-IN')}</td><td class="money" style="text-align:right">${r.epfWage.toLocaleString('en-IN')}</td><td class="money" style="text-align:right">${r.ee.toLocaleString('en-IN')}</td><td class="money" style="text-align:right">${r.eps.toLocaleString('en-IN')}</td><td class="money" style="text-align:right">${r.diff.toLocaleString('en-IN')}</td><td style="text-align:right">${r.ncp}</td></tr>`).join('');
   const esiBody = esiRows.map(r => `<tr><td>${esc(r.ip)}</td><td>${esc(r.name)}</td><td style="text-align:right">${r.days}</td><td class="money" style="text-align:right">${r.wage.toLocaleString('en-IN')}</td><td class="money" style="text-align:right">${r.ee.toLocaleString('en-IN')}</td><td class="money" style="text-align:right">${r.er.toLocaleString('en-IN')}</td></tr>`).join('');
-  $('cmpBody').innerHTML = coverage + `
+  $('cmpBody').innerHTML = `
   <div class="card" id="pfCard">
     <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
       <h3 class="display font-bold m-0">PF Challan — ${monthLabel(ym)} <span class="text-xs font-normal" style="color:var(--muted)">(${pfRows.length} members)</span></h3>
@@ -2577,6 +2597,33 @@ $('cmpLoadBtn').addEventListener('click', async () => {
       </div>
     </div>
     <p class="m-0 text-sm" style="color:var(--muted)">Print-ready registers for labour inspections — Wage Register from finalized payslips, Muster Roll from the attendance data, and a statutory-minimum Bonus Register for the year.</p>
+  </div>
+  <div class="card" id="erCard">
+    <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+      <h3 class="display font-bold m-0">Employer Contribution Register — ${monthLabel(ym)}</h3>
+      <div class="no-print">
+        <button class="btn btn-ghost btn-sm" data-act="cmp-ercsv"><i class="fa-solid fa-file-csv"></i> CSV</button>
+        <button class="btn btn-ghost btn-sm" data-act="cmp-print" data-card="erCard"><i class="fa-solid fa-print"></i></button>
+      </div>
+    </div>
+    ${(() => {
+      let tp = 0, te = 0, tl = 0, ta = 0;
+      const body = CMP.map(r => {
+        const admin = r.pf > 0 ? Math.round((r.basic||0) * 1 / 100) : 0;
+        tp += r.erPF||0; te += r.erESI||0; tl += r.erLWF||0; ta += admin;
+        return `<tr><td>${esc(r.name)}<br><small style="color:var(--muted)">${esc(r.code)}</small></td>
+          <td class="money" style="text-align:right">${(r.earnedGross||0).toLocaleString('en-IN')}</td>
+          <td class="money" style="text-align:right">${(r.erPF||0).toLocaleString('en-IN')}</td>
+          <td class="money" style="text-align:right">${admin.toLocaleString('en-IN')}</td>
+          <td class="money" style="text-align:right">${(r.erESI||0).toLocaleString('en-IN')}</td>
+          <td class="money" style="text-align:right">${(r.erLWF||0).toLocaleString('en-IN')}</td>
+          <td class="money" style="text-align:right"><b>${((r.erPF||0)+(r.erESI||0)+(r.erLWF||0)).toLocaleString('en-IN')}</b></td></tr>`;
+      }).join('');
+      return `<div style="overflow-x:auto"><table class="tbl"><thead><tr><th>Employee</th><th style="text-align:right">Gross</th><th style="text-align:right">ER PF 12%</th><th style="text-align:right">PF Admin/EDLI 1%</th><th style="text-align:right">ER ESI 3.25%</th><th style="text-align:right">ER LWF</th><th style="text-align:right">Total ER (CTC part)</th></tr></thead>
+      <tbody>${body}</tbody>
+      <tfoot><tr class="font-bold"><td>TOTAL</td><td></td><td class="money" style="text-align:right">${tp.toLocaleString('en-IN')}</td><td class="money" style="text-align:right">${ta.toLocaleString('en-IN')}</td><td class="money" style="text-align:right">${te.toLocaleString('en-IN')}</td><td class="money" style="text-align:right">${tl.toLocaleString('en-IN')}</td><td class="money" style="text-align:right">${(tp+te+tl).toLocaleString('en-IN')}</td></tr></tfoot></table></div>
+      <p class="text-[11px] mt-2" style="color:var(--muted)">PF Admin/EDLI (1%) is a statutory employer cost paid in the challan but not counted inside CTC. These records are also saved permanently in the employer_contributions table at finalize.</p>`;
+    })()}
   </div>
   <div class="card">
     <h3 class="display font-bold mt-0 mb-3">PT & LWF Summary — ${monthLabel(ym)}</h3>
