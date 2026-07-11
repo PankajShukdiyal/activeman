@@ -669,10 +669,17 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
       <div><label class="lbl">Emergency Phone</label><input id="epEmPhone" class="inp"></div>
     </div>
     <h4 class="display font-bold mt-5 mb-2">Salary Structure (Monthly) <span class="text-[10px] font-normal" style="color:var(--muted)">components are managed in Settings</span></h4>
+    <div class="flex items-end gap-2 mb-3 p-3 rounded-xl" style="background:var(--brand-soft)">
+      <div style="flex:1"><label class="lbl">Monthly CTC (₹) — auto-structure</label><input id="epCTC" type="number" class="inp" placeholder="35000"></div>
+      <button id="epCTCBtn" class="btn btn-primary btn-sm" style="padding:9px 14px"><i class="fa-solid fa-wand-magic-sparkles"></i> Build from CTC</button>
+    </div>
     <div class="grid grid-cols-4 gap-3" id="epSalWrap"></div>
-    <div class="flex items-center justify-between mt-3 p-3 rounded-xl" style="background:#f8fafc;border:1px solid var(--line)">
-      <span class="font-semibold text-sm">Monthly Gross</span>
-      <span class="money font-bold text-lg" id="epGross">₹0</span>
+    <div class="mt-3 p-3 rounded-xl" style="background:#f8fafc;border:1px solid var(--line)">
+      <div class="flex items-center justify-between">
+        <span class="font-semibold text-sm">Monthly Gross (in-hand before deductions)</span>
+        <span class="money font-bold text-lg" id="epGross">₹0</span>
+      </div>
+      <div id="epCTCInfo" class="text-xs mt-2 pt-2" style="border-top:1px dashed var(--line);color:var(--muted)"></div>
     </div>
     <h4 class="display font-bold mt-4 mb-2">Statutory Deductions & Tax</h4>
     <div class="grid grid-cols-2 gap-3 mb-2">
@@ -1159,11 +1166,70 @@ function buildSalaryInputs(code){
      <input type="number" class="inp" data-dcomp="${esc(c.k)}" value="${ded[c.k]||0}"></div>`).join('') : '';
   document.querySelectorAll('.sal-part').forEach(i => i.addEventListener('input', updateGrossPreview));
 }
+function employerSides(gross, pfWages, pfOn, esiOn, lwfOn){
+  const S = getSettings();
+  const pfBase = Number(S.pfCap) > 0 ? Math.min(pfWages, Number(S.pfCap)) : pfWages;
+  const erPF = pfOn ? Math.round(pfBase * Number(S.pfPct) / 100) : 0;                 // employer PF 12%
+  const erPFAdmin = pfOn ? Math.round(pfBase * 1 / 100) : 0;                          // admin 0.5% + EDLI 0.5%
+  const erESI = (esiOn && gross > 0 && gross <= Number(S.esiLimit)) ? Math.ceil(gross * 3.25 / 100) : 0;
+  const erLWF = lwfOn ? (Number(S.lwfR)||0) : 0;
+  return { erPF, erPFAdmin, erESI, erLWF, total: erPF + erPFAdmin + erESI + erLWF };
+}
+function currentPFWages(){
+  const S = getSettings();
+  let w = 0;
+  document.querySelectorAll('#epSalWrap .sal-part').forEach(i => {
+    const c = S.earnComps.find(x => x.k === i.dataset.comp);
+    if(c && c.pf) w += Number(i.value)||0;
+  });
+  return w;
+}
 function updateGrossPreview(){
   let g = 0;
   document.querySelectorAll('#epSalWrap .sal-part').forEach(i => { g += Number(i.value)||0; });
   $('epGross').innerText = fmtINR(g);
+  const S = getSettings();
+  const er = employerSides(g, currentPFWages(), $('epPF').checked, $('epESI').checked, $('epLWF').checked);
+  const eeESI = ($('epESI').checked && g > 0 && g <= Number(S.esiLimit)) ? Math.ceil(g * Number(S.esiPct) / 100) : 0;
+  const esiNote = (g > Number(S.esiLimit) && $('epESI').checked) ? ` <span class="chip chip-gray">ESI N/A — gross above ₹${Number(S.esiLimit).toLocaleString('en-IN')} limit</span>` : '';
+  $('epCTCInfo').innerHTML = `Employer side (per govt rules): PF ${fmtINR(er.erPF)} + PF Admin/EDLI ${fmtINR(er.erPFAdmin)} + ESI ${fmtINR(er.erESI)} + LWF ${fmtINR(er.erLWF)}
+    &nbsp;→&nbsp; <b style="color:var(--ink)">Total CTC: <span class="money">${fmtINR(g + er.total)}</span></b>${esiNote}
+    <br>Employee-side deductions will be: PF ${fmtINR($('epPF').checked ? Math.round(Math.min(currentPFWages(), Number(S.pfCap)||Infinity) * Number(S.pfPct) / 100) : 0)} • ESI ${fmtINR(eeESI)} • LWF ${fmtINR($('epLWF').checked ? Number(S.lwfE)||0 : 0)}`;
 }
+['epPF','epESI','epPT','epLWF'].forEach(id => document.addEventListener('DOMContentLoaded', () => {}) || null);
+$('epPF').addEventListener('change', updateGrossPreview);
+$('epESI').addEventListener('change', updateGrossPreview);
+$('epLWF').addEventListener('change', updateGrossPreview);
+$('epCTCBtn').addEventListener('click', () => {
+  const ctc = Number($('epCTC').value);
+  if(!ctc || ctc < 1000) return notify('Enter a valid monthly CTC', 'error');
+  const S = getSettings();
+  const pfOn = $('epPF').checked, esiOn = $('epESI').checked, lwfOn = $('epLWF').checked;
+  // iterate: gross = CTC - employer contributions(gross)
+  let g = ctc;
+  for(let i = 0; i < 30; i++){
+    const pfWages = g * 0.5; // basic assumed 50% of gross
+    const er = employerSides(g, pfWages, pfOn, esiOn, lwfOn);
+    const next = ctc - er.total;
+    if(Math.abs(next - g) < 1) { g = next; break; }
+    g = next;
+  }
+  g = Math.max(0, Math.round(g));
+  // split across components: basic 50%, hra 25%, remainder into last / special allowance
+  const comps = S.earnComps;
+  const alloc = {};
+  comps.forEach(c => alloc[c.k] = 0);
+  const basicKey = comps.find(c => c.k === 'basic') ? 'basic' : comps[0].k;
+  alloc[basicKey] = Math.round(g * 0.5);
+  if(comps.find(c => c.k === 'hra')) alloc.hra = Math.round(g * 0.25);
+  const assigned = Object.values(alloc).reduce((a,b) => a + b, 0);
+  const restKey = comps.find(c => c.k === 'special_allowance') ? 'special_allowance'
+    : (comps.map(c => c.k).filter(k => k !== basicKey && k !== 'hra').pop() || basicKey);
+  alloc[restKey] = (alloc[restKey]||0) + (g - assigned);
+  document.querySelectorAll('#epSalWrap .sal-part').forEach(i => { i.value = alloc[i.dataset.comp] || 0; });
+  updateGrossPreview();
+  notify(`Structured: Gross ${fmtINR(g)} + employer contributions = CTC ${fmtINR(ctc)}`, 'success');
+});
 
 $('epSaveBtn').addEventListener('click', async () => {
   const btn = $('epSaveBtn');
@@ -1405,6 +1471,9 @@ async function runPayroll(){
       const dedBreak = S.dedComps.map(c => ({ name: c.name, amt: (paidDays > 0 ? (dedMap[c.k]||0) : 0) })).filter(d => d.amt > 0);
       const customDed = dedBreak.reduce((a,d) => a + d.amt, 0);
       const tds = calcTDS(fullGross, p.tax_regime, Number(p.tax_declarations)||0);
+      const erPF = pf > 0 ? pf : 0; // employer PF mirrors capped 12%
+      const erESI = esi > 0 ? Math.ceil(earnedGross * 3.25 / 100) : 0;
+      const erLWF = (p.lwf_applicable !== false && fullGross > 0) ? Number(S.lwfR)||0 : 0;
       const arrears = Math.round(Number((p.salary || {}).pendingArrear) || 0);
 
       const advs = advMap[code] || [];
@@ -1419,6 +1488,7 @@ async function runPayroll(){
         earnedGross: Math.round(earnedGross), pf, esi, pt, lwf,
         otHours, otPay: Math.round(perHour * otHours * Number(S.otMult)),
         tds, arrears, lopLeave, otApprovedMode: otApproved[code] !== undefined,
+        erPF, erESI, erLWF,
         advDed: Math.round(advDed), advRefs: advs.map(a => a.id),
         otherDed: 0, bonus: 0, hasSalary: fullGross > 0 };
     });
@@ -1585,7 +1655,8 @@ function slipHTML(r){
       <div><b>Net Pay:</b> <span style="font-size:11px;color:#64748b">Rupees ${esc(numToWords(net))} Only</span></div>
       <div class="money" style="font-size:20px;font-weight:700">₹ ${net.toLocaleString('en-IN')}</div>
     </div>
-    <p style="font-size:10px;color:#94a3b8;margin-top:26px;text-align:center">This is a system generated payslip and does not require a signature. • ${esc(S.name)}</p>
+    ${(r.erPF || r.erESI || r.erLWF) ? `<p style="font-size:10px;color:#64748b;margin-top:10px">Employer contributions (part of CTC, not deducted from salary): PF ₹${(r.erPF||0).toLocaleString('en-IN')} • ESI ₹${(r.erESI||0).toLocaleString('en-IN')} • LWF ₹${(r.erLWF||0).toLocaleString('en-IN')}</p>` : ''}
+    <p style="font-size:10px;color:#94a3b8;margin-top:14px;text-align:center">This is a system generated payslip and does not require a signature. • ${esc(S.name)}</p>
   </div>`;
 }
 function openSlip(i){
