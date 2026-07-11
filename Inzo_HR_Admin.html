@@ -605,8 +605,13 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
         <div><label class="lbl">CL / Year</label><input id="setCL" type="number" class="inp" value="7"></div>
         <div><label class="lbl">SL / Year</label><input id="setSL" type="number" class="inp" value="7"></div>
         <div><label class="lbl">EL / Year</label><input id="setEL" type="number" class="inp" value="15"></div>
-        <div><label class="lbl">LWF Employee (₹/mo)</label><input id="setLWFE" type="number" class="inp" value="0"></div>
-        <div><label class="lbl">LWF Employer (₹/mo)</label><input id="setLWFR" type="number" class="inp" value="0"></div>
+        <div><label class="lbl">LWF Employee Cap (₹/mo) — 0.2% of gross, capped</label><input id="setLWFE" type="number" class="inp" value="35"></div>
+        <div><label class="lbl">LWF Employer Cap (₹/mo) — 2× employee, capped</label><input id="setLWFR" type="number" class="inp" value="70"></div>
+        <div class="col-span-2"><p class="lbl" style="margin:8px 0 4px">Minimum Wages — Haryana (Apr 2026, monthly ₹)</p></div>
+        <div><label class="lbl">Unskilled</label><input id="setMW1" type="number" step="0.01" class="inp" value="15220.71"></div>
+        <div><label class="lbl">Semi-Skilled</label><input id="setMW2" type="number" step="0.01" class="inp" value="16780.74"></div>
+        <div><label class="lbl">Skilled</label><input id="setMW3" type="number" step="0.01" class="inp" value="18500.81"></div>
+        <div><label class="lbl">Highly Skilled</label><input id="setMW4" type="number" step="0.01" class="inp" value="19425.85"></div>
       </div>
       <h3 class="display font-bold mt-6 mb-3">Salary Components <span class="text-[10px] font-normal" style="color:var(--muted)">shown in every employee's salary structure & payslip</span></h3>
       <p class="lbl">Earning Components <span style="text-transform:none;font-weight:400">(tick "PF" if it counts as PF wages)</span></p>
@@ -664,6 +669,8 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
       <div><label class="lbl">Grade</label><input id="epGrade" class="inp" placeholder="A / B / Worker"></div>
       <div><label class="lbl">Employment Type</label>
         <select id="epType" class="inp"><option>Permanent</option><option>Contract</option><option>Probation</option><option>Trainee</option><option>Piece Rate</option></select></div>
+      <div><label class="lbl">Skill Category (min wage)</label>
+        <select id="epSkill" class="inp"><option value="">Not applicable</option><option value="mw1">Unskilled</option><option value="mw2">Semi-Skilled</option><option value="mw3">Skilled</option><option value="mw4">Highly Skilled</option></select></div>
       <div><label class="lbl">Reporting Manager</label><input id="epManager" class="inp"></div>
       <div><label class="lbl">Work Location / Unit</label><input id="epLocation" class="inp" placeholder="IMT Manesar - Unit 1"></div>
       <div><label class="lbl">Emergency Contact</label><input id="epEmName" class="inp" placeholder="Name"></div>
@@ -872,8 +879,9 @@ function getSettings(){
     name:'Zooto Fashion Pvt Ltd', addr:'IMT Manesar, Gurugram, Haryana', phone:'', email:'', cin:'',
     hr:'', hrDesig:'Director', probation:6, notice:30,
     weekOff:0, latesHalf:3, pfPct:12, pfCap:15000, esiPct:0.75, esiLimit:21000, pt:0,
-    otMult:1, otAfter:30, cl:7, sl:7, el:15, lwfE:0, lwfR:0,
+    otMult:1, otAfter:30, cl:7, sl:7, el:15,
     leaveMode:'annual', accrual:1, sandwich:false, otDepts:'PLANNING,PRODUCTION',
+    lwfE:35, lwfR:70, mw1:15220.71, mw2:16780.74, mw3:18500.81, mw4:19425.85,
     earnComps:[{k:'basic',name:'Basic',pf:true},{k:'hra',name:'HRA',pf:false},{k:'conveyance',name:'Conveyance',pf:false},{k:'special_allowance',name:'Special Allowance',pf:false}],
     dedComps:[]
   }, SETTINGS || {});
@@ -1150,6 +1158,7 @@ function openEmpModal(code){
   $('epPAN').value = p.pan || ''; $('epUAN').value = p.uan || ''; $('epESINo').value = p.esi_no || '';
   if(p.shift_id) $('epShift').value = p.shift_id;
   $('epGrade').value = p.grade || ''; $('epType').value = p.employment_type || 'Permanent';
+  $('epSkill').value = (p.salary && p.salary.skill) || '';
   $('epManager').value = p.reporting_manager || ''; $('epLocation').value = p.work_location || '';
   $('epEmName').value = p.emergency_name || ''; $('epEmPhone').value = p.emergency_phone || '';
   loadDocs(code);
@@ -1167,13 +1176,24 @@ function buildSalaryInputs(code){
      <input type="number" class="inp" data-dcomp="${esc(c.k)}" value="${ded[c.k]||0}"></div>`).join('') : '';
   document.querySelectorAll('.sal-part').forEach(i => i.addEventListener('input', updateGrossPreview));
 }
+document.addEventListener('change', e => { if(e.target && e.target.id === 'epSkill') updateGrossPreview(); });
+function lwfEE(gross){ // Haryana rule: 0.2% of wages, capped (₹35 w.e.f. 1 Jan 2026)
+  const S = getSettings();
+  if(!gross) return 0;
+  return Math.min(Math.round(gross * 0.2 / 100), Number(S.lwfE)||0);
+}
+function lwfER(gross){ // employer = 2× employee, capped (₹70)
+  const S = getSettings();
+  const ee = lwfEE(gross);
+  return ee > 0 ? Math.min(ee * 2, Number(S.lwfR)||0) : 0;
+}
 function employerSides(gross, pfWages, pfOn, esiOn, lwfOn){
   const S = getSettings();
   const pfBase = Number(S.pfCap) > 0 ? Math.min(pfWages, Number(S.pfCap)) : pfWages;
   const erPF = pfOn ? Math.round(pfBase * Number(S.pfPct) / 100) : 0;                 // employer PF 12%
   const erPFAdmin = pfOn ? Math.round(pfBase * 1 / 100) : 0;                          // admin+EDLI — challan only, NOT in CTC
   const erESI = (esiOn && gross > 0 && gross <= Number(S.esiLimit)) ? Math.ceil(gross * 3.25 / 100) : 0;
-  const erLWF = lwfOn ? (Number(S.lwfR)||0) : 0;
+  const erLWF = lwfOn ? lwfER(gross) : 0;
   return { erPF, erPFAdmin, erESI, erLWF, total: erPF + erESI + erLWF };
 }
 function currentPFWages(){
@@ -1193,9 +1213,13 @@ function updateGrossPreview(){
   const er = employerSides(g, currentPFWages(), $('epPF').checked, $('epESI').checked, $('epLWF').checked);
   const eeESI = ($('epESI').checked && g > 0 && g <= Number(S.esiLimit)) ? Math.ceil(g * Number(S.esiPct) / 100) : 0;
   const esiNote = (g > Number(S.esiLimit) && $('epESI').checked) ? ` <span class="chip chip-gray">ESI N/A — gross above ₹${Number(S.esiLimit).toLocaleString('en-IN')} limit</span>` : '';
+  const skill = $('epSkill').value;
+  const mwRate = skill ? Number(S[skill])||0 : 0;
+  const mwNote = (mwRate > 0 && g > 0 && g < mwRate)
+    ? ` <span class="chip chip-bad"><i class="fa-solid fa-triangle-exclamation"></i> Below minimum wage (₹${mwRate.toLocaleString('en-IN')})</span>` : '';
   $('epCTCInfo').innerHTML = `Employer side (per govt rules): PF ${fmtINR(er.erPF)} + ESI ${fmtINR(er.erESI)} + LWF ${fmtINR(er.erLWF)}
-    &nbsp;→&nbsp; <b style="color:var(--ink)">Total CTC: <span class="money">${fmtINR(g + er.total)}</span></b>${esiNote}
-    <br>Employee-side deductions will be: PF ${fmtINR($('epPF').checked ? Math.round(Math.min(currentPFWages(), Number(S.pfCap)||Infinity) * Number(S.pfPct) / 100) : 0)} • ESI ${fmtINR(eeESI)} • LWF ${fmtINR($('epLWF').checked ? Number(S.lwfE)||0 : 0)}`;
+    &nbsp;→&nbsp; <b style="color:var(--ink)">Total CTC: <span class="money">${fmtINR(g + er.total)}</span></b>${esiNote}${mwNote}
+    <br>Employee-side deductions will be: PF ${fmtINR($('epPF').checked ? Math.round(Math.min(currentPFWages(), Number(S.pfCap)||Infinity) * Number(S.pfPct) / 100) : 0)} • ESI ${fmtINR(eeESI)} • LWF ${fmtINR($('epLWF').checked ? lwfEE(g) : 0)} (0.2%, capped)`;
 }
 ['epPF','epESI','epPT','epLWF'].forEach(id => document.addEventListener('DOMContentLoaded', () => {}) || null);
 $('epPF').addEventListener('change', updateGrossPreview);
@@ -1243,7 +1267,7 @@ $('epSaveBtn').addEventListener('click', async () => {
       employee_code: $('epCode').value,
       phone: $('epPhone').value, email: $('epEmail').value, father_name: $('epFather').value,
       dob: $('epDOB').value || null, address: $('epAddr').value,
-      salary: { earn, ded },
+      salary: { earn, ded, skill: $('epSkill').value, pendingArrear: Number(((PROFILES[$('epCode').value]||{}).salary||{}).pendingArrear)||0 },
       basic: Number(earn.basic)||0, hra: Number(earn.hra)||0,
       conveyance: Number(earn.conveyance)||0, special_allowance: Number(earn.special_allowance)||0,
       pf_applicable: $('epPF').checked, esi_applicable: $('epESI').checked, pt_applicable: $('epPT').checked,
@@ -1467,14 +1491,14 @@ async function runPayroll(){
       const pf = p.pf_applicable !== false ? Math.round(basic * Number(S.pfPct) / 100) : 0;
       const esi = (p.esi_applicable !== false && fullGross <= Number(S.esiLimit)) ? Math.ceil(earnedGross * Number(S.esiPct) / 100) : 0;
       const pt = p.pt_applicable !== false ? Number(S.pt)||0 : 0;
-      const lwf = (p.lwf_applicable !== false && fullGross > 0) ? Number(S.lwfE)||0 : 0;
+      const lwf = (p.lwf_applicable !== false) ? lwfEE(earnedGross) : 0;
       const dedMap = empDeductions(code);
       const dedBreak = S.dedComps.map(c => ({ name: c.name, amt: (paidDays > 0 ? (dedMap[c.k]||0) : 0) })).filter(d => d.amt > 0);
       const customDed = dedBreak.reduce((a,d) => a + d.amt, 0);
       const tds = calcTDS(fullGross, p.tax_regime, Number(p.tax_declarations)||0);
       const erPF = pf > 0 ? pf : 0; // employer PF mirrors capped 12%
       const erESI = esi > 0 ? Math.ceil(earnedGross * 3.25 / 100) : 0;
-      const erLWF = (p.lwf_applicable !== false && fullGross > 0) ? Number(S.lwfR)||0 : 0;
+      const erLWF = (p.lwf_applicable !== false) ? lwfER(earnedGross) : 0;
       const arrears = Math.round(Number((p.salary || {}).pendingArrear) || 0);
 
       const advs = advMap[code] || [];
@@ -2121,6 +2145,7 @@ function fillSettingsForm(){
   $('setOTMult').value = S.otMult; $('setOTAfter').value = S.otAfter;
   $('setCL').value = S.cl; $('setSL').value = S.sl; $('setEL').value = S.el;
   $('setLWFE').value = S.lwfE; $('setLWFR').value = S.lwfR;
+  $('setMW1').value = S.mw1; $('setMW2').value = S.mw2; $('setMW3').value = S.mw3; $('setMW4').value = S.mw4;
   $('setLeaveMode').value = S.leaveMode; $('setAccrual').value = S.accrual;
   $('setSandwich').checked = !!S.sandwich; $('setOTDepts').value = S.otDepts;
   EARN_EDIT = null; DED_EDIT = null;
@@ -2140,6 +2165,8 @@ $('setSaveBtn').addEventListener('click', async () => {
       otMult: Number($('setOTMult').value)||1, otAfter: Number($('setOTAfter').value)||30,
       cl: Number($('setCL').value)||0, sl: Number($('setSL').value)||0, el: Number($('setEL').value)||0,
       lwfE: Number($('setLWFE').value)||0, lwfR: Number($('setLWFR').value)||0,
+      mw1: Number($('setMW1').value)||0, mw2: Number($('setMW2').value)||0,
+      mw3: Number($('setMW3').value)||0, mw4: Number($('setMW4').value)||0,
       leaveMode: $('setLeaveMode').value, accrual: Number($('setAccrual').value)||1,
       sandwich: $('setSandwich').checked, otDepts: $('setOTDepts').value,
       earnComps: EARN_EDIT || getSettings().earnComps,
