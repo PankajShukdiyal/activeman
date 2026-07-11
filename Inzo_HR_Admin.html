@@ -369,9 +369,9 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
     <div style="overflow-x:auto">
       <table class="tbl" id="payTable">
         <thead><tr>
-          <th>Employee</th><th>Paid Days</th><th>Leave</th><th>LOP</th><th>Earned Gross</th><th>OT Hrs</th><th>OT Pay</th><th>PF</th><th>ESI</th><th>PT</th><th>Advance</th><th>Other Ded.</th><th>Bonus</th><th>Net Pay</th><th></th>
+          <th>Employee</th><th>Paid Days</th><th>Leave</th><th>LOP</th><th>Earned Gross</th><th>OT Hrs</th><th>OT Pay</th><th>PF</th><th>ESI</th><th>PT+LWF</th><th>TDS</th><th>Advance</th><th>Other Ded.</th><th>Bonus</th><th>Net Pay</th><th></th>
         </tr></thead>
-        <tbody><tr><td colspan="15" class="text-center py-8" style="color:var(--muted)">Run payroll to see calculations. Salary structures are set on the Employees page.</td></tr></tbody>
+        <tbody><tr><td colspan="16" class="text-center py-8" style="color:var(--muted)">Run payroll to see calculations. Salary structures are set on the Employees page.</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -1523,9 +1523,12 @@ function calcTDS(monthlyGross, regime, declarations){
 
 function renderPayTable(){
   const tb = $('payTable').querySelector('tbody');
+  const T = { gross:0, ot:0, pf:0, esi:0, ptl:0, tds:0, adv:0, net:0 };
   let total = 0;
   tb.innerHTML = PAY_ROWS.map((r, i) => {
     const net = netOf(r); total += net;
+    T.gross += r.earnedGross; T.ot += r.otPay||0; T.pf += r.pf; T.esi += r.esi;
+    T.ptl += r.pt + (r.lwf||0) + (r.customDed||0); T.tds += r.tds||0; T.adv += r.advDed; T.net += net;
     const warn = r.hasSalary ? '' : ' <span class="chip chip-bad">No salary set</span>';
     return `<tr>
       <td><div class="font-semibold">${esc(r.name)}${warn}</div><div class="text-[10px]" style="color:var(--muted)">${esc(r.code)} • ${esc(r.shiftName)} • ${r.present}P / ${r.lates}L</div></td>
@@ -1537,14 +1540,21 @@ function renderPayTable(){
       <td class="money" id="otpay-${i}">${fmtINR(r.otPay)}</td>
       <td class="money">${fmtINR(r.pf)}</td>
       <td class="money">${fmtINR(r.esi)}</td>
-      <td class="money" title="PT ${r.pt} + LWF ${r.lwf||0} + Fixed ${r.customDed||0} + TDS ${r.tds||0}">${fmtINR(r.pt + (r.lwf||0) + (r.customDed||0) + (r.tds||0))}</td>
+      <td class="money" title="PT ${r.pt} + LWF ${r.lwf||0} + Fixed deductions ${r.customDed||0}">${fmtINR(r.pt + (r.lwf||0) + (r.customDed||0))}</td>
+      <td class="money">${fmtINR(r.tds||0)}</td>
       <td class="money" style="color:${r.advDed ? 'var(--warn)' : 'inherit'}">${fmtINR(r.advDed)}</td>
       <td><input type="number" class="inp money" style="width:85px;padding:5px 8px" value="${r.otherDed}" data-pay="otherDed" data-i="${i}"></td>
       <td><input type="number" class="inp money" style="width:85px;padding:5px 8px" value="${r.bonus}" data-pay="bonus" data-i="${i}"></td>
       <td class="money font-bold" style="color:var(--brand)" id="net-${i}">${fmtINR(net)}</td>
       <td><button class="btn btn-ghost btn-sm" data-act="view-slip" data-i="${i}"><i class="fa-solid fa-receipt"></i></button></td>
     </tr>`;
-  }).join('');
+  }).join('') + `<tr style="background:#f8fafc;font-weight:700;border-top:2px solid var(--line)">
+    <td>TOTAL — ${PAY_ROWS.length} employees</td><td></td><td></td><td></td>
+    <td class="money">${fmtINR(T.gross)}</td><td></td><td class="money">${fmtINR(T.ot)}</td>
+    <td class="money">${fmtINR(T.pf)}</td><td class="money">${fmtINR(T.esi)}</td>
+    <td class="money">${fmtINR(T.ptl)}</td><td class="money">${fmtINR(T.tds)}</td>
+    <td class="money">${fmtINR(T.adv)}</td><td></td><td></td>
+    <td class="money" style="color:var(--brand)">${fmtINR(T.net)}</td><td></td></tr>`;
   $('payTotal').innerText = fmtINR(total);
 }
 $('payTable').addEventListener('input', e => {
@@ -2469,6 +2479,15 @@ $('cmpLoadBtn').addEventListener('click', async () => {
   if(error) return notify(error.message, 'error');
   if(!data || !data.length){ $('cmpBody').innerHTML = '<div class="card"><p class="m-0" style="color:var(--bad)">No finalized payslips found for this month. Go to Payroll → Calculate → <b>Finalize & Save All</b> first.</p></div>'; return; }
   CMP = data.map(s => Object.assign({ code: s.employee_code, month: s.month, net: s.net_pay }, s.data));
+  // coverage check: which active employees are missing from this month's finalized payroll?
+  const included = new Set(CMP.map(r => r.code));
+  const missing = activeEmps().filter(e => !included.has(e['Employee code']))
+    .map(e => ({ name: e.Name, code: e['Employee code'], reason: grossOf(e['Employee code']) > 0 ? 'payroll not finalized after salary was set' : 'no salary structure set' }));
+  const coverage = missing.length ? `<div class="card" style="border-color:#fde68a;background:#fffbeb">
+    <p class="m-0 text-sm"><b><i class="fa-solid fa-triangle-exclamation" style="color:var(--warn)"></i> ${CMP.length} of ${activeEmps().length} active employees included.</b>
+    Missing: ${missing.map(m => `${esc(m.name)} <span class="text-[10px]" style="color:var(--muted)">(${esc(m.reason)})</span>`).join(', ')}.</p>
+    <p class="m-0 mt-1 text-[11px]" style="color:var(--muted)">Fix: set the salary structure in Employees → Profile, then Payroll → Calculate → <b>Finalize & Save All</b> for this month again — existing payslips are safely overwritten, and this page will show everyone.</p>
+  </div>` : '';
   const S = getSettings();
   let pfEE = 0, pfEPS = 0, pfDiff = 0, esiEE = 0, esiER = 0, ptT = 0, lwfE = 0, gross = 0;
   const pfRows = [], esiRows = [];
@@ -2493,7 +2512,7 @@ $('cmpLoadBtn').addEventListener('click', async () => {
   const lwfR = CMP.length * (Number(S.lwfR)||0);
   const pfBody = pfRows.map(r => `<tr><td>${esc(r.uan)}</td><td>${esc(r.name)}</td><td class="money" style="text-align:right">${r.gross.toLocaleString('en-IN')}</td><td class="money" style="text-align:right">${r.epfWage.toLocaleString('en-IN')}</td><td class="money" style="text-align:right">${r.ee.toLocaleString('en-IN')}</td><td class="money" style="text-align:right">${r.eps.toLocaleString('en-IN')}</td><td class="money" style="text-align:right">${r.diff.toLocaleString('en-IN')}</td><td style="text-align:right">${r.ncp}</td></tr>`).join('');
   const esiBody = esiRows.map(r => `<tr><td>${esc(r.ip)}</td><td>${esc(r.name)}</td><td style="text-align:right">${r.days}</td><td class="money" style="text-align:right">${r.wage.toLocaleString('en-IN')}</td><td class="money" style="text-align:right">${r.ee.toLocaleString('en-IN')}</td><td class="money" style="text-align:right">${r.er.toLocaleString('en-IN')}</td></tr>`).join('');
-  $('cmpBody').innerHTML = `
+  $('cmpBody').innerHTML = coverage + `
   <div class="card" id="pfCard">
     <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
       <h3 class="display font-bold m-0">PF Challan — ${monthLabel(ym)} <span class="text-xs font-normal" style="color:var(--muted)">(${pfRows.length} members)</span></h3>
