@@ -197,6 +197,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
   <div class="topbar">
     <h2 id="pageTitle" class="display text-lg font-bold m-0">Dashboard</h2>
     <div class="flex items-center gap-3">
+      <button id="helpBtn" class="btn btn-ghost btn-sm" title="How this page works"><i class="fa-solid fa-circle-question"></i> Help</button>
       <span id="adminEmailChip" class="chip chip-gray"><i class="fa-solid fa-user-shield"></i> —</span>
     </div>
   </div>
@@ -361,6 +362,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
     <button id="payFinalizeBtn" class="btn btn-ghost hidden"><i class="fa-solid fa-lock"></i> Finalize & Save All</button>
     <button id="payPrintAllBtn" class="btn btn-ghost hidden"><i class="fa-solid fa-print"></i> Print All Payslips</button>
     <button id="payBankBtn" class="btn btn-ghost hidden"><i class="fa-solid fa-building-columns"></i> Bank Advice</button>
+    <button id="payCashBtn" class="btn btn-ghost hidden"><i class="fa-solid fa-money-bill-wave"></i> Cash Register</button>
     <div class="ml-auto text-right">
       <p class="lbl m-0">Total Net Payable</p>
       <div class="stat-num money" style="color:var(--brand)" id="payTotal">₹0</div>
@@ -689,6 +691,16 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
       </div>
       <div id="epCTCInfo" class="text-xs mt-2 pt-2" style="border-top:1px dashed var(--line);color:var(--muted)"></div>
     </div>
+    <h4 class="display font-bold mt-4 mb-2">Salary Payment Mode</h4>
+    <div class="grid grid-cols-2 gap-3 mb-2">
+      <div><label class="lbl">Mode</label>
+        <select id="epPayMode" class="inp">
+          <option value="bank">Bank Transfer (full)</option>
+          <option value="cash">Cash (full)</option>
+          <option value="split">Split — fixed cash + rest in bank</option>
+        </select></div>
+      <div id="epCashWrap" class="hidden"><label class="lbl">Cash Portion (₹/month)</label><input id="epCashAmt" type="number" class="inp" placeholder="5000"></div>
+    </div>
     <h4 class="display font-bold mt-4 mb-2">Statutory Deductions & Tax</h4>
     <div class="grid grid-cols-2 gap-3 mb-2">
       <div><label class="lbl">TDS Regime</label>
@@ -749,6 +761,17 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
       <button class="btn btn-ghost btn-sm" data-close="slipModal"><i class="fa-solid fa-xmark"></i> Close</button>
     </div>
     <div class="paper-desk" style="padding:10px"><div id="slipPaper"></div></div>
+  </div>
+</div>
+
+<!-- ================= HELP MODAL ================= -->
+<div class="modal" id="helpModal">
+  <div class="modal-box" style="max-width:520px">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="display font-bold text-lg m-0" id="helpTitle">Help</h3>
+      <button class="btn btn-ghost btn-sm" data-close="helpModal"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div id="helpBody" class="text-sm space-y-2"></div>
   </div>
 </div>
 
@@ -1034,6 +1057,7 @@ document.querySelectorAll('.nav-sec[data-group]').forEach(h => h.addEventListene
 /* ---------------- Dashboard ---------------- */
 async function loadDashboard(){
   loadEngagement();
+  renderSetupChecklist();
   const today = todayISO();
   $('dToday').innerText = fmtDate(today);
   try{
@@ -1159,6 +1183,9 @@ function openEmpModal(code){
   if(p.shift_id) $('epShift').value = p.shift_id;
   $('epGrade').value = p.grade || ''; $('epType').value = p.employment_type || 'Permanent';
   $('epSkill').value = (p.salary && p.salary.skill) || '';
+  $('epPayMode').value = (p.salary && p.salary.payMode) || 'bank';
+  $('epCashAmt').value = (p.salary && p.salary.cashAmt) || '';
+  $('epCashWrap').classList.toggle('hidden', $('epPayMode').value !== 'split');
   $('epManager').value = p.reporting_manager || ''; $('epLocation').value = p.work_location || '';
   $('epEmName').value = p.emergency_name || ''; $('epEmPhone').value = p.emergency_phone || '';
   loadDocs(code);
@@ -1176,7 +1203,10 @@ function buildSalaryInputs(code){
      <input type="number" class="inp" data-dcomp="${esc(c.k)}" value="${ded[c.k]||0}"></div>`).join('') : '';
   document.querySelectorAll('.sal-part').forEach(i => i.addEventListener('input', updateGrossPreview));
 }
-document.addEventListener('change', e => { if(e.target && e.target.id === 'epSkill') updateGrossPreview(); });
+document.addEventListener('change', e => {
+  if(e.target && e.target.id === 'epSkill') updateGrossPreview();
+  if(e.target && e.target.id === 'epPayMode') $('epCashWrap').classList.toggle('hidden', e.target.value !== 'split');
+});
 function lwfEE(gross){ // Haryana rule: 0.2% of wages, capped (₹35 w.e.f. 1 Jan 2026)
   const S = getSettings();
   if(!gross) return 0;
@@ -1267,7 +1297,7 @@ $('epSaveBtn').addEventListener('click', async () => {
       employee_code: $('epCode').value,
       phone: $('epPhone').value, email: $('epEmail').value, father_name: $('epFather').value,
       dob: $('epDOB').value || null, address: $('epAddr').value,
-      salary: { earn, ded, skill: $('epSkill').value, pendingArrear: Number(((PROFILES[$('epCode').value]||{}).salary||{}).pendingArrear)||0 },
+      salary: { earn, ded, skill: $('epSkill').value, payMode: $('epPayMode').value, cashAmt: Number($('epCashAmt').value)||0, pendingArrear: Number(((PROFILES[$('epCode').value]||{}).salary||{}).pendingArrear)||0 },
       basic: Number(earn.basic)||0, hra: Number(earn.hra)||0,
       conveyance: Number(earn.conveyance)||0, special_allowance: Number(earn.special_allowance)||0,
       pf_applicable: $('epPF').checked, esi_applicable: $('epESI').checked, pt_applicable: $('epPT').checked,
@@ -1514,6 +1544,8 @@ async function runPayroll(){
         otHours, otPay: Math.round(perHour * otHours * Number(S.otMult)),
         tds, arrears, lopLeave, otApprovedMode: otApproved[code] !== undefined,
         erPF, erESI, erLWF,
+        payMode: (p.salary && p.salary.payMode) || 'bank',
+        cashAmt: Number((p.salary || {}).cashAmt) || 0,
         advDed: Math.round(advDed), advRefs: advs.map(a => a.id),
         otherDed: 0, bonus: 0, hasSalary: fullGross > 0 };
     });
@@ -1521,6 +1553,7 @@ async function runPayroll(){
     $('payFinalizeBtn').classList.remove('hidden');
     $('payPrintAllBtn').classList.remove('hidden');
     $('payBankBtn').classList.remove('hidden');
+    $('payCashBtn').classList.remove('hidden');
   }catch(err){ notify(err.message, 'error'); }
   finally{ btn.innerHTML = '<i class="fa-solid fa-calculator"></i> Calculate Payroll'; btn.disabled = false; }
 }
@@ -1572,7 +1605,7 @@ function renderPayTable(){
       <td class="money" style="color:${r.advDed ? 'var(--warn)' : 'inherit'}">${fmtINR(r.advDed)}</td>
       <td><input type="number" class="inp money" style="width:85px;padding:5px 8px" value="${r.otherDed}" data-pay="otherDed" data-i="${i}"></td>
       <td><input type="number" class="inp money" style="width:85px;padding:5px 8px" value="${r.bonus}" data-pay="bonus" data-i="${i}"></td>
-      <td class="money font-bold" style="color:var(--brand)" id="net-${i}">${fmtINR(net)}</td>
+      <td class="money font-bold" style="color:var(--brand)" id="net-${i}">${fmtINR(net)}${r.payMode !== 'bank' ? `<div class="text-[9px] font-normal" style="color:var(--muted)">${r.payMode === 'cash' ? 'CASH' : 'Cash ' + fmtINR(Math.min(r.cashAmt, net)) + ' + Bank'}</div>` : ''}</td>
       <td><button class="btn btn-ghost btn-sm" data-act="view-slip" data-i="${i}"><i class="fa-solid fa-receipt"></i></button></td>
     </tr>`;
   }).join('') + `<tr style="background:#f8fafc;font-weight:700;border-top:2px solid var(--line)">
@@ -1649,6 +1682,12 @@ $('payFinalizeBtn').addEventListener('click', async () => {
 });
 
 /* ---------------- Payslip render & print ---------------- */
+function slipVC(code, month, net){ // tamper-evident verification code (djb2, salted)
+  const s = code + '|' + month + '|' + net + '|' + SUPABASE_URL;
+  let h = 5381;
+  for(let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+  return h.toString(16).toUpperCase().padStart(8, '0');
+}
 function slipHTML(r){
   const S = getSettings();
   const p = PROFILES[r.code] || {};
@@ -1674,17 +1713,26 @@ function slipHTML(r){
     bodyRows += `<tr><td>${eR ? esc(eR[0]) : ''}</td><td style="text-align:right">${eR ? Math.round(eR[1]).toLocaleString('en-IN') : ''}</td>
       <td>${dR ? esc(dR[0]) : ''}</td><td style="text-align:right">${dR ? Math.round(dR[1]).toLocaleString('en-IN') : ''}</td></tr>`;
   }
-  return `<div class="paper">
-    <div class="doc-head">
+  const mm = r.month || PAY_MONTH;
+  const vc = slipVC(r.code, mm, net);
+  const slipId = 'PS/' + mm.replace('-','') + '/' + r.code;
+  const qrData = encodeURIComponent(`${S.name}|PAYSLIP|${r.code}|${mm}|NET:${net}|VC:${vc}`);
+  return `<div class="paper" style="position:relative;overflow:hidden;padding-top:0">
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:0">
+      <div style="transform:rotate(-32deg);font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:46px;color:rgba(15,23,42,.045);white-space:nowrap;letter-spacing:.1em;text-align:center;line-height:2.2">${esc(S.name).toUpperCase()}<br>SYSTEM GENERATED • ORIGINAL<br>${esc(S.name).toUpperCase()}</div>
+    </div>
+    <div style="position:relative;z-index:1">
+    <div style="background:#0f172a;color:#fff;margin:0 -16mm;padding:8mm 16mm 6mm;display:flex;justify-content:space-between;align-items:flex-end">
       <div>
-        <h1 style="margin:0;font-size:20px">${esc(S.name)}</h1>
-        <p style="margin:2px 0 0;font-size:11px;color:#64748b">${esc(S.addr)}${S.phone ? ' • ' + esc(S.phone) : ''}${S.cin ? ' • ' + esc(S.cin) : ''}</p>
+        <h1 style="margin:0;font-size:19px;letter-spacing:.02em">${esc(S.name)}</h1>
+        <p style="margin:3px 0 0;font-size:10px;color:#94a3b8">${esc(S.addr)}${S.phone ? ' • ' + esc(S.phone) : ''}${S.cin ? ' • ' + esc(S.cin) : ''}</p>
       </div>
       <div style="text-align:right">
-        <h2 style="margin:0;font-size:14px;letter-spacing:.08em">PAYSLIP</h2>
-        <p style="margin:2px 0 0;font-size:11px;color:#64748b">${esc(monthLabel(r.month || PAY_MONTH))}</p>
+        <div style="font-size:13px;font-weight:700;letter-spacing:.14em;border:1px solid #475569;border-radius:6px;padding:4px 12px">PAYSLIP</div>
+        <p style="margin:4px 0 0;font-size:10px;color:#94a3b8">${esc(monthLabel(mm))} • ${esc(slipId)}</p>
       </div>
     </div>
+    <div style="height:3px;background:#2563eb;margin:0 -16mm 14px"></div>
     <table class="ann"><tbody>
       <tr><th style="width:22%">Employee</th><td style="width:28%">${esc(r.name)}</td><th style="width:22%">Employee Code</th><td>${esc(r.code)}</td></tr>
       <tr><th>Department</th><td>${esc(r.dept || '—')}</td><th>Designation</th><td>${esc(r.desig || '—')}</td></tr>
@@ -1698,12 +1746,21 @@ function slipHTML(r){
         <tr><th>Gross Earnings</th><th style="text-align:right">${(r.earnedGross + r.bonus + (r.otPay||0) + (r.arrears||0)).toLocaleString('en-IN')}</th><th>Total Deductions</th><th style="text-align:right">${totalDed.toLocaleString('en-IN')}</th></tr>
       </tbody>
     </table>
-    <div style="display:flex;justify-content:space-between;align-items:center;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:8px;padding:10px 14px;margin-top:8px">
-      <div><b>Net Pay:</b> <span style="font-size:11px;color:#64748b">Rupees ${esc(numToWords(net))} Only</span></div>
-      <div class="money" style="font-size:20px;font-weight:700">₹ ${net.toLocaleString('en-IN')}</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;background:#0f172a;color:#fff;border-radius:10px;padding:12px 16px;margin-top:10px">
+      <div><b style="letter-spacing:.05em">NET PAY</b><br><span style="font-size:10.5px;color:#94a3b8">Rupees ${esc(numToWords(net))} Only${r.payMode === 'cash' ? ' • Paid in Cash' : (r.payMode === 'split' ? ' • Cash ₹' + Math.min(r.cashAmt||0, net).toLocaleString('en-IN') + ' + Bank ₹' + (net - Math.min(r.cashAmt||0, net)).toLocaleString('en-IN') : ' • Bank Transfer')}</span></div>
+      <div class="money" style="font-size:24px;font-weight:700">₹ ${net.toLocaleString('en-IN')}</div>
     </div>
     ${(r.erPF || r.erESI || r.erLWF) ? `<p style="font-size:10px;color:#64748b;margin-top:10px">Employer contributions (part of CTC, not deducted from salary): PF ₹${(r.erPF||0).toLocaleString('en-IN')} • ESI ₹${(r.erESI||0).toLocaleString('en-IN')} • LWF ₹${(r.erLWF||0).toLocaleString('en-IN')}</p>` : ''}
-    <p style="font-size:10px;color:#94a3b8;margin-top:14px;text-align:center">This is a system generated payslip and does not require a signature. • ${esc(S.name)}</p>
+    <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid #e2e8f0;margin-top:16px;padding-top:10px">
+      <div style="font-size:9.5px;color:#64748b">
+        <b style="color:#0f172a">Verification Code: ${vc}</b><br>
+        Scan the QR or match this code with HR records to verify authenticity.<br>
+        Any alteration to the figures invalidates this code. Generated on ${new Date().toLocaleString('en-IN')}.
+      </div>
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${qrData}" style="width:19mm;height:19mm" alt="Verify">
+    </div>
+    <p style="font-size:9.5px;color:#94a3b8;margin-top:8px;text-align:center">System generated payslip — no signature required • ${esc(S.name)}</p>
+    </div>
   </div>`;
 }
 function openSlip(i){
@@ -1716,15 +1773,38 @@ function printHTML(html){
   setTimeout(() => { window.print(); $('printArea').innerHTML = ''; }, 150);
 }
 $('slipPrintBtn').addEventListener('click', () => printHTML($('slipPaper').innerHTML));
+function paySplit(r){
+  const net = netOf(r);
+  const cash = r.payMode === 'cash' ? net : (r.payMode === 'split' ? Math.min(r.cashAmt || 0, net) : 0);
+  return { cash, bank: net - cash };
+}
 $('payBankBtn').addEventListener('click', () => {
-  const rows = PAY_ROWS.filter(r => r.hasSalary);
-  if(!rows.length) return notify('Run payroll first', 'error');
+  const rows = PAY_ROWS.filter(r => r.hasSalary && paySplit(r).bank > 0);
+  if(!rows.length) return notify('No bank payouts this month', 'error');
   const missing = rows.filter(r => !(PROFILES[r.code]||{}).account_no);
   dlText('Bank_Advice_' + PAY_MONTH + '.csv',
-    ['Employee Code,Name,Bank,Account No,IFSC,Amount (Net Pay)',
+    ['Employee Code,Name,Bank,Account No,IFSC,Amount (Bank Portion)',
      ...rows.map(r => { const p = PROFILES[r.code]||{};
-       return [r.code, '"' + r.name + '"', '"' + (p.bank_name||'') + '"', p.account_no||'', p.ifsc||'', netOf(r)].join(','); })].join('\n'), 'text/csv');
-  notify('Bank advice exported' + (missing.length ? ' — ' + missing.length + ' employee(s) have no account number on file' : ''), missing.length ? 'error' : 'success');
+       return [r.code, '"' + r.name + '"', '"' + (p.bank_name||'') + '"', p.account_no||'', p.ifsc||'', paySplit(r).bank].join(','); })].join('\n'), 'text/csv');
+  notify('Bank advice exported (bank portions only)' + (missing.length ? ' — ' + missing.length + ' employee(s) have no account number on file' : ''), missing.length ? 'error' : 'success');
+});
+$('payCashBtn').addEventListener('click', () => {
+  const rows = PAY_ROWS.filter(r => r.hasSalary && paySplit(r).cash > 0);
+  if(!rows.length) return notify('No cash payouts this month — set payment mode Cash/Split in employee profiles', 'error');
+  const S = getSettings();
+  let total = 0;
+  const body = rows.map((r, i) => { const c = paySplit(r).cash; total += c;
+    return `<tr><td>${i+1}</td><td>${esc(r.name)}<br><small>${esc(r.code)}</small></td><td>${esc(r.desig||'—')}</td>
+      <td class="money" style="text-align:right">${c.toLocaleString('en-IN')}</td><td style="width:30%"></td></tr>`; }).join('');
+  printHTML(`<div class="paper" style="min-height:auto"><h2 style="margin:0 0 2px;font-size:15px">Cash Salary Disbursement Register — ${esc(S.name)}</h2>
+    <p style="margin:0 0 10px;font-size:11px;color:#64748b">${monthLabel(PAY_MONTH)} • Employees receiving full/part salary in cash</p>
+    <table class="ann"><thead><tr><th>#</th><th>Employee</th><th>Designation</th><th style="text-align:right">Cash Amount (₹)</th><th>Signature / Thumb</th></tr></thead>
+    <tbody>${body}<tr class="font-bold"><td colspan="3">TOTAL CASH</td><td style="text-align:right">${total.toLocaleString('en-IN')}</td><td></td></tr></tbody></table>
+    <div style="margin-top:34px;display:flex;justify-content:space-between">
+      <p style="border-top:1px solid #94a3b8;padding-top:4px">Prepared By</p>
+      <p style="border-top:1px solid #94a3b8;padding-top:4px">Disbursed By</p>
+      <p style="border-top:1px solid #94a3b8;padding-top:4px">Authorised — ${esc(S.hr||'')}</p>
+    </div></div>`);
 });
 $('payPrintAllBtn').addEventListener('click', () => {
   const rows = PAY_ROWS.filter(r => r.hasSalary);
@@ -3001,6 +3081,69 @@ $('idGenBtn').addEventListener('click', async () => {
   }
 });
 $('idPrintBtn').addEventListener('click', () => printHTML('<div style="display:flex;flex-wrap:wrap;gap:6mm;padding:6mm">' + $('idWrap').innerHTML + '</div>'));
+
+/* ================= HELP SYSTEM ================= */
+const HELP = {
+  dashboard: ['Today\'s attendance summary, punches with photos, and the late leaderboard update automatically.', 'Post announcements here — employees see them in their ESS app.', 'Birthdays and work anniversaries for the month appear on the right.'],
+  employees: ['Click Profile on any row to fill in phone (needed for ESS login), salary, shift, documents and face registration.', 'Use "Add Employee" for staff without face-attendance; register their face later from the profile if needed.', 'Enter the target CTC and click "Build from CTC" — the salary structure and employer contributions are calculated per government rules.', 'The red "Below minimum wage" warning appears if the gross is under the Haryana rate for the selected skill category.'],
+  attendance: ['Pick a month and click Load Register — P Present, L Late, A Absent, WO Week Off, H Holiday, LV Leave.', 'Late is based on each employee\'s assigned shift start time + grace minutes.', 'Use "Manual Punch / Fix" to add a missing punch or correct an in/out time.'],
+  shifts: ['Create every shift you run (e.g. Morning 6–2, Evening 2–10, Night 10–6 with the night toggle).', 'Assign a shift to each employee from Employees → Profile. Late and overtime are computed from it.'],
+  leaves: ['Apply and approve leave here, or approve employee requests from the Approvals page.', 'In "Monthly accrual" mode (Settings), leave beyond the earned balance automatically becomes LOP in payroll.', 'Tick "Half day" for a 0.5-day leave on a single date.'],
+  approvals: ['Everything waiting for your decision in one inbox — leaves, overtime and expense claims from ESS.', 'The orange badge in the sidebar shows the pending count.', 'Approved overtime hours are used in payroll instead of the auto-calculation.'],
+  payroll: ['Pick the month and click Calculate — attendance, leaves, OT, PF/ESI/PT/LWF/TDS and advances are applied automatically.', 'Edit OT hours, bonus or other deductions inline; the net and totals update live.', 'Click Finalize & Save All to lock payslips, record employer contributions and update advance balances.', 'Then use Bank Advice (bank portions), Cash Register (cash portions with signature column) and Print All Payslips.'],
+  advances: ['Record an advance/loan with a monthly EMI — payroll deducts it automatically until the balance reaches zero.'],
+  expenses: ['Claims arrive from ESS as Pending. Approve or reject, then Mark Paid once reimbursed.'],
+  assets: ['Issue laptops, uniforms, ID cards etc. with serial numbers. Use Return when they come back — damage gets noted.', 'Issued assets automatically appear in the exit checklist when an employee resigns.'],
+  compliance: ['First finalize the month\'s payroll — everything on this page reads from finalized payslips.', 'PF Challan gives the ECR upload file; ESIC, TDS, Employer Contribution Register and PT/LWF summaries each have CSV/print.', 'Wage Register, Muster Roll and Bonus Register are inspection-ready prints.'],
+  exits: ['Record a resignation — the last working day is auto-calculated from the notice period.', 'Open Checklist & FnF to tick asset returns/clearances and compute the settlement (leave encashment, gratuity, recoveries).', 'Print the Settlement Sheet, then mark the exit SETTLED.'],
+  reports: ['Headcount, joiners, attrition, attendance % and payroll trends — refreshed from live data and finalized payslips.'],
+  letters: ['Pick a letter type, generate, click on the letter to edit any wording, then Print or save it to the employee\'s documents.'],
+  idcards: ['Generate one card or all employees at once. Photos come from the PHOTO document — upload one right here if missing.'],
+  settings: ['Fill the company profile first — it prints on every letter, payslip and register.', 'Payroll rules, leave policy, sandwich rule, OT departments, LWF caps and Haryana minimum wages all live here.', 'Add or remove salary components — every employee\'s structure and payslip follows this list.', 'Always click Save Settings after changes.']
+};
+$('helpBtn').addEventListener('click', () => {
+  const page = document.querySelector('.page.show');
+  const key = page ? page.id.replace('page-', '') : 'dashboard';
+  $('helpTitle').innerText = 'How ' + (TITLES[key] || 'this page') + ' works';
+  $('helpBody').innerHTML = (HELP[key] || ['No tips for this page.']).map((t, i) =>
+    `<div class="flex gap-3 p-2 rounded-lg" style="background:#f8fafc"><span class="chip chip-blue" style="height:fit-content">${i+1}</span><span>${t}</span></div>`).join('');
+  $('helpModal').classList.add('show');
+});
+
+/* ================= SETUP CHECKLIST (dashboard, for new users) ================= */
+async function renderSetupChecklist(){
+  const S = getSettings();
+  const salaried = activeEmps().filter(e => grossOf(e['Employee code']) > 0).length;
+  const phones = Object.values(PROFILES).filter(p => p.phone && String(p.phone).trim().length >= 6).length;
+  const { count: slipCount } = await sb.from('payslips').select('id', { count: 'exact', head: true });
+  const steps = [
+    { ok: !!(SETTINGS && SETTINGS.name), label: 'Save company profile & payroll rules', page: 'settings' },
+    { ok: SHIFTS.length > 0, label: 'Create shifts & assign to employees', page: 'shifts' },
+    { ok: salaried > 0, label: `Set salary structures (${salaried}/${activeEmps().length} done)`, page: 'employees' },
+    { ok: phones > 0, label: `Add phone numbers for ESS login (${phones} done)`, page: 'employees' },
+    { ok: (slipCount || 0) > 0, label: 'Run & finalize your first payroll', page: 'payroll' }
+  ];
+  const pending = steps.filter(s => !s.ok).length;
+  let card = $('setupCard');
+  if(pending === 0){ if(card) card.remove(); return; }
+  if(!card){
+    card = document.createElement('div');
+    card.id = 'setupCard';
+    card.className = 'card mt-4';
+    $('page-dashboard').appendChild(card);
+  }
+  card.innerHTML = `<h3 class="display font-bold mt-0 mb-3"><i class="fa-solid fa-list-check" style="color:var(--brand)"></i> Getting Started — ${steps.length - pending}/${steps.length} complete</h3>
+    <div class="grid lg:grid-cols-2 gap-2">` + steps.map(s =>
+      `<button class="flex items-center gap-2 p-2 rounded-lg text-left" style="background:${s.ok ? '#ecfdf5' : '#f8fafc'};border:1px solid ${s.ok ? '#a7f3d0' : 'var(--line)'};cursor:pointer" data-goto="${s.page}">
+        <i class="fa-solid ${s.ok ? 'fa-circle-check' : 'fa-circle'} " style="color:${s.ok ? 'var(--ok)' : '#cbd5e1'}"></i>
+        <span class="text-sm ${s.ok ? '' : 'font-semibold'}">${s.label}</span>
+        ${s.ok ? '' : '<i class="fa-solid fa-arrow-right ml-auto" style="color:var(--muted)"></i>'}
+      </button>`).join('') + '</div>';
+}
+document.body.addEventListener('click', e => {
+  const g = e.target.closest && e.target.closest('[data-goto]');
+  if(g){ const btn = document.querySelector(`.nav-item[data-page="${g.dataset.goto}"]`); if(btn) btn.click(); }
+});
 
 /* ================= APPROVALS INBOX ================= */
 async function loadApprovals(){
