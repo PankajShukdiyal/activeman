@@ -268,6 +268,14 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
       <span class="chip c-P">P Present</span><span class="chip c-L">L Late</span><span class="chip c-A">A Absent</span><span class="chip c-WO">WO Week Off</span><span class="chip c-H">H Holiday</span><span class="chip c-LV">LV Leave</span>
     </div>
   </div>
+  <div class="card mb-4" id="deployCard">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="display font-bold m-0"><i class="fa-solid fa-industry" style="color:var(--brand)"></i> Line Deployment — Today</h3>
+      <button id="deployRefreshBtn" class="btn btn-ghost btn-sm"><i class="fa-solid fa-rotate"></i> Refresh</button>
+    </div>
+    <div id="deployBars" class="grid lg:grid-cols-2 gap-x-6 gap-y-2 mb-3"></div>
+    <div id="deployLogs"></div>
+  </div>
   <div class="card reg-wrap" id="attRegisterWrap"><p style="color:var(--muted)">Select month and load the register.</p></div>
 </div>
 
@@ -345,7 +353,13 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
       <div id="apLeaves" class="p-3 space-y-2 text-sm"></div>
     </div>
     <div class="card" style="padding:0;overflow:hidden">
-      <div class="p-4 border-b" style="border-color:var(--line)"><h3 class="display font-bold m-0"><i class="fa-solid fa-clock" style="color:var(--warn)"></i> Pending Overtime</h3></div>
+      <div class="p-4 border-b flex items-center justify-between" style="border-color:var(--line)">
+        <h3 class="display font-bold m-0"><i class="fa-solid fa-clock" style="color:var(--warn)"></i> Pending Overtime</h3>
+        <div>
+          <button class="btn btn-ghost btn-sm" data-act="ot-bulk-add"><i class="fa-solid fa-users"></i> Add Bulk OT</button>
+          <button class="btn btn-primary btn-sm" data-act="ot-approve-all"><i class="fa-solid fa-check-double"></i> Approve All</button>
+        </div>
+      </div>
       <div id="apOT" class="p-3 space-y-2 text-sm"></div>
     </div>
     <div class="card" style="padding:0;overflow:hidden">
@@ -646,6 +660,13 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
         <div><label class="lbl">Skilled</label><input id="setMW3" type="number" step="0.01" class="inp" value="18500.81"></div>
         <div><label class="lbl">Highly Skilled</label><input id="setMW4" type="number" step="0.01" class="inp" value="19425.85"></div>
       </div>
+      <h3 class="display font-bold mt-6 mb-3">Production Lines <span class="text-[10px] font-normal" style="color:var(--muted)">manpower capacity per line — enforced at the attendance device</span></h3>
+      <div id="plList" class="space-y-1 mb-2"></div>
+      <div class="flex gap-2 mb-4">
+        <input id="plName" class="inp" placeholder="Line name (e.g. Line 1, Stitching A)">
+        <input id="plCap" type="number" class="inp" style="max-width:110px" placeholder="Capacity">
+        <button id="plAddBtn" class="btn btn-ghost btn-sm"><i class="fa-solid fa-plus"></i></button>
+      </div>
       <h3 class="display font-bold mt-6 mb-3">Salary Components <span class="text-[10px] font-normal" style="color:var(--muted)">shown in every employee's salary structure & payslip</span></h3>
       <p class="lbl">Earning Components <span style="text-transform:none;font-weight:400">(tick "PF" if it counts as PF wages)</span></p>
       <div id="ecList" class="space-y-1 mb-2"></div>
@@ -704,6 +725,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
         <select id="epType" class="inp"><option>Permanent</option><option>Contract</option><option>Probation</option><option>Trainee</option><option>Piece Rate</option></select></div>
       <div><label class="lbl">Skill Category (min wage)</label>
         <select id="epSkill" class="inp"><option value="">Not applicable</option><option value="mw1">Unskilled</option><option value="mw2">Semi-Skilled</option><option value="mw3">Skilled</option><option value="mw4">Highly Skilled</option></select></div>
+      <div><label class="lbl">Production Line</label><select id="epLine" class="inp"></select></div>
       <div><label class="lbl">Reporting Manager</label><input id="epManager" class="inp"></div>
       <div><label class="lbl">Work Location / Unit</label><input id="epLocation" class="inp" placeholder="IMT Manesar - Unit 1"></div>
       <div><label class="lbl">Emergency Contact</label><input id="epEmName" class="inp" placeholder="Name"></div>
@@ -819,10 +841,35 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
       <div><label class="lbl">Department</label><input id="aeDept" class="inp" placeholder="Production"></div>
       <div><label class="lbl">Designation</label><input id="aeDesig" class="inp" placeholder="Operator"></div>
     </div>
-    <label class="lbl" style="margin-top:12px;display:block">Date of Joining</label>
-    <input id="aeDOJ" type="date" class="inp mb-2">
+    <div class="grid grid-cols-2 gap-3" style="margin-top:12px;margin-bottom:8px">
+      <div><label class="lbl">Date of Joining</label><input id="aeDOJ" type="date" class="inp"></div>
+      <div><label class="lbl">Production Line</label><select id="aeLine" class="inp"></select></div>
+    </div>
     <p class="text-[11px] mb-3" style="color:var(--muted)"><i class="fa-solid fa-circle-info"></i> Employees added here can use every HR feature (payroll, leaves, ESS, ID card). For face-recognition punching, their face must also be registered from the Attendance app's admin panel using this same code.</p>
     <button id="aeSaveBtn" class="btn btn-primary w-full justify-center"><i class="fa-solid fa-user-plus"></i> Add Employee</button>
+  </div>
+</div>
+
+<!-- ================= BULK OT MODAL ================= -->
+<div class="modal" id="bulkOtModal">
+  <div class="modal-box" style="max-width:560px">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="display font-bold text-lg m-0">Add Bulk Overtime (Approved)</h3>
+      <button class="btn btn-ghost btn-sm" data-close="bulkOtModal"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="grid grid-cols-3 gap-3 mb-3">
+      <div><label class="lbl">Date</label><input id="botDate" type="date" class="inp"></div>
+      <div><label class="lbl">Hours (each)</label><input id="botHours" type="number" step="0.5" class="inp" placeholder="2"></div>
+      <div><label class="lbl">Reason / Line</label><input id="botReason" class="inp" placeholder="Line 3 dispatch"></div>
+    </div>
+    <input id="botSearch" class="inp mb-2" placeholder="Search employees…">
+    <div class="flex gap-2 mb-2">
+      <button class="btn btn-ghost btn-sm" id="botAllBtn">Select all shown</button>
+      <button class="btn btn-ghost btn-sm" id="botNoneBtn">Clear</button>
+      <span class="chip chip-blue ml-auto" id="botCount">0 selected</span>
+    </div>
+    <div id="botList" style="max-height:260px;overflow-y:auto" class="space-y-1"></div>
+    <button id="botSaveBtn" class="btn btn-primary w-full justify-center mt-4"><i class="fa-solid fa-check-double"></i> Add OT for Selected (Approved)</button>
   </div>
 </div>
 
@@ -885,6 +932,7 @@ let HOLIDAYS = [];       // [{date,name}]
 let PAY_ROWS = [];       // current payroll calculation
 let PAY_MONTH = "";
 let SHIFTS = [];         // shift master
+let LINES = [];          // production lines
 let LEAVES_CACHE = [];   // month leaves for register
 const $ = id => document.getElementById(id);
 
@@ -1020,14 +1068,16 @@ sb.auth.getSession().then(({ data:{ session } }) => { if(session) enterApp(); })
 /* ---------------- Core data ---------------- */
 async function loadCore(){
   try{
-    const [empRes, profRes, setRes, holRes, shRes] = await Promise.all([
-      sb.from('employees').select('Name, "Employee code", Status, DEPARTMENT, DESIGNATION, DOJ').order('Name'),
+    const [empRes, profRes, setRes, holRes, shRes, plRes] = await Promise.all([
+      sb.from('employees').select('Name, "Employee code", Status, DEPARTMENT, DESIGNATION, DOJ, LINE').order('Name'),
       sb.from('hr_profiles').select('*'),
       sb.from('company_settings').select('data').eq('id', 1).maybeSingle(),
       sb.from('holidays').select('*').order('date'),
-      sb.from('shifts').select('*').order('id')
+      sb.from('shifts').select('*').order('id'),
+      sb.from('production_lines').select('*').order('name')
     ]);
     SHIFTS = shRes.data || [];
+    LINES = (plRes && plRes.data) || [];
     if(empRes.error) throw empRes.error;
     EMP = empRes.data || [];
     PROFILES = {};
@@ -1039,6 +1089,7 @@ async function loadCore(){
     fillSettingsForm();
     renderHolidays();
     renderShifts();
+    renderLines();
   }catch(err){
     console.error(err);
     notify('Data load failed: ' + err.message + ' — have you run the setup SQL?', 'error');
@@ -1074,6 +1125,7 @@ document.querySelectorAll('.nav-item[data-page]').forEach(btn => {
     if(page === 'leaves') loadLeaves();
     if(page === 'approvals') loadApprovals();
     if(page === 'voice') loadVoice();
+    if(page === 'attendance') loadDeployment();
     if(page === 'expenses') loadExpenses();
     if(page === 'assets') loadAssets();
     if(page === 'exits') loadExits();
@@ -1167,6 +1219,7 @@ function renderEmployees(filter){
 }
 $('empSearch').addEventListener('input', e => renderEmployees(e.target.value));
 $('empAddBtn').addEventListener('click', () => {
+  renderLines();
   $('aeName').value = ''; $('aeDept').value = ''; $('aeDesig').value = '';
   $('aeDOJ').value = todayISO();
   let code;
@@ -1183,7 +1236,8 @@ $('aeSaveBtn').addEventListener('click', async () => {
   try{
     const { error } = await sb.from('employees').insert([{
       Name: name, 'Employee code': code, Status: 'Active',
-      DEPARTMENT: $('aeDept').value, DESIGNATION: $('aeDesig').value, DOJ: $('aeDOJ').value
+      DEPARTMENT: $('aeDept').value, DESIGNATION: $('aeDesig').value, DOJ: $('aeDOJ').value,
+      LINE: $('aeLine').value || null
     }]);
     if(error) throw error;
     notify(`${name} added — now open Profile to set phone, salary and shift`, 'success');
@@ -1215,6 +1269,7 @@ function openEmpModal(code){
   if(p.shift_id) $('epShift').value = p.shift_id;
   $('epGrade').value = p.grade || ''; $('epType').value = p.employment_type || 'Permanent';
   $('epSkill').value = (p.salary && p.salary.skill) || '';
+  renderLines(); $('epLine').value = e.LINE || '';
   $('epPayMode').value = (p.salary && p.salary.payMode) || 'bank';
   $('epCashAmt').value = (p.salary && p.salary.cashAmt) || '';
   $('epCashWrap').classList.toggle('hidden', $('epPayMode').value !== 'split');
@@ -1346,6 +1401,12 @@ $('epSaveBtn').addEventListener('click', async () => {
     const { error } = await sb.from('hr_profiles').upsert(row, { onConflict: 'employee_code' });
     if(error) throw error;
     PROFILES[row.employee_code] = row;
+    const newLine = $('epLine').value || null;
+    const empRec = EMP.find(x => x['Employee code'] === row.employee_code);
+    if(empRec && (empRec.LINE || null) !== newLine){
+      await sb.from('employees').update({ LINE: newLine }).eq('"Employee code"', row.employee_code);
+      empRec.LINE = newLine;
+    }
     renderEmployees($('empSearch').value);
     notify('Profile saved', 'success');
     $('empModal').classList.remove('show');
@@ -1441,6 +1502,37 @@ $('attCsvBtn').addEventListener('click', () => {
   a.href = encodeURI(csv); a.download = `Attendance_Summary_${$('attMonth').value}.csv`;
   document.body.appendChild(a); a.click(); a.remove();
 });
+
+/* ---------------- Line deployment ---------------- */
+async function loadDeployment(){
+  if(!LINES.length){ $('deployCard').classList.add('hidden'); return; }
+  $('deployCard').classList.remove('hidden');
+  const today = todayISO();
+  const [attRes, logRes] = await Promise.all([
+    sb.from('attendance').select('employee_code').eq('date', today),
+    sb.from('deployment_logs').select('*').eq('date', today).order('created_at', { ascending: false })
+  ]);
+  const punched = attRes.data || [];
+  $('deployBars').innerHTML = LINES.map(l => {
+    const onLine = punched.filter(r => {
+      const e = EMP.find(x => x['Employee code'] === r.employee_code);
+      return e && String(e.LINE||'').trim().toLowerCase() === String(l.name).trim().toLowerCase();
+    }).length;
+    const pct = Math.min(100, Math.round(onLine / Math.max(1, l.capacity) * 100));
+    const full = onLine >= l.capacity;
+    return `<div><div class="flex justify-between text-xs mb-1">
+      <span class="font-semibold">${esc(l.name)}</span>
+      <span class="${full ? 'chip chip-bad' : 'chip chip-ok'}" style="font-size:10px">${onLine} / ${l.capacity}${full ? ' FULL' : ''}</span></div>
+      <div class="progress-track"><div class="progress-fill" style="width:${pct}%;${full ? 'background:var(--bad)' : ''}"></div></div></div>`;
+  }).join('');
+  const logs = logRes.data || [];
+  $('deployLogs').innerHTML = logs.length ? `<p class="lbl" style="margin:8px 0 6px">Turned away today — manpower full (${logs.length})</p>` + logs.map(g =>
+    `<div class="flex items-center justify-between p-2 rounded-lg text-sm mb-1" style="background:#fef2f2">
+      <span><b>${esc(g.name || g.employee_code)}</b> <span style="color:var(--muted)">(${esc(g.employee_code)})</span> tried <b>${esc(g.line)}</b> at ${esc((g.time||'').substring(0,5))}</span>
+      <span class="chip chip-bad">NOT MARKED</span>
+    </div>`).join('') : '<p class="text-xs m-0" style="color:var(--muted)">No one has been turned away today.</p>';
+}
+$('deployRefreshBtn').addEventListener('click', loadDeployment);
 
 /* ---------------- PAYROLL ENGINE ---------------- */
 $('payMonth').value = todayISO().slice(0,7);
@@ -1921,6 +2013,18 @@ document.body.addEventListener('click', async e => {
     await sb.from('leaves').update({ status: 'CANCELLED' }).eq('id', el.dataset.id);
     loadApprovals();
   }
+  if(act === 'ot-approve-all'){
+    if(!confirm('Approve ALL pending overtime requests?')) return;
+    const { error } = await sb.from('ot_requests').update({ status: 'APPROVED' }).eq('status', 'PENDING');
+    if(error) return notify(error.message, 'error');
+    notify('All pending overtime approved', 'success');
+    loadApprovals();
+  }
+  if(act === 'ot-bulk-add'){
+    $('botDate').value = todayISO(); $('botSearch').value = '';
+    renderBotList('');
+    $('bulkOtModal').classList.add('show');
+  }
   if(act === 'appr-ot'){
     await sb.from('ot_requests').update({ status: 'APPROVED' }).eq('id', el.dataset.id);
     notify('Overtime approved — it will be used in payroll', 'success');
@@ -1985,6 +2089,12 @@ document.body.addEventListener('click', async e => {
     EARN_EDIT.splice(Number(el.dataset.i), 1); renderCompMgr();
   }
   if(act === 'dc-del'){ DED_EDIT.splice(Number(el.dataset.i), 1); renderCompMgr(); }
+  if(act === 'pl-del'){
+    if(!confirm('Delete this line? Assigned employees will keep punching but without a capacity limit.')) return;
+    await sb.from('production_lines').delete().eq('id', el.dataset.id);
+    LINES = LINES.filter(l => String(l.id) !== String(el.dataset.id));
+    renderLines();
+  }
   if(act === 'cmp-print'){
     const card = $(el.dataset.card).cloneNode(true);
     card.querySelectorAll('.no-print').forEach(n => n.remove());
@@ -2364,6 +2474,29 @@ $('setSaveBtn').addEventListener('click', async () => {
   }catch(err){ notify(err.message, 'error'); }
   finally{ btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save Settings'; btn.disabled = false; }
 });
+/* ---------------- Production lines ---------------- */
+function renderLines(){
+  $('plList').innerHTML = LINES.length ? LINES.map(l => {
+    const assigned = EMP.filter(e => String(e.LINE||'').trim().toLowerCase() === String(l.name).trim().toLowerCase() && String(e.Status).toUpperCase() === 'ACTIVE').length;
+    return `<div class="flex items-center justify-between p-2 rounded-lg text-sm" style="background:#f8fafc">
+      <span><b>${esc(l.name)}</b> <span class="chip chip-blue">Capacity ${l.capacity}</span> <span class="chip chip-gray">${assigned} assigned</span></span>
+      <button class="btn btn-danger btn-sm" data-act="pl-del" data-id="${l.id}"><i class="fa-solid fa-trash"></i></button>
+    </div>`;
+  }).join('') : '<p class="text-xs m-0" style="color:var(--muted)">No production lines defined.</p>';
+  const opts = '<option value="">— No line —</option>' + LINES.map(l => `<option value="${esc(l.name)}">${esc(l.name)} (cap ${l.capacity})</option>`).join('');
+  if($('epLine')) $('epLine').innerHTML = opts;
+  if($('aeLine')) $('aeLine').innerHTML = opts;
+}
+$('plAddBtn').addEventListener('click', async () => {
+  const name = $('plName').value.trim(), cap = Number($('plCap').value);
+  if(!name || !cap || cap < 1) return notify('Line name and capacity are required', 'error');
+  const { data, error } = await sb.from('production_lines').insert([{ name, capacity: cap }]).select();
+  if(error) return notify(error.message + ' — have you run the V10 migration SQL?', 'error');
+  LINES.push(data[0]); LINES.sort((a,b) => String(a.name).localeCompare(String(b.name)));
+  $('plName').value = ''; $('plCap').value = '';
+  renderLines(); notify('Line added', 'success');
+});
+
 /* ---------------- Salary component manager ---------------- */
 let EARN_EDIT = null, DED_EDIT = null;
 const slug = s => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || ('c' + Date.now());
@@ -3312,6 +3445,46 @@ async function loadApprovals(){
   $('apprBadge').innerText = n;
   $('apprBadge').classList.toggle('hidden', n === 0);
 }
+
+/* ---------------- Bulk OT (admin, directly approved) ---------------- */
+function renderBotList(q){
+  q = (q||'').toLowerCase();
+  $('botList').innerHTML = activeEmps()
+    .filter(e => !q || [e.Name, e['Employee code'], e.DEPARTMENT, e.LINE].join(' ').toLowerCase().includes(q))
+    .map(e => `<label class="flex items-center gap-2 p-2 rounded-lg text-sm" style="background:#f8fafc;cursor:pointer">
+      <input type="checkbox" class="bot-chk" value="${esc(e['Employee code'])}">
+      <span><b>${esc(e.Name)}</b> <span style="color:var(--muted)">${esc(e['Employee code'])} • ${esc(e.DEPARTMENT||'—')}${e.LINE ? ' • ' + esc(e.LINE) : ''}</span></span>
+    </label>`).join('');
+  updateBotCount();
+}
+function updateBotCount(){
+  $('botCount').innerText = document.querySelectorAll('.bot-chk:checked').length + ' selected';
+}
+$('botSearch').addEventListener('input', e => renderBotList(e.target.value));
+$('botList').addEventListener('change', updateBotCount);
+$('botAllBtn').addEventListener('click', () => { document.querySelectorAll('.bot-chk').forEach(c => c.checked = true); updateBotCount(); });
+$('botNoneBtn').addEventListener('click', () => { document.querySelectorAll('.bot-chk').forEach(c => c.checked = false); updateBotCount(); });
+$('botSaveBtn').addEventListener('click', async () => {
+  const codes = [...document.querySelectorAll('.bot-chk:checked')].map(c => c.value);
+  const hours = Number($('botHours').value);
+  if(!codes.length) return notify('Select at least one employee', 'error');
+  if(!$('botDate').value || !hours || hours <= 0 || hours > 12) return notify('Enter a date and hours (0.5–12)', 'error');
+  const btn = $('botSaveBtn');
+  btn.innerHTML = '<div class="loader-ring"></div> Saving…'; btn.disabled = true;
+  try{
+    const { data: existing } = await sb.from('ot_requests').select('employee_code').eq('ot_date', $('botDate').value).neq('status','REJECTED');
+    const have = new Set((existing||[]).map(x => x.employee_code));
+    const rows = codes.filter(c => !have.has(c)).map(c => ({ employee_code: c, ot_date: $('botDate').value, hours, reason: $('botReason').value, status: 'APPROVED' }));
+    if(rows.length){
+      const { error } = await sb.from('ot_requests').insert(rows);
+      if(error) throw error;
+    }
+    notify(`OT added for ${rows.length} employee(s)` + (codes.length - rows.length ? ` — ${codes.length - rows.length} already had OT for this date` : ''), 'success');
+    $('bulkOtModal').classList.remove('show');
+    loadApprovals();
+  }catch(err){ notify(err.message, 'error'); }
+  finally{ btn.innerHTML = '<i class="fa-solid fa-check-double"></i> Add OT for Selected (Approved)'; btn.disabled = false; }
+});
 
 /* ================= SALARY REVISION ================= */
 async function loadRevisions(code){
