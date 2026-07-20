@@ -652,6 +652,22 @@
 
                 if (!data || data.length === 0) throw new Error("No employee records");
 
+                // Production lines (manpower caps) — cached for offline use
+                window.productionLines = window.productionLines || [];
+                try {
+                    if (navigator.onLine) {
+                        const plRes = await supabaseClient.from('production_lines').select('*');
+                        if (!plRes.error) {
+                            window.productionLines = plRes.data || [];
+                            localStorage.setItem('cached_lines', JSON.stringify(window.productionLines));
+                        }
+                    }
+                } catch (e) { console.warn('Line fetch warning:', e); }
+                if (!window.productionLines.length) {
+                    const cl = localStorage.getItem('cached_lines');
+                    if (cl) { try { window.productionLines = JSON.parse(cl); } catch(e){} }
+                }
+
                 labeledFaceDescriptors = [];
                 employeeDataMap.clear();
 
@@ -945,6 +961,37 @@
                         return;
                     }
                 } else {
+                    // ---- Line manpower capacity check (IN punch only) ----
+                    const myLine = empData && empData.LINE ? String(empData.LINE).trim() : '';
+                    if (myLine && (window.productionLines || []).length) {
+                        const lineDef = window.productionLines.find(l => String(l.name).trim().toLowerCase() === myLine.toLowerCase());
+                        if (lineDef && Number(lineDef.capacity) > 0) {
+                            try {
+                                const { data: todayRows } = await supabaseClient.from('attendance').select('employee_code').eq('date', todayStr);
+                                let lineCount = 0;
+                                (todayRows || []).forEach(r => {
+                                    const e2 = employeeDataMap.get(r.employee_code);
+                                    if (e2 && String(e2.LINE || '').trim().toLowerCase() === myLine.toLowerCase()) lineCount++;
+                                });
+                                if (lineCount >= Number(lineDef.capacity)) {
+                                    try {
+                                        await supabaseClient.from('deployment_logs').insert([{
+                                            employee_code: empCode, name: empName, line: lineDef.name,
+                                            date: todayStr, time: timeStr, status: 'MANPOWER_FULL'
+                                        }]);
+                                    } catch (logErr) { console.warn('Deployment log warning:', logErr); }
+                                    if (!offlineProcessData) {
+                                        notify('Manpower full on ' + lineDef.name + ' (' + lineCount + '/' + lineDef.capacity + '). Attendance not marked — reported to admin.', 'error');
+                                        speakText(empName + ', ' + lineDef.name + ' par manpower full ho chuki hai. Aapki attendance nahi lagi. Record admin ko bhej diya gaya hai.');
+                                        resumeScanning();
+                                    }
+                                    return;
+                                }
+                            } catch (capErr) {
+                                console.warn('Line capacity check skipped:', capErr);
+                            }
+                        }
+                    }
                     const finalInTime = isLate ? `${timeStr} (LATE)` : timeStr;
                     const { error: insertErr } = await supabaseClient.from('attendance').insert([{ 
                         employee_code: empCode, 
