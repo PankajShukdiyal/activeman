@@ -154,6 +154,25 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
         <div id="otBox" class="mt-3"></div>
       </div>
       <div class="card">
+        <h3 class="display font-bold mt-0 mb-3 text-sm"><i class="fa-solid fa-comments" style="color:var(--brand)"></i> Grievance / Suggestion / Kaizen</h3>
+        <label class="lbl">Type</label>
+        <select id="fbType" class="inp mb-3">
+          <option value="GRIEVANCE">Grievance — salary or any other issue</option>
+          <option value="SUGGESTION">Suggestion — a problem you see + your solutions</option>
+          <option value="KAIZEN">Kaizen — improvement idea (reward if approved)</option>
+        </select>
+        <label class="lbl">Subject</label>
+        <input id="fbSubject" class="inp mb-3" placeholder="Short title">
+        <label class="lbl">Details</label>
+        <textarea id="fbDetails" class="inp mb-3" rows="3" placeholder="Describe the issue / idea…"></textarea>
+        <div id="fbSolWrap" class="hidden">
+          <label class="lbl">Your 2–3 Best Solutions</label>
+          <textarea id="fbSolutions" class="inp mb-3" rows="3" placeholder="1. …&#10;2. …&#10;3. …"></textarea>
+        </div>
+        <button id="fbBtn" class="btn btn-primary"><i class="fa-solid fa-paper-plane"></i> Submit</button>
+        <div id="fbBox" class="mt-3"></div>
+      </div>
+      <div class="card">
         <h3 class="display font-bold mt-0 mb-3 text-sm"><i class="fa-solid fa-person-walking-arrow-right" style="color:var(--bad)"></i> Resignation</h3>
         <div id="resBox"></div>
       </div>
@@ -261,6 +280,7 @@ function render(){
   renderExpenses();
   renderResign();
   renderOT();
+  loadFeedback();
   // calendar
   CAL_CACHE = {}; CAL_YM = new Date().toISOString().slice(0,7);
   renderCalendar();
@@ -394,6 +414,42 @@ $('exBtn').addEventListener('click', async () => {
   finally{ btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Submit Claim'; btn.disabled = false; }
 });
 
+/* ---------- Grievance / Suggestion / Kaizen ---------- */
+$('fbType').addEventListener('change', () => {
+  const t = $('fbType').value;
+  $('fbSolWrap').classList.toggle('hidden', t === 'GRIEVANCE');
+});
+async function loadFeedback(){
+  try{
+    const { data, error } = await sb.rpc('ess_get_feedback', { p_code: CODE, p_phone: PHONE });
+    if(error || (data && data.error)) return;
+    const rows = data.rows || [];
+    $('fbBox').innerHTML = rows.length ? rows.map(f => {
+      const chip = { OPEN:'chip-warn', IN_REVIEW:'chip-blue', RESOLVED:'chip-ok', APPROVED:'chip-ok', REJECTED:'chip-bad' }[f.status] || 'chip-gray';
+      return `<div class="row"><span><b>${esc(f.type)}</b> — ${esc(f.subject)}${f.admin_note ? '<br><small style="color:var(--muted)">HR: ' + esc(f.admin_note) + '</small>' : ''}</span>
+        <span class="chip ${chip}">${esc(f.status.replace('_',' '))}${f.type === 'KAIZEN' && f.reward > 0 ? ' ' + fmtINR(f.reward) : ''}</span></div>`;
+    }).join('') : '';
+  }catch(e){}
+}
+$('fbBtn').addEventListener('click', async () => {
+  if(!$('fbSubject').value.trim()) return notify('Enter a subject');
+  const btn = $('fbBtn');
+  btn.innerHTML = '<div class="loader-ring"></div> Submitting…'; btn.disabled = true;
+  try{
+    const { data, error } = await sb.rpc('ess_submit_feedback', {
+      p_code: CODE, p_phone: PHONE, p_type: $('fbType').value,
+      p_subject: $('fbSubject').value, p_details: $('fbDetails').value,
+      p_solutions: $('fbType').value === 'GRIEVANCE' ? '' : $('fbSolutions').value
+    });
+    if(error) throw error;
+    if(data && data.error) return notify(data.error);
+    notify($('fbType').value === 'KAIZEN' ? 'Kaizen submitted — reward on approval!' : 'Submitted — HR will review it');
+    $('fbSubject').value = ''; $('fbDetails').value = ''; $('fbSolutions').value = '';
+    loadFeedback();
+  }catch(err){ notify(err.message); }
+  finally{ btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Submit'; btn.disabled = false; }
+});
+
 /* ---------- Overtime requests ---------- */
 function renderOT(){
   const dept = ((D.employee||{}).DEPARTMENT || '').toUpperCase();
@@ -476,9 +532,16 @@ $('upBtn').addEventListener('click', async () => {
   finally{ btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Send Update'; btn.disabled = false; }
 });
 
+function slipVC(code, month, net){
+  const s = code + '|' + month + '|' + net + '|' + SUPABASE_URL;
+  let h = 5381;
+  for(let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+  return h.toString(16).toUpperCase().padStart(8, '0');
+}
 function printSlip(s){
   const r = s.data || {}, c = (D.company || {});
   const e = D.employee || {};
+  const vc = slipVC(e['Employee code'] || CODE, s.month, Math.round(Number(s.net_pay)||0));
   const line = (l, v) => `<tr><td style="border:1px solid #cbd5e1;padding:5px 8px">${l}</td><td style="border:1px solid #cbd5e1;padding:5px 8px;text-align:right">${Number(v||0).toLocaleString('en-IN')}</td></tr>`;
   $('slipPrint').innerHTML = `<div style="font-family:Arial;max-width:700px;margin:auto;padding:20px;font-size:12px">
     <div style="display:flex;justify-content:space-between;border-bottom:2px solid #0f172a;padding-bottom:8px;margin-bottom:12px">
@@ -493,7 +556,8 @@ function printSlip(s){
       ${line('PF', r.pf)}${line('ESI', r.esi)}${line('Professional Tax', r.pt)}${line('LWF', r.lwf)}${line('Advance Recovery', r.advDed)}${line('Other', r.otherDed)}
       <tr><th style="border:1px solid #cbd5e1;padding:6px 8px;text-align:left">NET PAY</th><th style="border:1px solid #cbd5e1;padding:6px 8px;text-align:right">₹ ${Number(s.net_pay||0).toLocaleString('en-IN')}</th></tr>
     </table>
-    <p style="color:#64748b;font-size:10px;text-align:center;margin-top:20px">System generated payslip — no signature required.</p>
+    <p style="color:#334155;font-size:10px;margin-top:14px"><b>Verification Code: ${vc}</b> — HR can verify this payslip against company records using this code. Any alteration invalidates it.</p>
+    <p style="color:#64748b;font-size:10px;text-align:center;margin-top:10px">System generated payslip — no signature required.</p>
   </div>`;
   setTimeout(() => { window.print(); $('slipPrint').innerHTML = ''; }, 150);
 }
