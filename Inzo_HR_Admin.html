@@ -170,6 +170,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
       <button class="nav-item" data-page="shifts"><i class="fa-solid fa-clock-rotate-left"></i> Shifts</button>
       <button class="nav-item" data-page="leaves"><i class="fa-solid fa-umbrella-beach"></i> Leaves</button>
       <button class="nav-item" data-page="approvals"><i class="fa-solid fa-clipboard-check"></i> Approvals <span id="apprBadge" class="chip chip-warn hidden" style="margin-left:auto;font-size:9px;padding:1px 6px">0</span></button>
+      <button class="nav-item" data-page="voice"><i class="fa-solid fa-comments"></i> Voice Box <span id="voiceBadge" class="chip chip-warn hidden" style="margin-left:auto;font-size:9px;padding:1px 6px">0</span></button>
     </div>
     <button class="nav-sec collapsed" data-group="g3"><span>PAYROLL & FINANCE</span><i class="fa-solid fa-chevron-down"></i></button>
     <div class="nav-group collapsed" id="g3">
@@ -354,6 +355,24 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
   </div>
 </div>
 
+<!-- ================= VOICE BOX ================= -->
+<div class="page" id="page-voice">
+  <div class="grid lg:grid-cols-3 gap-4">
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="p-4 border-b" style="border-color:var(--line)"><h3 class="display font-bold m-0"><i class="fa-solid fa-triangle-exclamation" style="color:var(--bad)"></i> Grievances</h3></div>
+      <div id="vbGriev" class="p-3 space-y-2 text-sm" style="max-height:70vh;overflow-y:auto"></div>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="p-4 border-b" style="border-color:var(--line)"><h3 class="display font-bold m-0"><i class="fa-solid fa-lightbulb" style="color:var(--warn)"></i> Suggestions</h3></div>
+      <div id="vbSugg" class="p-3 space-y-2 text-sm" style="max-height:70vh;overflow-y:auto"></div>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="p-4 border-b" style="border-color:var(--line)"><h3 class="display font-bold m-0"><i class="fa-solid fa-arrow-trend-up" style="color:var(--ok)"></i> Kaizen <span class="text-[10px] font-normal" style="color:var(--muted)">approve = reward in next payroll</span></h3></div>
+      <div id="vbKaizen" class="p-3 space-y-2 text-sm" style="max-height:70vh;overflow-y:auto"></div>
+    </div>
+  </div>
+</div>
+
 <!-- ================= PAYROLL ================= -->
 <div class="page" id="page-payroll">
   <div class="card mb-4 flex items-end gap-3 flex-wrap">
@@ -527,6 +546,8 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
         <option value="revision">Salary Revision Letter</option>
         <option value="experience">Experience Letter</option>
         <option value="relieving">Relieving Letter</option>
+        <option value="eom">Employee of the Month Certificate</option>
+        <option value="intern">Internship Completion Certificate</option>
       </select>
     </div>
     <div id="letterEmpWrap" class="hidden"><label class="lbl">Employee</label><select id="letterEmp" class="inp" style="min-width:220px"></select></div>
@@ -539,6 +560,16 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
     </div>
     <div id="relieveFieldsWrap" class="hidden"><label class="lbl">Last Working Day</label><input id="relLWD" type="date" class="inp"></div>
     <div id="warnFieldsWrap" class="hidden"><label class="lbl">Warning Reason</label><input id="warnReason" class="inp" style="min-width:260px" placeholder="Repeated late coming / misconduct…"></div>
+    <div id="eomFieldsWrap" class="hidden flex items-end gap-3">
+      <div><label class="lbl">For Month</label><input id="eomMonth" type="month" class="inp"></div>
+      <div><label class="lbl">Achievement (one line)</label><input id="eomNote" class="inp" style="min-width:260px" placeholder="Outstanding productivity on Line 2"></div>
+    </div>
+    <div id="internFieldsWrap" class="hidden flex items-end gap-3 flex-wrap">
+      <div><label class="lbl">Intern Name</label><input id="inName" class="inp"></div>
+      <div><label class="lbl">Department / Project</label><input id="inDept" class="inp" placeholder="Merchandising"></div>
+      <div><label class="lbl">From</label><input id="inFrom" type="date" class="inp"></div>
+      <div><label class="lbl">To</label><input id="inTo" type="date" class="inp"></div>
+    </div>
     <div id="promoFieldsWrap" class="hidden flex items-end gap-3">
       <div><label class="lbl">New Designation</label><input id="promoDesig" class="inp"></div>
       <div><label class="lbl">New Monthly Gross (₹)</label><input id="promoGross" type="number" class="inp"></div>
@@ -1029,7 +1060,7 @@ function fillEmpSelects(){
 }
 
 /* ---------------- Router ---------------- */
-const TITLES = { dashboard:'Dashboard', employees:'Employees', attendance:'Attendance Register', shifts:'Shift Master', leaves:'Leave Management', payroll:'Payroll', advances:'Advances & Loans', expenses:'Expense & Reimbursement', assets:'Asset Management', compliance:'Statutory Compliance', exits:'Exit & Full-Final', reports:'Analytics & Reports', letters:'HR Letters', idcards:'ID Card Generator', approvals:'Approvals Inbox', settings:'Settings' };
+const TITLES = { dashboard:'Dashboard', employees:'Employees', attendance:'Attendance Register', shifts:'Shift Master', leaves:'Leave Management', payroll:'Payroll', advances:'Advances & Loans', expenses:'Expense & Reimbursement', assets:'Asset Management', compliance:'Statutory Compliance', exits:'Exit & Full-Final', reports:'Analytics & Reports', letters:'HR Letters', idcards:'ID Card Generator', approvals:'Approvals Inbox', voice:'Voice Box — Grievance, Suggestion & Kaizen', settings:'Settings' };
 document.querySelectorAll('.nav-item[data-page]').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
@@ -1042,6 +1073,7 @@ document.querySelectorAll('.nav-item[data-page]').forEach(btn => {
     if(page === 'advances') loadAdvances();
     if(page === 'leaves') loadLeaves();
     if(page === 'approvals') loadApprovals();
+    if(page === 'voice') loadVoice();
     if(page === 'expenses') loadExpenses();
     if(page === 'assets') loadAssets();
     if(page === 'exits') loadExits();
@@ -1530,6 +1562,7 @@ async function runPayroll(){
       const erESI = esi > 0 ? Math.ceil(earnedGross * 3.25 / 100) : 0;
       const erLWF = (p.lwf_applicable !== false) ? lwfER(earnedGross) : 0;
       const arrears = Math.round(Number((p.salary || {}).pendingArrear) || 0);
+      const reward = Math.round(Number((p.salary || {}).pendingReward) || 0);
 
       const advs = advMap[code] || [];
       const advDed = advs.reduce((a,x) => a + Math.min(Number(x.emi)||0, Number(x.balance)||0), 0);
@@ -1542,7 +1575,7 @@ async function runPayroll(){
         basic: Math.round(basic), comps, dedBreak, customDed,
         earnedGross: Math.round(earnedGross), pf, esi, pt, lwf,
         otHours, otPay: Math.round(perHour * otHours * Number(S.otMult)),
-        tds, arrears, lopLeave, otApprovedMode: otApproved[code] !== undefined,
+        tds, arrears, reward, lopLeave, otApprovedMode: otApproved[code] !== undefined,
         erPF, erESI, erLWF,
         payMode: (p.salary && p.salary.payMode) || 'bank',
         cashAmt: Number((p.salary || {}).cashAmt) || 0,
@@ -1558,7 +1591,7 @@ async function runPayroll(){
   finally{ btn.innerHTML = '<i class="fa-solid fa-calculator"></i> Calculate Payroll'; btn.disabled = false; }
 }
 
-function netOf(r){ return Math.max(0, Math.round(r.earnedGross + r.bonus + (r.otPay||0) + (r.arrears||0) - r.pf - r.esi - r.pt - (r.lwf||0) - (r.customDed||0) - (r.tds||0) - r.advDed - r.otherDed)); }
+function netOf(r){ return Math.max(0, Math.round(r.earnedGross + r.bonus + (r.otPay||0) + (r.arrears||0) + (r.reward||0) - r.pf - r.esi - r.pt - (r.lwf||0) - (r.customDed||0) - (r.tds||0) - r.advDed - r.otherDed)); }
 /* Monthly TDS estimate — FY 2025-26 slabs, 4% cess, 87A rebate */
 function calcTDS(monthlyGross, regime, declarations){
   if(!regime || regime === 'none' || !monthlyGross) return 0;
@@ -1669,9 +1702,9 @@ $('payFinalizeBtn').addEventListener('click', async () => {
     }
     // clear consumed arrears
     for(const r of PAY_ROWS){
-      if(r.arrears > 0){
+      if(r.arrears > 0 || r.reward > 0){
         const p = PROFILES[r.code] || {};
-        const sal = Object.assign({}, p.salary || {}, { pendingArrear: 0 });
+        const sal = Object.assign({}, p.salary || {}, { pendingArrear: 0, pendingReward: 0 });
         await sb.from('hr_profiles').update({ salary: sal }).eq('employee_code', r.code);
         if(PROFILES[r.code]) PROFILES[r.code].salary = sal;
       }
@@ -1701,6 +1734,7 @@ function slipHTML(r){
   }
   earnRows.push(['Overtime (' + (r.otHours||0) + ' hrs)', r.otPay||0]);
   if(r.arrears) earnRows.push(['Arrears', r.arrears]);
+  if(r.reward) earnRows.push(['Kaizen Reward', r.reward]);
   earnRows.push(['Bonus / Incentive', r.bonus||0]);
   const dedRows = [['Provident Fund', r.pf], ['ESI', r.esi], ['Professional Tax', r.pt], ['LWF', r.lwf||0]];
   if(r.tds) dedRows.push(['TDS (Income Tax)', r.tds]);
@@ -1743,7 +1777,7 @@ function slipHTML(r){
       <thead><tr><th style="width:35%">Earnings</th><th style="width:15%;text-align:right">Amount (₹)</th><th style="width:35%">Deductions</th><th style="width:15%;text-align:right">Amount (₹)</th></tr></thead>
       <tbody>
         ${bodyRows}
-        <tr><th>Gross Earnings</th><th style="text-align:right">${(r.earnedGross + r.bonus + (r.otPay||0) + (r.arrears||0)).toLocaleString('en-IN')}</th><th>Total Deductions</th><th style="text-align:right">${totalDed.toLocaleString('en-IN')}</th></tr>
+        <tr><th>Gross Earnings</th><th style="text-align:right">${(r.earnedGross + r.bonus + (r.otPay||0) + (r.arrears||0) + (r.reward||0)).toLocaleString('en-IN')}</th><th>Total Deductions</th><th style="text-align:right">${totalDed.toLocaleString('en-IN')}</th></tr>
       </tbody>
     </table>
     <div style="display:flex;justify-content:space-between;align-items:center;background:#0f172a;color:#fff;border-radius:10px;padding:12px 16px;margin-top:10px">
@@ -1896,6 +1930,30 @@ document.body.addEventListener('click', async e => {
     await sb.from('ot_requests').update({ status: 'REJECTED' }).eq('id', el.dataset.id);
     loadApprovals();
   }
+  if(act === 'vb-review'){ await sb.from('feedback').update({ status:'IN_REVIEW' }).eq('id', el.dataset.id); loadVoice(); }
+  if(act === 'vb-resolve'){
+    const note = prompt('Resolution note (optional):') || '';
+    await sb.from('feedback').update({ status:'RESOLVED', admin_note: note }).eq('id', el.dataset.id);
+    notify('Marked resolved', 'success'); loadVoice();
+  }
+  if(act === 'vb-reject'){
+    const note = prompt('Rejection note (optional):') || '';
+    await sb.from('feedback').update({ status:'REJECTED', admin_note: note }).eq('id', el.dataset.id);
+    loadVoice();
+  }
+  if(act === 'vb-kapprove'){
+    const amt = Number(prompt('Kaizen reward amount (₹) — will be added as "Kaizen Reward" in the next payroll:', '500'));
+    if(!amt || amt <= 0) return;
+    const note = prompt('Approval note (optional):') || '';
+    const code = el.dataset.code;
+    await sb.from('feedback').update({ status:'APPROVED', reward: amt, admin_note: note }).eq('id', el.dataset.id);
+    const p = PROFILES[code] || {};
+    const sal = Object.assign({}, p.salary || {}, { pendingReward: (Number((p.salary||{}).pendingReward)||0) + amt });
+    await sb.from('hr_profiles').upsert({ employee_code: code, salary: sal }, { onConflict: 'employee_code' });
+    if(PROFILES[code]) PROFILES[code].salary = sal; else PROFILES[code] = { employee_code: code, salary: sal };
+    notify(`Kaizen approved — ${fmtINR(amt)} reward will be paid in the next payroll`, 'success');
+    loadVoice();
+  }
   if(act === 'view-doc'){
     const { data, error } = await sb.storage.from('hr-docs').createSignedUrl(el.dataset.path, 120);
     if(error) return notify(error.message, 'error');
@@ -2027,6 +2085,11 @@ $('letterType').addEventListener('change', () => {
   $('letterEmpWrap').classList.toggle('hidden', t === 'offer');
   $('relieveFieldsWrap').classList.toggle('hidden', t !== 'relieving' && t !== 'experience');
   $('warnFieldsWrap').classList.toggle('hidden', t !== 'warning');
+  $('eomFieldsWrap').classList.toggle('hidden', t !== 'eom');
+  $('eomFieldsWrap').classList.toggle('flex', t === 'eom');
+  $('internFieldsWrap').classList.toggle('hidden', t !== 'intern');
+  $('internFieldsWrap').classList.toggle('flex', t === 'intern');
+  if(t === 'intern') $('letterEmpWrap').classList.add('hidden');
   $('promoFieldsWrap').classList.toggle('hidden', t !== 'promotion');
   $('promoFieldsWrap').classList.toggle('flex', t === 'promotion');
 });
@@ -2077,11 +2140,46 @@ function letterShell(title, refNo, body){
   </div>`;
 }
 
+function certShell(title, name, line1, line2, meta){
+  const S = getSettings();
+  return `<div class="paper" contenteditable="true" spellcheck="false" style="display:flex;flex-direction:column;justify-content:center;text-align:center;border:6px double #0f172a;padding:22mm 18mm;position:relative">
+    <div style="position:absolute;inset:8mm;border:1px solid #cbd5e1;pointer-events:none"></div>
+    <p style="font-size:11px;letter-spacing:.3em;color:#64748b;margin:0">${esc(S.name).toUpperCase()}</p>
+    <p style="font-size:9px;color:#94a3b8;margin:2px 0 26px">${esc(S.addr)}</p>
+    <h1 style="font-family:'Space Grotesk',sans-serif;font-size:30px;margin:0 0 4px;letter-spacing:.06em;color:#0f172a">${esc(title)}</h1>
+    <div style="width:60px;height:3px;background:#2563eb;margin:10px auto 24px"></div>
+    <p style="font-size:13px;color:#334155;margin:0 0 6px">This certificate is proudly presented to</p>
+    <h2 style="font-family:'Space Grotesk',sans-serif;font-size:26px;margin:0 0 18px;color:#2563eb">${esc(name)}</h2>
+    <p style="font-size:13px;line-height:1.8;color:#334155;max-width:130mm;margin:0 auto 8px">${line1}</p>
+    ${line2 ? `<p style="font-size:12px;color:#64748b;margin:0 auto;max-width:130mm">${line2}</p>` : ''}
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:34mm;padding:0 6mm">
+      <div style="text-align:center;font-size:11px;color:#64748b">${meta}</div>
+      <div style="text-align:center"><p style="margin:0;border-top:1px solid #94a3b8;padding-top:5px;font-size:12px"><b>${esc(S.hr || 'Authorised Signatory')}</b><br><span style="font-size:10px;color:#64748b">${esc(S.hrDesig || '')}, ${esc(S.name)}</span></p></div>
+    </div>
+  </div>`;
+}
 $('letterGenBtn').addEventListener('click', () => {
   const t = $('letterType').value;
   const S = getSettings();
   let html = '';
   const yr = new Date().getFullYear();
+
+  if(t === 'intern'){
+    const nm = $('inName').value.trim(), dp = $('inDept').value.trim();
+    const fr = $('inFrom').value, to = $('inTo').value;
+    if(!nm || !fr || !to) return notify('Intern name and duration are required', 'error');
+    html = certShell('CERTIFICATE OF INTERNSHIP', nm,
+      `in recognition of the successful completion of an internship${dp ? ' in the <b>' + esc(dp) + '</b> department' : ''} at <b>${esc(S.name)}</b> from <b>${fmtDate(fr)}</b> to <b>${fmtDate(to)}</b>.`,
+      `During this period, ${esc(nm)} demonstrated sincerity, a strong willingness to learn and made a valuable contribution to the team. We wish them great success in their future endeavours.`,
+      `Certificate No.<br><b>${(S.name||'CO').split(' ')[0].toUpperCase()}/INT/${yr}/${Math.floor(100+Math.random()*900)}</b><br>Date: ${new Date().toLocaleDateString('en-IN')}`);
+    $('letterPaper').innerHTML = html;
+    $('letterDesk').classList.remove('hidden');
+    $('letterPrintBtn').classList.remove('hidden');
+    window._letterCtx = null;
+    $('letterDocBtn').classList.add('hidden');
+    $('letterDesk').scrollIntoView({ behavior:'smooth' });
+    return;
+  }
 
   if(t === 'offer'){
     const name = $('offName').value.trim(), desig = $('offDesig').value.trim(), dept = $('offDept').value.trim();
@@ -2131,6 +2229,14 @@ $('letterGenBtn').addEventListener('click', () => {
         <p>This is to certify that <b>${esc(e.Name)}</b>${p.father_name ? ' (S/o / D/o ' + esc(p.father_name) + ')' : ''}, Employee Code <b>${esc(code)}</b>, was employed with <b>${esc(S.name)}</b> as <b>${esc(e.DESIGNATION || '—')}</b> in the <b>${esc(e.DEPARTMENT || '—')}</b> department from <b>${esc(e.DOJ || '—')}</b> to <b>${fmtDate(lwd)}</b>.</p>
         <p>During this period, we found ${esc(e.Name)} to be sincere, hardworking and professional. ${esc(e.Name)}'s conduct and performance remained satisfactory throughout the tenure.</p>
         <p>We wish ${esc(e.Name)} success in all future endeavours.</p>`);
+    }
+    if(t === 'eom'){
+      const m = $('eomMonth').value;
+      if(!m) return notify('Select the month', 'error');
+      html = certShell('EMPLOYEE OF THE MONTH', e.Name,
+        `in recognition of outstanding performance, dedication and exemplary contribution as <b>${esc(e.DESIGNATION || '—')}</b> in the <b>${esc(e.DEPARTMENT || '—')}</b> department for the month of <b>${monthLabel(m)}</b>.`,
+        $('eomNote').value ? esc($('eomNote').value) : 'Your commitment sets a benchmark for the entire team. Congratulations!',
+        `Certificate No.<br><b>${(S.name||'CO').split(' ')[0].toUpperCase()}/EOM/${m.replace('-','')}/${esc(code)}</b><br>Date: ${new Date().toLocaleDateString('en-IN')}`);
     }
     if(t === 'relieving'){
       const lwd = $('relLWD').value;
@@ -3144,6 +3250,39 @@ document.body.addEventListener('click', e => {
   const g = e.target.closest && e.target.closest('[data-goto]');
   if(g){ const btn = document.querySelector(`.nav-item[data-page="${g.dataset.goto}"]`); if(btn) btn.click(); }
 });
+
+/* ================= VOICE BOX ================= */
+async function loadVoice(){
+  const { data, error } = await sb.from('feedback').select('*').order('created_at', { ascending:false }).limit(200);
+  if(error) return notify(error.message + ' — have you run the V9 migration SQL?', 'error');
+  const nameOf = c => { const e = EMP.find(x => x['Employee code'] === c); return e ? e.Name : c; };
+  const stChip = s => ({ OPEN:'chip-warn', IN_REVIEW:'chip-blue', RESOLVED:'chip-ok', APPROVED:'chip-ok', REJECTED:'chip-bad' }[s] || 'chip-gray');
+  const card = f => `<div class="p-3 rounded-lg" style="background:#f8fafc;border:1px solid var(--line)">
+    <div class="flex items-center justify-between mb-1">
+      <b class="text-xs">${esc(nameOf(f.employee_code))} <span style="color:var(--muted)">(${esc(f.employee_code)})</span></b>
+      <span class="chip ${stChip(f.status)}" style="font-size:10px">${esc(f.status.replace('_',' '))}${f.type === 'KAIZEN' && f.reward > 0 ? ' • ' + fmtINR(f.reward) : ''}</span>
+    </div>
+    <div class="font-semibold text-sm mb-1">${esc(f.subject)}</div>
+    ${f.details ? `<div class="text-xs mb-1" style="color:#334155;white-space:pre-wrap">${esc(f.details)}</div>` : ''}
+    ${f.solutions ? `<div class="text-xs mb-1 p-2 rounded" style="background:#eff6ff"><b>Proposed solutions:</b><br><span style="white-space:pre-wrap">${esc(f.solutions)}</span></div>` : ''}
+    ${f.admin_note ? `<div class="text-[11px] mb-1" style="color:var(--muted)"><b>Note:</b> ${esc(f.admin_note)}</div>` : ''}
+    <div class="text-[10px] mb-2" style="color:var(--muted)">${fmtDate(f.created_at.slice(0,10))}</div>
+    <div class="flex gap-1 flex-wrap">
+      ${f.status === 'OPEN' ? `<button class="btn btn-ghost btn-sm" data-act="vb-review" data-id="${f.id}">In Review</button>` : ''}
+      ${(f.type !== 'KAIZEN' && (f.status === 'OPEN' || f.status === 'IN_REVIEW')) ? `<button class="btn btn-ghost btn-sm" data-act="vb-resolve" data-id="${f.id}"><i class="fa-solid fa-check" style="color:var(--ok)"></i> Resolve</button>` : ''}
+      ${(f.type === 'KAIZEN' && f.status !== 'APPROVED' && f.status !== 'REJECTED') ? `<button class="btn btn-primary btn-sm" data-act="vb-kapprove" data-id="${f.id}" data-code="${esc(f.employee_code)}"><i class="fa-solid fa-award"></i> Approve + Reward</button>
+        <button class="btn btn-danger btn-sm" data-act="vb-reject" data-id="${f.id}">Reject</button>` : ''}
+    </div>
+  </div>`;
+  const rows = data || [];
+  const by = t => rows.filter(f => f.type === t);
+  $('vbGriev').innerHTML = by('GRIEVANCE').map(card).join('') || '<p class="m-0 text-xs" style="color:var(--muted)">No grievances.</p>';
+  $('vbSugg').innerHTML = by('SUGGESTION').map(card).join('') || '<p class="m-0 text-xs" style="color:var(--muted)">No suggestions.</p>';
+  $('vbKaizen').innerHTML = by('KAIZEN').map(card).join('') || '<p class="m-0 text-xs" style="color:var(--muted)">No kaizen ideas.</p>';
+  const open = rows.filter(f => f.status === 'OPEN').length;
+  $('voiceBadge').innerText = open;
+  $('voiceBadge').classList.toggle('hidden', open === 0);
+}
 
 /* ================= APPROVALS INBOX ================= */
 async function loadApprovals(){
