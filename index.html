@@ -817,24 +817,41 @@
                     if (match.label !== 'unknown' && match.distance < 0.45) {
                         
                         if (currentTarget === match.label) {
-                            matchConfidence += 50; // Super fast verification (1-2 frames max)
+                            matchConfidence += 50;
                         } else {
                             currentTarget = match.label;
                             matchConfidence = 50;
+                            liveBuf = []; // new person -> fresh liveness window
                         }
+
+                        // collect passive liveness metrics for this frame
+                        pushLiveMetrics(detection);
 
                         verifyUI.classList.remove('opacity-0');
                         verifyProgress.style.width = `${Math.min(matchConfidence, 100)}%`;
 
-                        if (matchConfidence >= CONFIDENCE_THRESHOLD) {
-                            isDetecting = false;
-                            verifyUI.classList.add('opacity-0');
-                            reticle.classList.remove('detecting');
-                            ctx.clearRect(0, 0, canvas.width, canvas.height);
-                            scannerWrapper.classList.remove('active-scan');
-                            
-                            await recordAttendance(match.label);
-                            return;
+                        // ---- PASSIVE LIVENESS (silent, Pagarbook-style) ----
+                        // Face too small = screen shown from a distance -> quietly ignore
+                        const faceRatio = detection.detection.box.width / video.videoWidth;
+                        if (faceRatio < LIVE_MIN_FACE_RATIO) {
+                            // do nothing — keep scanning as if nothing was seen
+                        } else if (matchConfidence >= CONFIDENCE_THRESHOLD && liveBuf.length >= LIVE_MIN_FRAMES) {
+                            const verdict = passiveLiveVerdict();
+                            if (verdict === 'LIVE') {
+                                isDetecting = false;
+                                verifyUI.classList.add('opacity-0');
+                                reticle.classList.remove('detecting');
+                                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                                scannerWrapper.classList.remove('active-scan');
+                                await recordAttendance(match.label);
+                                return;
+                            }
+                            if (verdict === 'SPOOF') {
+                                // silently ignore the flat/static face — no message, no punch
+                                spoofStrike(match.label);
+                                resetScanState();
+                            }
+                            // verdict 'WAIT' -> keep collecting frames
                         }
                     } else {
                         resetScanState();
@@ -848,9 +865,92 @@
             scanFrame();
         }
 
+        // ---- LIVENESS: require a natural blink within a few seconds ----
+        // Eye Aspect Ratio from the 68-point landmarks. A printed photo or a
+        // static phone image cannot blink; this blocks the common spoofs.
+        function eyeAspectRatio(eye) {
+            const d = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+            return (d(eye[1], eye[5]) + d(eye[2], eye[4])) / (2 * d(eye[0], eye[3]));
+        }
+        /* ============ PASSIVE LIVENESS ENGINE (no user action needed) ============
+           Real faces are 3D and alive: even when "still" they micro-sway, the
+           nose-to-eye geometry shifts with tiny head rotations (parallax), and
+           eyelids tremble. A photo is flat: move it, tilt it — every landmark
+           moves TOGETHER, the geometry ratios stay frozen. We measure this over
+           ~8 frames (<1 sec) while identity is being confirmed, so a real person
+           punches instantly and a photo is silently ignored — it never punches.
+
+           TUNING (change here if needed):
+        */
+        const LIVE_MIN_FACE_RATIO = 0.16; // smaller face than this = screen at a distance -> ignore
+        const LIVE_MIN_FRAMES = 7;        // frames needed before a LIVE verdict (~0.6-0.9s)
+        const LIVE_MAX_FRAMES = 16;       // frames after which a non-live face is declared SPOOF
+        const LIVE_MIN_MOVE = 0.012;      // minimum natural sway (photo on a stand fails this)
+        const LIVE_MIN_RATIO_VAR = 0.00010; // 3D parallax signature (flat photo ~ zero)
+        const LIVE_MIN_EAR_RANGE = 0.035; // eyelid life (any blink/tremor passes)
+
+        let liveBuf = [];
+        function pushLiveMetrics(detection){
+            try {
+                const lm = detection.landmarks;
+                const avg = pts => { let x=0,y=0; pts.forEach(p=>{x+=p.x;y+=p.y}); return {x:x/pts.length,y:y/pts.length}; };
+                const d = (a,b) => Math.hypot(a.x-b.x, a.y-b.y);
+                const eL = avg(lm.getLeftEye()), eR = avg(lm.getRightEye());
+                const eyeMid = {x:(eL.x+eR.x)/2, y:(eL.y+eR.y)/2};
+                const nose = lm.getNose()[3];
+                const mouth = avg(lm.getMouth());
+                const iod = Math.max(1, d(eL, eR));
+                liveBuf.push({
+                    cx: eyeMid.x, cy: eyeMid.y, iod,
+                    r1: d(nose, eyeMid) / iod,
+                    r2: d(nose, mouth) / iod,
+                    ear: (eyeAspectRatio(lm.getLeftEye()) + eyeAspectRatio(lm.getRightEye())) / 2
+                });
+                if (liveBuf.length > LIVE_MAX_FRAMES) liveBuf.shift();
+            } catch(e) {}
+        }
+        function passiveLiveVerdict(){
+            const n = liveBuf.length;
+            if (n < LIVE_MIN_FRAMES) return 'WAIT';
+            const iodAvg = liveBuf.reduce((a,f)=>a+f.iod,0)/n;
+            let move = 0;
+            for (let i=1;i<n;i++) move += Math.hypot(liveBuf[i].cx-liveBuf[i-1].cx, liveBuf[i].cy-liveBuf[i-1].cy);
+            move /= iodAvg;
+            const variance = k => { const m = liveBuf.reduce((a,f)=>a+f[k],0)/n; return liveBuf.reduce((a,f)=>a+(f[k]-m)*(f[k]-m),0)/n; };
+            const ratioVar = variance('r1') + variance('r2');
+            const ears = liveBuf.map(f=>f.ear);
+            const earRange = Math.max(...ears) - Math.min(...ears);
+            const alive = move > LIVE_MIN_MOVE && (ratioVar > LIVE_MIN_RATIO_VAR || earRange > LIVE_MIN_EAR_RANGE);
+            if (alive) return 'LIVE';
+            return n >= LIVE_MAX_FRAMES ? 'SPOOF' : 'WAIT';
+        }
+
+        // Repeated spoof attempts on the same employee get logged for the admin
+        const spoofStrikes = new Map(); // label -> {count, ts, logged}
+        function spoofStrike(label){
+            const now = Date.now();
+            let s = spoofStrikes.get(label);
+            if (!s || now - s.ts > 180000) s = { count: 0, ts: now, logged: false };
+            s.count++; s.ts = now;
+            spoofStrikes.set(label, s);
+            if (s.count >= 3 && !s.logged) {
+                s.logged = true;
+                try {
+                    supabaseClient.from('deployment_logs').insert([{
+                        employee_code: label,
+                        name: (employeeDataMap.get(label) || {}).Name || label,
+                        line: '', date: new Date().toISOString().slice(0,10),
+                        time: new Date().toTimeString().slice(0,8),
+                        status: 'LIVENESS_FAIL'
+                    }]).then(() => {});
+                } catch(e) {}
+            }
+        }
+
         function resetScanState() {
             matchConfidence = 0;
             currentTarget = null;
+            liveBuf = [];
 
             verifyUI.classList.add('opacity-0');
             verifyProgress.style.width = '0%';
