@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js"></script>
     <style>
         :root {
             --brand-color: #2563eb; /* Corporate Blue */
@@ -821,23 +822,33 @@
                         } else {
                             currentTarget = match.label;
                             matchConfidence = 50;
-                            liveBuf = []; // new person -> fresh liveness window
                         }
-
-                        // collect passive liveness metrics for this frame
-                        pushLiveMetrics(detection);
 
                         verifyUI.classList.remove('opacity-0');
                         verifyProgress.style.width = `${Math.min(matchConfidence, 100)}%`;
 
-                        // ---- PASSIVE LIVENESS (silent, Pagarbook-style) ----
-                        // Face too small = screen shown from a distance -> quietly ignore
+                        // ---- AI ANTI-SPOOF GATE (silent, Pagarbook-style) ----
                         const faceRatio = detection.detection.box.width / video.videoWidth;
                         if (faceRatio < LIVE_MIN_FACE_RATIO) {
-                            // do nothing — keep scanning as if nothing was seen
-                        } else if (matchConfidence >= CONFIDENCE_THRESHOLD && liveBuf.length >= LIVE_MIN_FRAMES) {
-                            const verdict = passiveLiveVerdict();
-                            if (verdict === 'LIVE') {
+                            // screen shown from a distance -> quietly ignore, keep scanning
+                        } else if (matchConfidence >= CONFIDENCE_THRESHOLD) {
+                            if (antiSpoofSession) {
+                                isDetecting = false; // pause scanning while the model decides (~250ms)
+                                const liveProb = await antiSpoofVerdict(detection.detection.box);
+                                if (liveProb >= AS_THRESHOLD) {
+                                    verifyUI.classList.add('opacity-0');
+                                    reticle.classList.remove('detecting');
+                                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                                    scannerWrapper.classList.remove('active-scan');
+                                    await recordAttendance(match.label);
+                                    return;
+                                }
+                                // photo / screen detected -> silently ignore, no punch, no message
+                                spoofStrike(match.label);
+                                resetScanState();
+                                isDetecting = true; // resume scanning
+                            } else {
+                                // model missing -> punch anyway (red banner already warns the admin)
                                 isDetecting = false;
                                 verifyUI.classList.add('opacity-0');
                                 reticle.classList.remove('detecting');
@@ -846,12 +857,6 @@
                                 await recordAttendance(match.label);
                                 return;
                             }
-                            if (verdict === 'SPOOF') {
-                                // silently ignore the flat/static face — no message, no punch
-                                spoofStrike(match.label);
-                                resetScanState();
-                            }
-                            // verdict 'WAIT' -> keep collecting frames
                         }
                     } else {
                         resetScanState();
@@ -872,57 +877,83 @@
             const d = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
             return (d(eye[1], eye[5]) + d(eye[2], eye[4])) / (2 * d(eye[0], eye[3]));
         }
-        /* ============ PASSIVE LIVENESS ENGINE (no user action needed) ============
-           Real faces are 3D and alive: even when "still" they micro-sway, the
-           nose-to-eye geometry shifts with tiny head rotations (parallax), and
-           eyelids tremble. A photo is flat: move it, tilt it — every landmark
-           moves TOGETHER, the geometry ratios stay frozen. We measure this over
-           ~8 frames (<1 sec) while identity is being confirmed, so a real person
-           punches instantly and a photo is silently ignored — it never punches.
+        /* ============ AI ANTI-SPOOFING (MiniFASNet, silent) ============
+           A neural network trained on tens of thousands of real faces vs
+           printed photos / phone screens / video replays. It reads the actual
+           pixel texture (screen pixels, moire, print grain, reflections) —
+           things landmark geometry can never see. Runs in ~30ms per frame.
 
-           TUNING (change here if needed):
+           SETUP: the file `anti_spoof.onnx` must sit NEXT TO this HTML file
+           in the repository. If it is missing, punches still work but a red
+           banner warns that anti-spoofing is OFF.
+
+           TUNING:
         */
-        const LIVE_MIN_FACE_RATIO = 0.16; // smaller face than this = screen at a distance -> ignore
-        const LIVE_MIN_FRAMES = 7;        // frames needed before a LIVE verdict (~0.6-0.9s)
-        const LIVE_MAX_FRAMES = 16;       // frames after which a non-live face is declared SPOOF
-        const LIVE_MIN_MOVE = 0.012;      // minimum natural sway (photo on a stand fails this)
-        const LIVE_MIN_RATIO_VAR = 0.00010; // 3D parallax signature (flat photo ~ zero)
-        const LIVE_MIN_EAR_RANGE = 0.035; // eyelid life (any blink/tremor passes)
+        const AS_THRESHOLD = 0.65;        // avg real-face probability needed to punch (raise = stricter)
+        const AS_FRAMES = 3;              // frames sampled per decision
+        const LIVE_MIN_FACE_RATIO = 0.16; // smaller face = screen at a distance -> silently ignore
 
-        let liveBuf = [];
-        function pushLiveMetrics(detection){
+        let antiSpoofSession = null, antiSpoofInputName = null, antiSpoofFailedToLoad = false;
+        const asCanvas = document.createElement('canvas');
+        asCanvas.width = 128; asCanvas.height = 128;
+
+        async function loadAntiSpoof(){
             try {
-                const lm = detection.landmarks;
-                const avg = pts => { let x=0,y=0; pts.forEach(p=>{x+=p.x;y+=p.y}); return {x:x/pts.length,y:y/pts.length}; };
-                const d = (a,b) => Math.hypot(a.x-b.x, a.y-b.y);
-                const eL = avg(lm.getLeftEye()), eR = avg(lm.getRightEye());
-                const eyeMid = {x:(eL.x+eR.x)/2, y:(eL.y+eR.y)/2};
-                const nose = lm.getNose()[3];
-                const mouth = avg(lm.getMouth());
-                const iod = Math.max(1, d(eL, eR));
-                liveBuf.push({
-                    cx: eyeMid.x, cy: eyeMid.y, iod,
-                    r1: d(nose, eyeMid) / iod,
-                    r2: d(nose, mouth) / iod,
-                    ear: (eyeAspectRatio(lm.getLeftEye()) + eyeAspectRatio(lm.getRightEye())) / 2
-                });
-                if (liveBuf.length > LIVE_MAX_FRAMES) liveBuf.shift();
-            } catch(e) {}
+                ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/';
+                const resp = await fetch('anti_spoof.onnx');
+                if (!resp.ok) throw new Error('anti_spoof.onnx not found (' + resp.status + ')');
+                const buf = await resp.arrayBuffer();
+                antiSpoofSession = await ort.InferenceSession.create(buf, { executionProviders: ['wasm'] });
+                antiSpoofInputName = antiSpoofSession.inputNames[0];
+                console.log('Anti-spoof model loaded');
+            } catch (e) {
+                antiSpoofFailedToLoad = true;
+                console.error('Anti-spoof model load failed:', e);
+                try {
+                    const b = document.createElement('div');
+                    b.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#dc2626;color:#fff;font-size:12px;text-align:center;padding:6px;z-index:9999';
+                    b.textContent = 'ANTI-SPOOFING OFF — upload anti_spoof.onnx next to this file in the repository';
+                    document.body.appendChild(b);
+                } catch(_) {}
+            }
         }
-        function passiveLiveVerdict(){
-            const n = liveBuf.length;
-            if (n < LIVE_MIN_FRAMES) return 'WAIT';
-            const iodAvg = liveBuf.reduce((a,f)=>a+f.iod,0)/n;
-            let move = 0;
-            for (let i=1;i<n;i++) move += Math.hypot(liveBuf[i].cx-liveBuf[i-1].cx, liveBuf[i].cy-liveBuf[i-1].cy);
-            move /= iodAvg;
-            const variance = k => { const m = liveBuf.reduce((a,f)=>a+f[k],0)/n; return liveBuf.reduce((a,f)=>a+(f[k]-m)*(f[k]-m),0)/n; };
-            const ratioVar = variance('r1') + variance('r2');
-            const ears = liveBuf.map(f=>f.ear);
-            const earRange = Math.max(...ears) - Math.min(...ears);
-            const alive = move > LIVE_MIN_MOVE && (ratioVar > LIVE_MIN_RATIO_VAR || earRange > LIVE_MIN_EAR_RANGE);
-            if (alive) return 'LIVE';
-            return n >= LIVE_MAX_FRAMES ? 'SPOOF' : 'WAIT';
+        loadAntiSpoof();
+
+        // 1.5x square crop around the face box -> 128x128 -> CHW float tensor
+        function antiSpoofScore(box){
+            const vw = video.videoWidth, vh = video.videoHeight;
+            const L = Math.max(box.width, box.height) * 1.5;
+            const xc = box.x + box.width / 2, yc = box.y + box.height / 2;
+            const x = xc - L / 2, y = yc - L / 2;
+            const x1 = Math.max(0, x), y1 = Math.max(0, y);
+            const x2 = Math.min(vw, x + L), y2 = Math.min(vh, y + L);
+            const g = asCanvas.getContext('2d', { willReadFrequently: true });
+            g.fillStyle = '#000'; g.fillRect(0, 0, 128, 128);
+            g.drawImage(video, x1, y1, x2 - x1, y2 - y1,
+                (x1 - x) / L * 128, (y1 - y) / L * 128, (x2 - x1) / L * 128, (y2 - y1) / L * 128);
+            const px = g.getImageData(0, 0, 128, 128).data;
+            const t = new Float32Array(3 * 128 * 128);
+            for (let i = 0; i < 128 * 128; i++) {
+                t[i] = px[i * 4] / 255;                     // R
+                t[128 * 128 + i] = px[i * 4 + 1] / 255;     // G
+                t[2 * 128 * 128 + i] = px[i * 4 + 2] / 255; // B
+            }
+            const tensor = new ort.Tensor('float32', t, [1, 3, 128, 128]);
+            return antiSpoofSession.run({ [antiSpoofInputName]: tensor }).then(out => {
+                const logits = out[antiSpoofSession.outputNames[0]].data;
+                const e0 = Math.exp(logits[0]), e1 = Math.exp(logits[1]);
+                return e0 / (e0 + e1); // index 0 = real-face probability
+            });
+        }
+
+        // sample a few frames and average — one odd frame should not decide
+        async function antiSpoofVerdict(box){
+            let sum = 0;
+            for (let i = 0; i < AS_FRAMES; i++) {
+                sum += await antiSpoofScore(box);
+                if (i < AS_FRAMES - 1) await new Promise(r => setTimeout(r, 70));
+            }
+            return sum / AS_FRAMES;
         }
 
         // Repeated spoof attempts on the same employee get logged for the admin
@@ -950,7 +981,6 @@
         function resetScanState() {
             matchConfidence = 0;
             currentTarget = null;
-            liveBuf = [];
 
             verifyUI.classList.add('opacity-0');
             verifyProgress.style.width = '0%';
