@@ -259,6 +259,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
       <input id="empSearch" class="inp" style="max-width:280px" placeholder="Search name / code / department…">
       <div class="flex items-center gap-2">
         <span class="chip chip-gray" id="empCount">—</span>
+        <button id="empImportBtn" class="btn btn-ghost btn-sm"><i class="fa-solid fa-file-import"></i> Import</button>
         <button id="empAddBtn" class="btn btn-primary btn-sm"><i class="fa-solid fa-user-plus"></i> Add Employee</button>
       </div>
     </div>
@@ -862,6 +863,30 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
     </div>
     <p class="text-[11px] mb-3" style="color:var(--muted)"><i class="fa-solid fa-circle-info"></i> Employees added here can use every HR feature (payroll, leaves, ESS, ID card). For face-recognition punching, their face must also be registered from the Attendance app's admin panel using this same code.</p>
     <button id="aeSaveBtn" class="btn btn-primary w-full justify-center"><i class="fa-solid fa-user-plus"></i> Add Employee</button>
+  </div>
+</div>
+
+<!-- ================= EMPLOYEE IMPORT MODAL ================= -->
+<div class="modal" id="impModal">
+  <div class="modal-box" style="max-width:860px">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="display font-bold text-lg m-0">Import Employees</h3>
+      <button class="btn btn-ghost btn-sm" data-close="impModal"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="p-3 rounded-xl text-xs mb-3" style="background:var(--brand-soft)">
+      <b>How it works:</b> ① Download the template and fill it in Excel (or arrange your old data in the same column order) → ② copy the rows (with the header row) and paste below, or upload the CSV → ③ Preview checks every row → ④ Import. Face registration is done later from each profile.
+      <br><b>Dates:</b> DD/MM/YYYY or YYYY-MM-DD both work. <b>Skill Category:</b> Unskilled / Semi-Skilled / Skilled / Highly Skilled (category workers' salary auto-sets from minimum wage). <b>Monthly Gross:</b> only for CUSTOM salary type.
+    </div>
+    <div class="flex gap-2 mb-3 flex-wrap">
+      <button id="impTplBtn" class="btn btn-ghost btn-sm"><i class="fa-solid fa-download"></i> Download Template (CSV)</button>
+      <label class="btn btn-ghost btn-sm" style="cursor:pointer"><i class="fa-solid fa-file-csv"></i> Upload CSV
+        <input id="impFile" type="file" accept=".csv,.txt" class="hidden">
+      </label>
+    </div>
+    <textarea id="impPaste" class="inp" rows="6" placeholder="Paste rows from Excel here (including the header row)…" style="font-family:monospace;font-size:11px"></textarea>
+    <button id="impPreviewBtn" class="btn btn-primary btn-sm mt-2"><i class="fa-solid fa-magnifying-glass"></i> Preview & Validate</button>
+    <div id="impPreview" class="mt-3"></div>
+    <button id="impGoBtn" class="btn btn-primary w-full justify-center mt-3 hidden"><i class="fa-solid fa-file-import"></i> Import</button>
   </div>
 </div>
 
@@ -2547,6 +2572,134 @@ $('setSaveBtn').addEventListener('click', async () => {
   }catch(err){ notify(err.message, 'error'); }
   finally{ btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save Settings'; btn.disabled = false; }
 });
+/* ---------------- Employee bulk import ---------------- */
+const IMP_COLS = ['Employee Code','Name','Department','Designation','DOJ','DOB','Phone','Line','Skill Category','Salary Type','Monthly Gross','Bank Name','Account No','IFSC','PAN','UAN','ESI No','Father Name','Gender','Address'];
+let IMP_ROWS = [];
+$('empImportBtn').addEventListener('click', () => { $('impPaste').value = ''; $('impPreview').innerHTML = ''; $('impGoBtn').classList.add('hidden'); IMP_ROWS = []; $('impModal').classList.add('show'); });
+$('impTplBtn').addEventListener('click', () => {
+  dlText('Employee_Import_Template.csv', IMP_COLS.join(',') + '\n' +
+    'W-101,Ramesh Kumar,PRODUCTION,Operator,01/04/2024,15/08/1995,9876543210,Line 1,Skilled,CATEGORY,,SBI,12345678901,SBIN0001234,ABCDE1234F,,,"Suresh Kumar",Male,"Manesar, Gurugram"\n' +
+    'M-201,Priya Sharma,ACCOUNTS,Manager,10/01/2023,20/02/1990,9876500000,,,CUSTOM,45000,HDFC,98765432109,HDFC0000123,FGHIJ5678K,,,,Female,', 'text/csv');
+});
+$('impFile').addEventListener('change', e => {
+  const f = e.target.files[0]; if(!f) return;
+  const rd = new FileReader();
+  rd.onload = () => { $('impPaste').value = rd.result; notify('File loaded — click Preview & Validate', 'success'); };
+  rd.readAsText(f);
+});
+function impParseDate(s){
+  s = String(s || '').trim();
+  if(!s) return null;
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
+  if(m) return `${m[3]}-${String(m[2]).padStart(2,'0')}-${String(m[1]).padStart(2,'0')}`;
+  return undefined; // invalid
+}
+function impParse(text){
+  // CSV or tab-separated (Excel paste); handles quoted fields
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if(lines.length < 2) return { error: 'Paste the header row plus at least one data row' };
+  const delim = lines[0].includes('\t') ? '\t' : ',';
+  const parseLine = l => {
+    const out = []; let cur = '', q = false;
+    for(let i = 0; i < l.length; i++){
+      const ch = l[i];
+      if(q){ if(ch === '"'){ if(l[i+1] === '"'){ cur += '"'; i++; } else q = false; } else cur += ch; }
+      else if(ch === '"') q = true;
+      else if(ch === delim){ out.push(cur); cur = ''; }
+      else cur += ch;
+    }
+    out.push(cur);
+    return out.map(x => x.trim());
+  };
+  const norm = s => String(s).toLowerCase().replace(/[^a-z]/g, '');
+  const hdr = parseLine(lines[0]).map(norm);
+  const idx = {};
+  IMP_COLS.forEach(c => { idx[c] = hdr.indexOf(norm(c)); });
+  if(idx['Employee Code'] === -1 || idx['Name'] === -1) return { error: 'Header row must include at least "Employee Code" and "Name" (download the template for the exact format)' };
+  const skillMap = { unskilled:'mw1', semiskilled:'mw2', skilled:'mw3', highlyskilled:'mw4' };
+  const existing = new Set(EMP.map(e => String(e['Employee code']).toUpperCase()));
+  const seen = new Set();
+  const rows = [];
+  for(let i = 1; i < lines.length; i++){
+    const c = parseLine(lines[i]);
+    const get = k => idx[k] >= 0 ? (c[idx[k]] || '') : '';
+    const code = get('Employee Code').toUpperCase();
+    const r = { line: i + 1, code, name: get('Name'), dept: get('Department').toUpperCase(), desig: get('Designation'),
+      doj: impParseDate(get('DOJ')), dob: impParseDate(get('DOB')), phone: get('Phone').replace(/\D/g, ''),
+      pline: get('Line'), skillRaw: get('Skill Category'), skill: skillMap[norm(get('Skill Category'))] || '',
+      wtype: norm(get('Salary Type')) === 'custom' ? 'custom' : (get('Skill Category') ? 'category' : (norm(get('Salary Type')) === 'category' ? 'category' : 'custom')),
+      gross: Number(get('Monthly Gross')) || 0,
+      bank: get('Bank Name'), acc: get('Account No'), ifsc: get('IFSC').toUpperCase(), pan: get('PAN').toUpperCase(),
+      uan: get('UAN'), esi: get('ESI No'), father: get('Father Name'), gender: get('Gender'), addr: get('Address'), errs: [] };
+    if(!r.code) r.errs.push('Employee Code missing');
+    if(!r.name) r.errs.push('Name missing');
+    if(r.code && existing.has(r.code)) r.errs.push('Code already exists in the system');
+    if(r.code && seen.has(r.code)) r.errs.push('Duplicate code within this file');
+    seen.add(r.code);
+    if(r.doj === undefined) r.errs.push('DOJ date invalid');
+    if(r.dob === undefined) r.errs.push('DOB date invalid');
+    if(r.skillRaw && !r.skill) r.errs.push('Skill Category not recognised');
+    if(r.wtype === 'category' && !r.skill) r.errs.push('CATEGORY salary needs a Skill Category');
+    if(r.wtype === 'custom' && !r.gross) r.errs.push('CUSTOM salary needs Monthly Gross');
+    rows.push(r);
+  }
+  return { rows };
+}
+$('impPreviewBtn').addEventListener('click', () => {
+  const res = impParse($('impPaste').value);
+  if(res.error){ $('impPreview').innerHTML = `<p class="text-sm m-0" style="color:var(--bad)">${esc(res.error)}</p>`; $('impGoBtn').classList.add('hidden'); return; }
+  IMP_ROWS = res.rows;
+  const ok = IMP_ROWS.filter(r => !r.errs.length), bad = IMP_ROWS.filter(r => r.errs.length);
+  $('impPreview').innerHTML = `
+    <div class="flex gap-2 mb-2"><span class="chip chip-ok">${ok.length} ready</span>${bad.length ? `<span class="chip chip-bad">${bad.length} with errors (will be skipped)</span>` : ''}</div>
+    <div style="max-height:260px;overflow:auto"><table class="tbl"><thead><tr><th>#</th><th>Code</th><th>Name</th><th>Dept</th><th>Salary</th><th>Status</th></tr></thead><tbody>
+    ${IMP_ROWS.map(r => `<tr style="${r.errs.length ? 'background:#fef2f2' : ''}"><td>${r.line}</td><td>${esc(r.code)}</td><td>${esc(r.name)}</td><td>${esc(r.dept || '—')}</td>
+      <td class="text-xs">${r.wtype === 'category' ? esc(r.skillRaw || '') + ' (min wage)' : '₹' + r.gross.toLocaleString('en-IN')}</td>
+      <td class="text-xs" style="color:${r.errs.length ? 'var(--bad)' : 'var(--ok)'}">${r.errs.length ? esc(r.errs.join('; ')) : '✓ Ready'}</td></tr>`).join('')}
+    </tbody></table></div>`;
+  $('impGoBtn').classList.toggle('hidden', !ok.length);
+  $('impGoBtn').innerHTML = `<i class="fa-solid fa-file-import"></i> Import ${ok.length} Employee${ok.length > 1 ? 's' : ''}`;
+});
+$('impGoBtn').addEventListener('click', async () => {
+  const ok = IMP_ROWS.filter(r => !r.errs.length);
+  if(!ok.length) return;
+  const S = getSettings();
+  const btn = $('impGoBtn');
+  btn.innerHTML = '<div class="loader-ring"></div> Importing…'; btn.disabled = true;
+  try{
+    let done = 0;
+    for(let i = 0; i < ok.length; i += 50){
+      const chunk = ok.slice(i, i + 50);
+      const empRows = chunk.map(r => ({ Name: r.name, 'Employee code': r.code, Status: 'ACTIVE',
+        DEPARTMENT: r.dept || null, DESIGNATION: r.desig || null, DOJ: r.doj || null, LINE: r.pline || null }));
+      const { error: e1 } = await sb.from('employees').insert(empRows);
+      if(e1) throw e1;
+      const profRows = chunk.map(r => {
+        let earn = {};
+        if(r.wtype === 'category' && r.skill) earn = splitGross(Math.round(Number(S[r.skill]) || 0));
+        else if(r.gross) earn = splitGross(r.gross);
+        return { employee_code: r.code, phone: r.phone || null, dob: r.dob || null,
+          father_name: r.father || null, gender: r.gender || null, address: r.addr || null,
+          bank_name: r.bank || null, account_no: r.acc || null, ifsc: r.ifsc || null,
+          pan: r.pan || null, uan: r.uan || null, esi_no: r.esi || null,
+          pf_applicable: true, esi_applicable: true, lwf_applicable: true,
+          salary: { earn, ded: {}, wageType: r.wtype, skill: r.skill || '' },
+          basic: earn.basic || 0, hra: earn.hra || 0, conveyance: earn.conveyance || 0, special_allowance: earn.special_allowance || 0 };
+      });
+      const { error: e2 } = await sb.from('hr_profiles').upsert(profRows, { onConflict: 'employee_code' });
+      if(e2) throw e2;
+      done += chunk.length;
+      btn.innerHTML = `<div class="loader-ring"></div> Importing… ${done}/${ok.length}`;
+    }
+    notify(`Imported ${done} employee(s). Register their faces from each profile when convenient.`, 'success');
+    $('impModal').classList.remove('show');
+    await loadCore();
+    renderEmployees('');
+  }catch(err){ notify('Import stopped: ' + err.message + ' — already-imported rows are saved; fix the file and import the rest.', 'error'); }
+  finally{ btn.innerHTML = '<i class="fa-solid fa-file-import"></i> Import'; btn.disabled = false; }
+});
+
 /* ---------------- Minimum wage bulk apply ---------------- */
 $('mwApplyBtn').addEventListener('click', async () => {
   const S = getSettings();
