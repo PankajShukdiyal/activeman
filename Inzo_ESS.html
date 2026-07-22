@@ -507,9 +507,8 @@ $('fbBtn').addEventListener('click', async () => {
 
 /* ---------- Overtime requests ---------- */
 function renderOT(){
-  const dept = ((D.employee||{}).DEPARTMENT || '').toUpperCase();
-  const allowed = (((D.company||{}).otDepts) || 'PLANNING,PRODUCTION').toUpperCase().split(',').map(s => s.trim()).filter(Boolean);
-  const can = allowed.some(a => a && dept.includes(a));
+  const desig = ((D.employee||{}).DESIGNATION || '').toUpperCase();
+  const can = desig.includes('MANAGER') || desig.includes('EXECUTIVE');
   $('otCard').classList.toggle('hidden', !can);
   if(!can) return;
   $('otDate').value = $('otDate').value || new Date().toISOString().slice(0,10);
@@ -599,10 +598,17 @@ function renderLeaves(){
   }).join('') : '<p class="m-0" style="color:var(--muted)">No leaves this year.</p>';
 }
 
+// Leave must be applied at least 2 days in advance
+function minLeaveDate(){
+  const d = new Date(); d.setDate(d.getDate() + 2);
+  return d.toISOString().slice(0, 10);
+}
+try { $('lvFrom').min = minLeaveDate(); $('lvTo').min = minLeaveDate(); } catch(e){}
 $('lvHalf').addEventListener('change', () => { if($('lvHalf').checked) $('lvTo').value = $('lvFrom').value; });
 $('lvBtn').addEventListener('click', async () => {
   if($('lvHalf').checked) $('lvTo').value = $('lvFrom').value;
   if(!$('lvFrom').value || !$('lvTo').value) return notify('Select From and To dates');
+  if($('lvFrom').value < minLeaveDate()) return notify('Leave must be applied at least 2 days in advance. For emergencies, contact HR directly.');
   const btn = $('lvBtn');
   btn.innerHTML = '<div class="loader-ring"></div> Submitting…'; btn.disabled = true;
   try{
@@ -639,28 +645,93 @@ function slipVC(code, month, net){
   for(let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
   return h.toString(16).toUpperCase().padStart(8, '0');
 }
+function numToWords(num){
+  num = Math.round(num);
+  if(num === 0) return 'Zero';
+  const a = ['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];
+  const b = ['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
+  const two = n => n < 20 ? a[n] : b[Math.floor(n/10)] + (n%10 ? ' ' + a[n%10] : '');
+  const three = n => (n >= 100 ? a[Math.floor(n/100)] + ' Hundred' + (n%100 ? ' ' : '') : '') + (n%100 ? two(n%100) : '');
+  let out = '';
+  if(num >= 10000000){ out += three(Math.floor(num/10000000)) + ' Crore '; num %= 10000000; }
+  if(num >= 100000){ out += three(Math.floor(num/100000)) + ' Lakh '; num %= 100000; }
+  if(num >= 1000){ out += three(Math.floor(num/1000)) + ' Thousand '; num %= 1000; }
+  if(num > 0) out += three(num);
+  return out.trim();
+}
+function monthLabelESS(ym){
+  const [y, m] = ym.split('-').map(Number);
+  return new Date(y, m-1, 1).toLocaleString('en-IN', { month:'long', year:'numeric' });
+}
 function printSlip(s){
   const r = s.data || {}, c = (D.company || {});
-  const e = D.employee || {};
-  const vc = slipVC(e['Employee code'] || CODE, s.month, Math.round(Number(s.net_pay)||0));
-  const line = (l, v) => `<tr><td style="border:1px solid #cbd5e1;padding:5px 8px">${l}</td><td style="border:1px solid #cbd5e1;padding:5px 8px;text-align:right">${Number(v||0).toLocaleString('en-IN')}</td></tr>`;
-  $('slipPrint').innerHTML = `<div style="font-family:Arial;max-width:700px;margin:auto;padding:20px;font-size:12px">
-    <div style="display:flex;justify-content:space-between;border-bottom:2px solid #0f172a;padding-bottom:8px;margin-bottom:12px">
-      <div><h2 style="margin:0">${esc(c.name || '')}</h2><small>${esc(c.addr || '')}</small></div>
-      <div style="text-align:right"><b>PAYSLIP</b><br><small>${esc(s.month)}</small></div>
+  const e = D.employee || {}, p = D.profile || {};
+  const net = Math.round(Number(s.net_pay) || 0);
+  const code = e['Employee code'] || CODE;
+  const vc = slipVC(code, s.month, net);
+  const totalDed = (r.pf||0) + (r.esi||0) + (r.pt||0) + (r.lwf||0) + (r.customDed||0) + (r.tds||0) + (r.advDed||0) + (r.otherDed||0);
+  const earnRows = [];
+  if(r.comps && r.comps.length){ r.comps.forEach(x => { if(x.amt > 0) earnRows.push([x.name, x.amt]); }); }
+  else { earnRows.push(['Basic', r.basic||0], ['HRA', r.hra||0], ['Conveyance', r.conv||0], ['Special Allowance', r.spl||0]); }
+  earnRows.push(['Overtime (' + (r.otHours||0) + ' hrs)', r.otPay||0]);
+  if(r.arrears) earnRows.push(['Arrears', r.arrears]);
+  if(r.reward) earnRows.push(['Kaizen Reward', r.reward]);
+  earnRows.push(['Bonus / Incentive', r.bonus||0]);
+  const dedRows = [['Provident Fund', r.pf||0], ['ESI', r.esi||0], ['Professional Tax', r.pt||0], ['LWF', r.lwf||0]];
+  if(r.tds) dedRows.push(['TDS (Income Tax)', r.tds]);
+  (r.dedBreak||[]).forEach(d => dedRows.push([d.name, d.amt]));
+  dedRows.push(['Advance Recovery', r.advDed||0], ['Other Deduction', r.otherDed||0]);
+  let bodyRows = '';
+  for(let i = 0; i < Math.max(earnRows.length, dedRows.length); i++){
+    const eR = earnRows[i], dR = dedRows[i];
+    bodyRows += `<tr><td>${eR ? esc(eR[0]) : ''}</td><td style="text-align:right">${eR ? Math.round(eR[1]).toLocaleString('en-IN') : ''}</td>
+      <td>${dR ? esc(dR[0]) : ''}</td><td style="text-align:right">${dR ? Math.round(dR[1]).toLocaleString('en-IN') : ''}</td></tr>`;
+  }
+  const slipId = 'PS/' + s.month.replace('-','') + '/' + code;
+  const qrData = encodeURIComponent(`${c.name||''}|PAYSLIP|${code}|${s.month}|NET:${net}|VC:${vc}`);
+  const cell = 'border:1px solid #e2e8f0;padding:6px 9px;font-size:11px';
+  $('slipPrint').innerHTML = `<div style="font-family:Inter,Arial,sans-serif;max-width:760px;margin:auto;background:#fff;position:relative;overflow:hidden">
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:0">
+      <div style="transform:rotate(-32deg);font-weight:700;font-size:40px;color:rgba(15,23,42,.045);white-space:nowrap;letter-spacing:.1em;text-align:center;line-height:2.2">${esc((c.name||'').toUpperCase())}<br>SYSTEM GENERATED • ORIGINAL<br>${esc((c.name||'').toUpperCase())}</div>
     </div>
-    <p><b>${esc(e.Name || '')}</b> (${esc(e['Employee code'] || '')}) • ${esc(e.DESIGNATION || '')} • Paid days: <b>${r.paidDays}</b>/${r.dim}</p>
-    <table style="width:100%;border-collapse:collapse">
-      <tr><th style="border:1px solid #cbd5e1;padding:5px 8px;background:#f1f5f9;text-align:left">Earnings</th><th style="border:1px solid #cbd5e1;padding:5px 8px;background:#f1f5f9;text-align:right">₹</th></tr>
-      ${line('Basic', r.basic)}${line('HRA', r.hra)}${line('Conveyance', r.conv)}${line('Special Allowance', r.spl)}${line('Overtime', r.otPay)}${line('Bonus', r.bonus)}
-      <tr><th style="border:1px solid #cbd5e1;padding:5px 8px;background:#f1f5f9;text-align:left">Deductions</th><th style="border:1px solid #cbd5e1;padding:5px 8px;background:#f1f5f9"></th></tr>
-      ${line('PF', r.pf)}${line('ESI', r.esi)}${line('Professional Tax', r.pt)}${line('LWF', r.lwf)}${line('Advance Recovery', r.advDed)}${line('Other', r.otherDed)}
-      <tr><th style="border:1px solid #cbd5e1;padding:6px 8px;text-align:left">NET PAY</th><th style="border:1px solid #cbd5e1;padding:6px 8px;text-align:right">₹ ${Number(s.net_pay||0).toLocaleString('en-IN')}</th></tr>
+    <div style="position:relative;z-index:1">
+    <div style="background:#0f172a;color:#fff;padding:18px 22px 14px;display:flex;justify-content:space-between;align-items:flex-end">
+      <div><h1 style="margin:0;font-size:18px">${esc(c.name || '')}</h1>
+        <p style="margin:3px 0 0;font-size:10px;color:#94a3b8">${esc(c.addr || '')}</p></div>
+      <div style="text-align:right">
+        <div style="font-size:12px;font-weight:700;letter-spacing:.14em;border:1px solid #475569;border-radius:6px;padding:4px 12px">PAYSLIP</div>
+        <p style="margin:4px 0 0;font-size:10px;color:#94a3b8">${esc(monthLabelESS(s.month))} • ${esc(slipId)}</p>
+      </div>
+    </div>
+    <div style="height:3px;background:#2563eb;margin-bottom:14px"></div>
+    <div style="padding:0 4px">
+    <table style="width:100%;border-collapse:collapse;margin-bottom:8px">
+      <tr><th style="${cell};background:#f8fafc;text-align:left;width:22%">Employee</th><td style="${cell};width:28%">${esc(e.Name || '')}</td><th style="${cell};background:#f8fafc;text-align:left;width:22%">Employee Code</th><td style="${cell}">${esc(code)}</td></tr>
+      <tr><th style="${cell};background:#f8fafc;text-align:left">Department</th><td style="${cell}">${esc(e.DEPARTMENT || '—')}</td><th style="${cell};background:#f8fafc;text-align:left">Designation</th><td style="${cell}">${esc(e.DESIGNATION || '—')}</td></tr>
+      <tr><th style="${cell};background:#f8fafc;text-align:left">Bank / A/c</th><td style="${cell}">${esc(p.bank_name || '—')}${p.account_no ? ' / ' + esc(p.account_no) : ''}</td><th style="${cell};background:#f8fafc;text-align:left">Paid Days</th><td style="${cell}"><b>${r.paidDays||0}</b> / ${r.dim||''} (Leave ${r.leaveDays||0}, LOP ${r.lop||0})</td></tr>
     </table>
-    <p style="color:#334155;font-size:10px;margin-top:14px"><b>Verification Code: ${vc}</b> — HR can verify this payslip against company records using this code. Any alteration invalidates it.</p>
-    <p style="color:#64748b;font-size:10px;text-align:center;margin-top:10px">System generated payslip — no signature required.</p>
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr><th style="${cell};background:#f8fafc;text-align:left;width:35%">Earnings</th><th style="${cell};background:#f8fafc;text-align:right;width:15%">Amount (₹)</th><th style="${cell};background:#f8fafc;text-align:left;width:35%">Deductions</th><th style="${cell};background:#f8fafc;text-align:right;width:15%">Amount (₹)</th></tr></thead>
+      <tbody style="font-size:11px">${bodyRows.replace(/<td>/g, '<td style="' + cell + '">').replace(/<td style="text-align:right">/g, '<td style="' + cell + ';text-align:right">')}
+      <tr><th style="${cell};text-align:left">Gross Earnings</th><th style="${cell};text-align:right">${((r.earnedGross||0) + (r.bonus||0) + (r.otPay||0) + (r.arrears||0) + (r.reward||0)).toLocaleString('en-IN')}</th><th style="${cell};text-align:left">Total Deductions</th><th style="${cell};text-align:right">${Math.round(totalDed).toLocaleString('en-IN')}</th></tr></tbody>
+    </table>
+    <div style="display:flex;justify-content:space-between;align-items:center;background:#0f172a;color:#fff;border-radius:10px;padding:12px 16px;margin-top:10px">
+      <div><b style="letter-spacing:.05em;font-size:12px">NET PAY</b><br><span style="font-size:10px;color:#94a3b8">Rupees ${esc(numToWords(net))} Only • Bank Transfer</span></div>
+      <div style="font-size:22px;font-weight:700">₹ ${net.toLocaleString('en-IN')}</div>
+    </div>
+    ${(r.erPF || r.erESI || r.erLWF) ? `<p style="font-size:10px;color:#64748b;margin-top:10px">Employer contributions (part of CTC, not deducted from salary): PF ₹${(r.erPF||0).toLocaleString('en-IN')} • ESI ₹${(r.erESI||0).toLocaleString('en-IN')} • LWF ₹${(r.erLWF||0).toLocaleString('en-IN')}</p>` : ''}
+    <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid #e2e8f0;margin-top:14px;padding-top:10px">
+      <div style="font-size:9.5px;color:#64748b">
+        <b style="color:#0f172a">Verification Code: ${vc}</b><br>
+        Scan the QR or match this code with HR records to verify authenticity.<br>
+        Any alteration to the figures invalidates this code.
+      </div>
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${qrData}" style="width:70px;height:70px" alt="Verify">
+    </div>
+    <p style="font-size:9.5px;color:#94a3b8;margin-top:8px;text-align:center">System generated payslip — no signature required • ${esc(c.name || '')}</p>
+    </div></div>
   </div>`;
-  setTimeout(() => { window.print(); $('slipPrint').innerHTML = ''; }, 150);
+  setTimeout(() => { window.print(); $('slipPrint').innerHTML = ''; }, 200);
 }
 
 // auto-login if saved
