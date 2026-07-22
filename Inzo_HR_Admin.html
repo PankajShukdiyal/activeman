@@ -672,6 +672,8 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
         <div><label class="lbl">Semi-Skilled</label><input id="setMW2" type="number" step="0.01" class="inp" value="16780.74"></div>
         <div><label class="lbl">Skilled</label><input id="setMW3" type="number" step="0.01" class="inp" value="18500.81"></div>
         <div><label class="lbl">Highly Skilled</label><input id="setMW4" type="number" step="0.01" class="inp" value="19425.85"></div>
+        <div class="col-span-2"><button id="mwApplyBtn" class="btn btn-ghost btn-sm mt-1"><i class="fa-solid fa-rotate"></i> Apply Rates to All Category Workers</button>
+        <p class="text-[10px] m-0 mt-1" style="color:var(--muted)">Updates the salary of every employee on "Category — Minimum Wage" type from the rates above. Use after each wage revision (save the new rates first).</p></div>
       </div>
       <h3 class="display font-bold mt-6 mb-3">Production Lines <span class="text-[10px] font-normal" style="color:var(--muted)">manpower capacity per line — enforced at the attendance device</span></h3>
       <div id="plList" class="space-y-1 mb-2"></div>
@@ -746,7 +748,15 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
       <div><label class="lbl">Emergency Phone</label><input id="epEmPhone" class="inp"></div>
     </div>
     <h4 class="display font-bold mt-5 mb-2">Salary Structure (Monthly) <span class="text-[10px] font-normal" style="color:var(--muted)">components are managed in Settings</span></h4>
-    <div class="flex items-end gap-2 mb-3 p-3 rounded-xl" style="background:var(--brand-soft)">
+    <div class="mb-3">
+      <label class="lbl">Salary Type</label>
+      <select id="epWageType" class="inp">
+        <option value="category">Category — Minimum Wage (workers, auto from Settings rates)</option>
+        <option value="custom">Custom / CTC (management & staff)</option>
+      </select>
+    </div>
+    <div id="epCatInfo" class="hidden mb-3 p-3 rounded-xl text-sm" style="background:var(--brand-soft)"></div>
+    <div id="epCTCWrap" class="flex items-end gap-2 mb-3 p-3 rounded-xl" style="background:var(--brand-soft)">
       <div style="flex:1"><label class="lbl">Monthly CTC (₹) — auto-structure</label><input id="epCTC" type="number" class="inp" placeholder="35000"></div>
       <button id="epCTCBtn" class="btn btn-primary btn-sm" style="padding:9px 14px"><i class="fa-solid fa-wand-magic-sparkles"></i> Build from CTC</button>
     </div>
@@ -1300,6 +1310,38 @@ function openEmpModal(code){
   updateGrossPreview();
   $('empModal').classList.add('show');
 }
+// standard split: Basic 50%, HRA 25%, remainder in Special Allowance (Code on Wages compliant)
+function splitGross(g){
+  const S = getSettings();
+  const alloc = {};
+  S.earnComps.forEach(c => alloc[c.k] = 0);
+  const basicKey = S.earnComps.find(c => c.k === 'basic') ? 'basic' : S.earnComps[0].k;
+  alloc[basicKey] = Math.round(g * 0.5);
+  if(S.earnComps.find(c => c.k === 'hra')) alloc.hra = Math.round(g * 0.25);
+  const assigned = Object.values(alloc).reduce((a,b) => a + b, 0);
+  const restKey = S.earnComps.find(c => c.k === 'special_allowance') ? 'special_allowance'
+    : (S.earnComps.map(c => c.k).filter(k => k !== basicKey && k !== 'hra').pop() || basicKey);
+  alloc[restKey] = (alloc[restKey]||0) + (g - assigned);
+  return alloc;
+}
+const SKILL_NAMES = { mw1:'Unskilled', mw2:'Semi-Skilled', mw3:'Skilled', mw4:'Highly Skilled' };
+function applyCategorySalary(){
+  const S = getSettings();
+  const skill = $('epSkill').value;
+  if(!skill){ $('epCatInfo').innerHTML = '<i class="fa-solid fa-circle-info"></i> Select a <b>Skill Category</b> above — the salary fills automatically from the minimum wage rate in Settings.'; return; }
+  const rate = Math.round(Number(S[skill]) || 0);
+  const alloc = splitGross(rate);
+  document.querySelectorAll('#epSalWrap .sal-part').forEach(i => { i.value = alloc[i.dataset.comp] || 0; });
+  $('epCatInfo').innerHTML = `<i class="fa-solid fa-lock" style="color:var(--brand)"></i> <b>${SKILL_NAMES[skill]}</b> — ₹${rate.toLocaleString('en-IN')}/month (Haryana minimum wage, from Settings). When rates revise, use <b>Settings → Apply Rates to All Category Workers</b> — no per-employee editing needed.`;
+  updateGrossPreview();
+}
+function setWageTypeUI(){
+  const cat = $('epWageType').value === 'category';
+  $('epCTCWrap').classList.toggle('hidden', cat);
+  $('epCatInfo').classList.toggle('hidden', !cat);
+  document.querySelectorAll('#epSalWrap .sal-part').forEach(i => { i.readOnly = cat; i.style.background = cat ? '#f8fafc' : ''; });
+  if(cat) applyCategorySalary();
+}
 function buildSalaryInputs(code){
   const S = getSettings();
   const sal = empSalary(code), ded = empDeductions(code);
@@ -1310,7 +1352,11 @@ function buildSalaryInputs(code){
     `<div><label class="lbl">${esc(c.name)} (₹/mo)</label>
      <input type="number" class="inp" data-dcomp="${esc(c.k)}" value="${ded[c.k]||0}"></div>`).join('') : '';
   document.querySelectorAll('.sal-part').forEach(i => i.addEventListener('input', updateGrossPreview));
+  const p = PROFILES[code] || {};
+  $('epWageType').value = (p.salary && p.salary.wageType) || (p.salary && p.salary.skill ? 'category' : 'custom');
+  setWageTypeUI();
 }
+$('epWageType').addEventListener('change', setWageTypeUI);
 document.addEventListener('change', async e => {
   if(e.target && e.target.dataset && e.target.dataset.act === 'pl-sup'){
     const id = e.target.dataset.id, sup = e.target.value || null;
@@ -1321,7 +1367,7 @@ document.addEventListener('change', async e => {
     renderLines();
     return;
   }
-  if(e.target && e.target.id === 'epSkill') updateGrossPreview();
+  if(e.target && e.target.id === 'epSkill'){ if($('epWageType').value === 'category') applyCategorySalary(); else updateGrossPreview(); }
 });
 function lwfEE(gross){ // Haryana rule: 0.2% of wages, capped (₹35 w.e.f. 1 Jan 2026)
   const S = getSettings();
@@ -1413,7 +1459,7 @@ $('epSaveBtn').addEventListener('click', async () => {
       employee_code: $('epCode').value,
       phone: $('epPhone').value, email: $('epEmail').value, father_name: $('epFather').value,
       dob: $('epDOB').value || null, address: $('epAddr').value,
-      salary: { earn, ded, skill: $('epSkill').value, payMode: 'bank', pendingArrear: Number(((PROFILES[$('epCode').value]||{}).salary||{}).pendingArrear)||0 },
+      salary: { earn, ded, wageType: $('epWageType').value, skill: $('epSkill').value, payMode: 'bank', pendingArrear: Number(((PROFILES[$('epCode').value]||{}).salary||{}).pendingArrear)||0 },
       basic: Number(earn.basic)||0, hra: Number(earn.hra)||0,
       conveyance: Number(earn.conveyance)||0, special_allowance: Number(earn.special_allowance)||0,
       pf_applicable: $('epPF').checked, esi_applicable: $('epESI').checked, pt_applicable: $('epPT').checked,
@@ -2501,6 +2547,31 @@ $('setSaveBtn').addEventListener('click', async () => {
   }catch(err){ notify(err.message, 'error'); }
   finally{ btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save Settings'; btn.disabled = false; }
 });
+/* ---------------- Minimum wage bulk apply ---------------- */
+$('mwApplyBtn').addEventListener('click', async () => {
+  const S = getSettings();
+  const targets = Object.values(PROFILES).filter(p => p.salary && (p.salary.wageType === 'category' || (!p.salary.wageType && p.salary.skill)) && p.salary.skill);
+  if(!targets.length) return notify('No employees on "Category — Minimum Wage" salary type found', 'error');
+  if(!confirm(`Update the salary of ${targets.length} category worker(s) from the current minimum wage rates?`)) return;
+  const btn = $('mwApplyBtn');
+  btn.innerHTML = '<div class="loader-ring"></div> Applying…'; btn.disabled = true;
+  let done = 0;
+  try{
+    for(const p of targets){
+      const rate = Math.round(Number(S[p.salary.skill]) || 0);
+      if(!rate) continue;
+      const alloc = splitGross(rate);
+      const sal = Object.assign({}, p.salary, { earn: alloc, wageType: 'category' });
+      const upd = { salary: sal, basic: alloc.basic||0, hra: alloc.hra||0, conveyance: alloc.conveyance||0, special_allowance: alloc.special_allowance||0 };
+      const { error } = await sb.from('hr_profiles').update(upd).eq('employee_code', p.employee_code);
+      if(!error){ Object.assign(PROFILES[p.employee_code], upd); done++; }
+    }
+    notify(`Minimum wage rates applied to ${done} worker(s)`, 'success');
+    renderEmployees($('empSearch').value);
+  }catch(err){ notify(err.message, 'error'); }
+  finally{ btn.innerHTML = '<i class="fa-solid fa-rotate"></i> Apply Rates to All Category Workers'; btn.disabled = false; }
+});
+
 /* ---------------- Production lines ---------------- */
 function renderLines(){
   const nameOf = c => { const e = EMP.find(x => x['Employee code'] === c); return e ? e.Name : c; };
