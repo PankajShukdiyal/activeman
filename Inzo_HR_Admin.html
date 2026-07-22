@@ -409,7 +409,6 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
     <button id="payFinalizeBtn" class="btn btn-ghost hidden"><i class="fa-solid fa-lock"></i> Finalize & Save All</button>
     <button id="payPrintAllBtn" class="btn btn-ghost hidden"><i class="fa-solid fa-print"></i> Print All Payslips</button>
     <button id="payBankBtn" class="btn btn-ghost hidden"><i class="fa-solid fa-building-columns"></i> Bank Advice</button>
-    <button id="payCashBtn" class="btn btn-ghost hidden"><i class="fa-solid fa-money-bill-wave"></i> Cash Register</button>
     <div class="ml-auto text-right">
       <p class="lbl m-0">Total Net Payable</p>
       <div class="stat-num money" style="color:var(--brand)" id="payTotal">₹0</div>
@@ -676,9 +675,10 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
       </div>
       <h3 class="display font-bold mt-6 mb-3">Production Lines <span class="text-[10px] font-normal" style="color:var(--muted)">manpower capacity per line — enforced at the attendance device</span></h3>
       <div id="plList" class="space-y-1 mb-2"></div>
-      <div class="flex gap-2 mb-4">
-        <input id="plName" class="inp" placeholder="Line name (e.g. Line 1, Stitching A)">
+      <div class="flex gap-2 mb-4 flex-wrap">
+        <input id="plName" class="inp" style="flex:1;min-width:160px" placeholder="Line name (e.g. Line 1, Stitching A)">
         <input id="plCap" type="number" class="inp" style="max-width:110px" placeholder="Capacity">
+        <select id="plSup" class="inp" style="max-width:220px"><option value="">— Supervisor —</option></select>
         <button id="plAddBtn" class="btn btn-ghost btn-sm"><i class="fa-solid fa-plus"></i></button>
       </div>
       <h3 class="display font-bold mt-6 mb-3">Salary Components <span class="text-[10px] font-normal" style="color:var(--muted)">shown in every employee's salary structure & payslip</span></h3>
@@ -757,16 +757,6 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
         <span class="money font-bold text-lg" id="epGross">₹0</span>
       </div>
       <div id="epCTCInfo" class="text-xs mt-2 pt-2" style="border-top:1px dashed var(--line);color:var(--muted)"></div>
-    </div>
-    <h4 class="display font-bold mt-4 mb-2">Salary Payment Mode</h4>
-    <div class="grid grid-cols-2 gap-3 mb-2">
-      <div><label class="lbl">Mode</label>
-        <select id="epPayMode" class="inp">
-          <option value="bank">Bank Transfer (full)</option>
-          <option value="cash">Cash (full)</option>
-          <option value="split">Split — fixed cash + rest in bank</option>
-        </select></div>
-      <div id="epCashWrap" class="hidden"><label class="lbl">Cash Portion (₹/month)</label><input id="epCashAmt" type="number" class="inp" placeholder="5000"></div>
     </div>
     <h4 class="display font-bold mt-4 mb-2">Statutory Deductions & Tax</h4>
     <div class="grid grid-cols-2 gap-3 mb-2">
@@ -857,6 +847,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-ser
     </div>
     <div class="grid grid-cols-2 gap-3" style="margin-top:12px;margin-bottom:8px">
       <div><label class="lbl">Date of Joining</label><input id="aeDOJ" type="date" class="inp"></div>
+      <div><label class="lbl">Date of Birth</label><input id="aeDOB" type="date" class="inp"></div>
       <div><label class="lbl">Production Line</label><select id="aeLine" class="inp"></select></div>
     </div>
     <p class="text-[11px] mb-3" style="color:var(--muted)"><i class="fa-solid fa-circle-info"></i> Employees added here can use every HR feature (payroll, leaves, ESS, ID card). For face-recognition punching, their face must also be registered from the Attendance app's admin panel using this same code.</p>
@@ -1199,7 +1190,7 @@ async function loadDashboard(){
       return `<div class="flex items-center justify-between p-2 rounded-lg" style="background:#f8fafc">
         <div class="flex items-center gap-2">
           ${r.in_photo_url ? `<img src="${esc(r.in_photo_url)}" class="w-8 h-8 rounded-full object-cover" alt="">` : '<div class="w-8 h-8 rounded-full" style="background:var(--line)"></div>'}
-          <div><div class="font-semibold text-xs">${esc(r.Name)}</div><div class="text-[10px]" style="color:var(--muted)">${esc(r.employee_code)}</div></div>
+          <div><div class="font-semibold text-xs">${esc(r.Name)}</div><div class="text-[10px]" style="color:var(--muted)">${esc(r.employee_code)}${(() => { const e = EMP.find(x => x['Employee code'] === r.employee_code); return e && e.DEPARTMENT ? ' • ' + esc(e.DEPARTMENT) : ''; })()}</div></div>
         </div>
         <div class="text-right text-[11px]">
           <span class="${isLate ? 'chip chip-warn' : 'chip chip-ok'}">IN ${esc((r.in_time||'').substring(0,5))}</span>
@@ -1250,7 +1241,7 @@ $('empSearch').addEventListener('input', e => renderEmployees(e.target.value));
 $('empAddBtn').addEventListener('click', () => {
   renderLines();
   $('aeName').value = ''; $('aeDept').value = ''; $('aeDesig').value = '';
-  $('aeDOJ').value = todayISO();
+  $('aeDOJ').value = todayISO(); $('aeDOB').value = '';
   let code;
   do { code = 'EMP-' + Math.floor(1000 + Math.random() * 9000); } while (EMP.some(e => e['Employee code'] === code));
   $('aeCode').value = code;
@@ -1268,6 +1259,10 @@ $('aeSaveBtn').addEventListener('click', async () => {
       DEPARTMENT: $('aeDept').value, DESIGNATION: $('aeDesig').value, DOJ: $('aeDOJ').value,
       LINE: $('aeLine').value || null
     }]);
+    if($('aeDOB').value){
+      await sb.from('hr_profiles').upsert({ employee_code: code, dob: $('aeDOB').value }, { onConflict: 'employee_code' });
+      PROFILES[code] = Object.assign(PROFILES[code] || { employee_code: code }, { dob: $('aeDOB').value });
+    }
     if(error) throw error;
     notify(`${name} added — now open Profile to set phone, salary and shift`, 'success');
     $('addEmpModal').classList.remove('show');
@@ -1299,9 +1294,6 @@ function openEmpModal(code){
   $('epGrade').value = p.grade || ''; $('epType').value = p.employment_type || 'Permanent';
   $('epSkill').value = (p.salary && p.salary.skill) || '';
   renderLines(); $('epLine').value = e.LINE || '';
-  $('epPayMode').value = (p.salary && p.salary.payMode) || 'bank';
-  $('epCashAmt').value = (p.salary && p.salary.cashAmt) || '';
-  $('epCashWrap').classList.toggle('hidden', $('epPayMode').value !== 'split');
   $('epManager').value = p.reporting_manager || ''; $('epLocation').value = p.work_location || '';
   $('epEmName').value = p.emergency_name || ''; $('epEmPhone').value = p.emergency_phone || '';
   loadDocs(code);
@@ -1319,9 +1311,17 @@ function buildSalaryInputs(code){
      <input type="number" class="inp" data-dcomp="${esc(c.k)}" value="${ded[c.k]||0}"></div>`).join('') : '';
   document.querySelectorAll('.sal-part').forEach(i => i.addEventListener('input', updateGrossPreview));
 }
-document.addEventListener('change', e => {
+document.addEventListener('change', async e => {
+  if(e.target && e.target.dataset && e.target.dataset.act === 'pl-sup'){
+    const id = e.target.dataset.id, sup = e.target.value || null;
+    const { error } = await sb.from('production_lines').update({ supervisor_code: sup }).eq('id', id);
+    if(error) return notify(error.message + ' — have you run the V12 migration SQL?', 'error');
+    const l = LINES.find(x => String(x.id) === String(id)); if(l) l.supervisor_code = sup;
+    notify('Supervisor updated', 'success');
+    renderLines();
+    return;
+  }
   if(e.target && e.target.id === 'epSkill') updateGrossPreview();
-  if(e.target && e.target.id === 'epPayMode') $('epCashWrap').classList.toggle('hidden', e.target.value !== 'split');
 });
 function lwfEE(gross){ // Haryana rule: 0.2% of wages, capped (₹35 w.e.f. 1 Jan 2026)
   const S = getSettings();
@@ -1413,7 +1413,7 @@ $('epSaveBtn').addEventListener('click', async () => {
       employee_code: $('epCode').value,
       phone: $('epPhone').value, email: $('epEmail').value, father_name: $('epFather').value,
       dob: $('epDOB').value || null, address: $('epAddr').value,
-      salary: { earn, ded, skill: $('epSkill').value, payMode: $('epPayMode').value, cashAmt: Number($('epCashAmt').value)||0, pendingArrear: Number(((PROFILES[$('epCode').value]||{}).salary||{}).pendingArrear)||0 },
+      salary: { earn, ded, skill: $('epSkill').value, payMode: 'bank', pendingArrear: Number(((PROFILES[$('epCode').value]||{}).salary||{}).pendingArrear)||0 },
       basic: Number(earn.basic)||0, hra: Number(earn.hra)||0,
       conveyance: Number(earn.conveyance)||0, special_allowance: Number(earn.special_allowance)||0,
       pf_applicable: $('epPF').checked, esi_applicable: $('epESI').checked, pt_applicable: $('epPT').checked,
@@ -1700,8 +1700,6 @@ async function runPayroll(){
         otHours, otPay: Math.round(perHour * otHours * Number(S.otMult)),
         tds, arrears, reward, lopLeave, otApprovedMode: otApproved[code] !== undefined,
         erPF, erESI, erLWF,
-        payMode: (p.salary && p.salary.payMode) || 'bank',
-        cashAmt: Number((p.salary || {}).cashAmt) || 0,
         advDed: Math.round(advDed), advRefs: advs.map(a => a.id),
         otherDed: 0, bonus: 0, hasSalary: fullGross > 0 };
     });
@@ -1709,7 +1707,6 @@ async function runPayroll(){
     $('payFinalizeBtn').classList.remove('hidden');
     $('payPrintAllBtn').classList.remove('hidden');
     $('payBankBtn').classList.remove('hidden');
-    $('payCashBtn').classList.remove('hidden');
   }catch(err){ notify(err.message, 'error'); }
   finally{ btn.innerHTML = '<i class="fa-solid fa-calculator"></i> Calculate Payroll'; btn.disabled = false; }
 }
@@ -1761,7 +1758,7 @@ function renderPayTable(){
       <td class="money" style="color:${r.advDed ? 'var(--warn)' : 'inherit'}">${fmtINR(r.advDed)}</td>
       <td><input type="number" class="inp money" style="width:85px;padding:5px 8px" value="${r.otherDed}" data-pay="otherDed" data-i="${i}"></td>
       <td><input type="number" class="inp money" style="width:85px;padding:5px 8px" value="${r.bonus}" data-pay="bonus" data-i="${i}"></td>
-      <td class="money font-bold" style="color:var(--brand)" id="net-${i}">${fmtINR(net)}${r.payMode !== 'bank' ? `<div class="text-[9px] font-normal" style="color:var(--muted)">${r.payMode === 'cash' ? 'CASH' : 'Cash ' + fmtINR(Math.min(r.cashAmt, net)) + ' + Bank'}</div>` : ''}</td>
+      <td class="money font-bold" style="color:var(--brand)" id="net-${i}">${fmtINR(net)}</td>
       <td><button class="btn btn-ghost btn-sm" data-act="view-slip" data-i="${i}"><i class="fa-solid fa-receipt"></i></button></td>
     </tr>`;
   }).join('') + `<tr style="background:#f8fafc;font-weight:700;border-top:2px solid var(--line)">
@@ -1904,7 +1901,7 @@ function slipHTML(r){
       </tbody>
     </table>
     <div style="display:flex;justify-content:space-between;align-items:center;background:#0f172a;color:#fff;border-radius:10px;padding:12px 16px;margin-top:10px">
-      <div><b style="letter-spacing:.05em">NET PAY</b><br><span style="font-size:10.5px;color:#94a3b8">Rupees ${esc(numToWords(net))} Only${r.payMode === 'cash' ? ' • Paid in Cash' : (r.payMode === 'split' ? ' • Cash ₹' + Math.min(r.cashAmt||0, net).toLocaleString('en-IN') + ' + Bank ₹' + (net - Math.min(r.cashAmt||0, net)).toLocaleString('en-IN') : ' • Bank Transfer')}</span></div>
+      <div><b style="letter-spacing:.05em">NET PAY</b><br><span style="font-size:10.5px;color:#94a3b8">Rupees ${esc(numToWords(net))} Only • Bank Transfer</span></div>
       <div class="money" style="font-size:24px;font-weight:700">₹ ${net.toLocaleString('en-IN')}</div>
     </div>
     ${(r.erPF || r.erESI || r.erLWF) ? `<p style="font-size:10px;color:#64748b;margin-top:10px">Employer contributions (part of CTC, not deducted from salary): PF ₹${(r.erPF||0).toLocaleString('en-IN')} • ESI ₹${(r.erESI||0).toLocaleString('en-IN')} • LWF ₹${(r.erLWF||0).toLocaleString('en-IN')}</p>` : ''}
@@ -1930,38 +1927,16 @@ function printHTML(html){
   setTimeout(() => { window.print(); $('printArea').innerHTML = ''; }, 150);
 }
 $('slipPrintBtn').addEventListener('click', () => printHTML($('slipPaper').innerHTML));
-function paySplit(r){
-  const net = netOf(r);
-  const cash = r.payMode === 'cash' ? net : (r.payMode === 'split' ? Math.min(r.cashAmt || 0, net) : 0);
-  return { cash, bank: net - cash };
-}
 $('payBankBtn').addEventListener('click', () => {
-  const rows = PAY_ROWS.filter(r => r.hasSalary && paySplit(r).bank > 0);
-  if(!rows.length) return notify('No bank payouts this month', 'error');
+  const rows = PAY_ROWS.filter(r => r.hasSalary);
+  if(!rows.length) return notify('Run payroll first', 'error');
   const missing = rows.filter(r => !(PROFILES[r.code]||{}).account_no);
   dlText('Bank_Advice_' + PAY_MONTH + '.csv',
-    ['Employee Code,Name,Bank,Account No,IFSC,Amount (Bank Portion)',
+    ['Employee Code,Name,Department,Bank,Account No,IFSC,Amount (Net Pay)',
      ...rows.map(r => { const p = PROFILES[r.code]||{};
-       return [r.code, '"' + r.name + '"', '"' + (p.bank_name||'') + '"', p.account_no||'', p.ifsc||'', paySplit(r).bank].join(','); })].join('\n'), 'text/csv');
-  notify('Bank advice exported (bank portions only)' + (missing.length ? ' — ' + missing.length + ' employee(s) have no account number on file' : ''), missing.length ? 'error' : 'success');
-});
-$('payCashBtn').addEventListener('click', () => {
-  const rows = PAY_ROWS.filter(r => r.hasSalary && paySplit(r).cash > 0);
-  if(!rows.length) return notify('No cash payouts this month — set payment mode Cash/Split in employee profiles', 'error');
-  const S = getSettings();
-  let total = 0;
-  const body = rows.map((r, i) => { const c = paySplit(r).cash; total += c;
-    return `<tr><td>${i+1}</td><td>${esc(r.name)}<br><small>${esc(r.code)}</small></td><td>${esc(r.desig||'—')}</td>
-      <td class="money" style="text-align:right">${c.toLocaleString('en-IN')}</td><td style="width:30%"></td></tr>`; }).join('');
-  printHTML(`<div class="paper" style="min-height:auto"><h2 style="margin:0 0 2px;font-size:15px">Cash Salary Disbursement Register — ${esc(S.name)}</h2>
-    <p style="margin:0 0 10px;font-size:11px;color:#64748b">${monthLabel(PAY_MONTH)} • Employees receiving full/part salary in cash</p>
-    <table class="ann"><thead><tr><th>#</th><th>Employee</th><th>Designation</th><th style="text-align:right">Cash Amount (₹)</th><th>Signature / Thumb</th></tr></thead>
-    <tbody>${body}<tr class="font-bold"><td colspan="3">TOTAL CASH</td><td style="text-align:right">${total.toLocaleString('en-IN')}</td><td></td></tr></tbody></table>
-    <div style="margin-top:34px;display:flex;justify-content:space-between">
-      <p style="border-top:1px solid #94a3b8;padding-top:4px">Prepared By</p>
-      <p style="border-top:1px solid #94a3b8;padding-top:4px">Disbursed By</p>
-      <p style="border-top:1px solid #94a3b8;padding-top:4px">Authorised — ${esc(S.hr||'')}</p>
-    </div></div>`);
+       const e = EMP.find(x => x['Employee code'] === r.code);
+       return [r.code, '"' + r.name + '"', '"' + ((e && e.DEPARTMENT) || '') + '"', '"' + (p.bank_name||'') + '"', p.account_no||'', p.ifsc||'', netOf(r)].join(','); })].join('\n'), 'text/csv');
+  notify('Bank advice exported' + (missing.length ? ' — ' + missing.length + ' employee(s) have no account number on file' : ''), missing.length ? 'error' : 'success');
 });
 $('payPrintAllBtn').addEventListener('click', () => {
   const rows = PAY_ROWS.filter(r => r.hasSalary);
@@ -1993,8 +1968,18 @@ async function loadAdvances(){
 }
 $('advSaveBtn').addEventListener('click', async () => {
   const amount = Number($('advAmount').value), emi = Number($('advEmi').value);
-  if(!$('advEmp').value || !amount || !emi) return notify('Employee, amount and EMI are required', 'error');
+  const code = $('advEmp').value;
+  if(!code || !amount || !emi) return notify('Employee, amount and EMI are required', 'error');
   if(emi > amount) return notify('EMI cannot exceed the advance amount', 'error');
+  // Eligibility rule 1: advance cannot exceed 50% of monthly gross
+  const gross = grossOf(code);
+  if(!gross) return notify('Set the salary structure first — the advance limit is 50% of monthly gross', 'error');
+  if(amount > gross * 0.5) return notify(`Advance cannot exceed 50% of monthly gross (max ₹${Math.floor(gross * 0.5).toLocaleString('en-IN')})`, 'error');
+  // Eligibility rule 2: at least 20 present days in the last 30 days
+  const d30 = new Date(); d30.setDate(d30.getDate() - 30);
+  const from = `${d30.getFullYear()}-${String(d30.getMonth()+1).padStart(2,'0')}-${String(d30.getDate()).padStart(2,'0')}`;
+  const { data: attRows } = await sb.from('attendance').select('date').eq('employee_code', code).gte('date', from);
+  if((attRows || []).length < 20) return notify(`Not eligible — only ${(attRows||[]).length} present day(s) in the last 30 days (minimum 20 required)`, 'error');
   const btn = $('advSaveBtn');
   btn.innerHTML = '<div class="loader-ring"></div> Saving…'; btn.disabled = true;
   try{
@@ -2056,13 +2041,19 @@ document.body.addEventListener('click', async e => {
     renderBotList('');
     $('bulkOtModal').classList.add('show');
   }
-  if(act === 'appr-ot'){
-    await sb.from('ot_requests').update({ status: 'APPROVED' }).eq('id', el.dataset.id);
-    notify('Overtime approved — it will be used in payroll', 'success');
+  if(act === 'ot-view'){
+    const box = document.getElementById('otg-' + el.dataset.g);
+    if(box) box.classList.toggle('hidden');
+  }
+  if(act === 'ot-appr-grp'){
+    const ids = el.dataset.ids.split(',').map(Number);
+    await sb.from('ot_requests').update({ status: 'APPROVED' }).in('id', ids);
+    notify(`Overtime approved for ${ids.length} employee(s) — it will be used in payroll`, 'success');
     loadApprovals();
   }
-  if(act === 'rej-ot'){
-    await sb.from('ot_requests').update({ status: 'REJECTED' }).eq('id', el.dataset.id);
+  if(act === 'ot-rej-grp'){
+    const ids = el.dataset.ids.split(',').map(Number);
+    await sb.from('ot_requests').update({ status: 'REJECTED' }).in('id', ids);
     loadApprovals();
   }
   if(act === 'vb-review'){ await sb.from('feedback').update({ status:'IN_REVIEW' }).eq('id', el.dataset.id); loadVoice(); }
@@ -2512,13 +2503,22 @@ $('setSaveBtn').addEventListener('click', async () => {
 });
 /* ---------------- Production lines ---------------- */
 function renderLines(){
+  const nameOf = c => { const e = EMP.find(x => x['Employee code'] === c); return e ? e.Name : c; };
   $('plList').innerHTML = LINES.length ? LINES.map(l => {
     const assigned = EMP.filter(e => String(e.LINE||'').trim().toLowerCase() === String(l.name).trim().toLowerCase() && String(e.Status).toUpperCase() === 'ACTIVE').length;
-    return `<div class="flex items-center justify-between p-2 rounded-lg text-sm" style="background:#f8fafc">
-      <span><b>${esc(l.name)}</b> <span class="chip chip-blue">Capacity ${l.capacity}</span> <span class="chip chip-gray">${assigned} assigned</span></span>
-      <button class="btn btn-danger btn-sm" data-act="pl-del" data-id="${l.id}"><i class="fa-solid fa-trash"></i></button>
+    return `<div class="flex items-center justify-between p-2 rounded-lg text-sm flex-wrap gap-1" style="background:#f8fafc">
+      <span><b>${esc(l.name)}</b> <span class="chip chip-blue">Capacity ${l.capacity}</span> <span class="chip chip-gray">${assigned} assigned</span>
+        ${l.supervisor_code ? `<span class="chip chip-ok"><i class="fa-solid fa-user-tie"></i> ${esc(nameOf(l.supervisor_code))}</span>` : '<span class="chip chip-warn">No supervisor</span>'}</span>
+      <span>
+        <select class="inp" style="width:auto;padding:4px 8px;font-size:11px;display:inline-block" data-act="pl-sup" data-id="${l.id}">
+          <option value="">— Set supervisor —</option>
+          ${activeEmps().map(e => `<option value="${esc(e['Employee code'])}" ${l.supervisor_code === e['Employee code'] ? 'selected' : ''}>${esc(e.Name)}</option>`).join('')}
+        </select>
+        <button class="btn btn-danger btn-sm" data-act="pl-del" data-id="${l.id}"><i class="fa-solid fa-trash"></i></button>
+      </span>
     </div>`;
   }).join('') : '<p class="text-xs m-0" style="color:var(--muted)">No production lines defined.</p>';
+  $('plSup').innerHTML = '<option value="">— Supervisor —</option>' + activeEmps().map(e => `<option value="${esc(e['Employee code'])}">${esc(e.Name)}</option>`).join('');
   const opts = '<option value="">— No line —</option>' + LINES.map(l => `<option value="${esc(l.name)}">${esc(l.name)} (cap ${l.capacity})</option>`).join('');
   if($('epLine')) $('epLine').innerHTML = opts;
   if($('aeLine')) $('aeLine').innerHTML = opts;
@@ -2526,7 +2526,7 @@ function renderLines(){
 $('plAddBtn').addEventListener('click', async () => {
   const name = $('plName').value.trim(), cap = Number($('plCap').value);
   if(!name || !cap || cap < 1) return notify('Line name and capacity are required', 'error');
-  const { data, error } = await sb.from('production_lines').insert([{ name, capacity: cap }]).select();
+  const { data, error } = await sb.from('production_lines').insert([{ name, capacity: cap, supervisor_code: $('plSup').value || null }]).select();
   if(error) return notify(error.message + ' — have you run the V10 migration SQL?', 'error');
   LINES.push(data[0]); LINES.sort((a,b) => String(a.name).localeCompare(String(b.name)));
   $('plName').value = ''; $('plCap').value = '';
@@ -3471,9 +3471,33 @@ async function loadApprovals(){
   $('apLeaves').innerHTML = (lv.data||[]).length ? lv.data.map(L =>
     item(`${esc(nameOf(L.employee_code))} — ${esc(L.leave_type)} ${L.days}d`, `${fmtDate(L.from_date)} → ${fmtDate(L.to_date)}${L.reason ? ' • ' + esc(L.reason) : ''}`, 'appr-leave', 'cancel-leave-x', L.id)).join('')
     : '<p class="m-0 text-xs" style="color:var(--muted)">Nothing pending.</p>';
-  $('apOT').innerHTML = (ot.data||[]).length ? ot.data.map(o =>
-    item(`${esc(nameOf(o.employee_code))} — ${o.hours} hrs OT`, `${fmtDate(o.ot_date)}${o.reason ? ' • ' + esc(o.reason) : ''}`, 'appr-ot', 'rej-ot', o.id)).join('')
-    : '<p class="m-0 text-xs" style="color:var(--muted)">Nothing pending.</p>';
+  // group by request ID (bulk requests appear as ONE entry with a View button)
+  const groups = {};
+  (ot.data||[]).forEach(o => {
+    const g = o.group_id || 'single-' + o.id;
+    (groups[g] = groups[g] || []).push(o);
+  });
+  $('apOT').innerHTML = Object.keys(groups).length ? Object.entries(groups).map(([gid, rows]) => {
+    const f = rows[0];
+    const initiator = f.requested_by ? nameOf(f.requested_by) : nameOf(f.employee_code);
+    const ids = rows.map(r => r.id).join(',');
+    return `<div class="p-2 rounded-lg" style="background:#f8fafc">
+      <div class="flex items-center justify-between">
+        <div>
+          <div class="font-semibold text-xs">${esc(gid.startsWith('single-') ? 'OT Request' : gid)} — <span style="color:var(--brand)">${rows.length} employee${rows.length > 1 ? 's' : ''}</span></div>
+          <div class="text-[10px]" style="color:var(--muted)">Initiated by <b>${esc(initiator)}</b> • ${fmtDate(f.ot_date)} • ${f.hours} hrs each${f.reason ? ' • ' + esc(f.reason.replace(/^\[[^\]]*\]\s*/, '')) : ''}</div>
+        </div>
+        <div style="white-space:nowrap">
+          <button class="btn btn-ghost btn-sm" data-act="ot-view" data-g="${esc(gid)}"><i class="fa-solid fa-eye"></i> View</button>
+          <button class="btn btn-ghost btn-sm" data-act="ot-appr-grp" data-ids="${ids}" title="Approve all in this request"><i class="fa-solid fa-check" style="color:var(--ok)"></i></button>
+          <button class="btn btn-danger btn-sm" data-act="ot-rej-grp" data-ids="${ids}"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+      </div>
+      <div class="hidden mt-2 pt-2 text-[11px] space-y-1" style="border-top:1px dashed var(--line)" id="otg-${esc(gid)}">
+        ${rows.map(r => `<div class="flex justify-between"><span>${esc(nameOf(r.employee_code))} <span style="color:var(--muted)">(${esc(r.employee_code)})</span></span><span>${r.hours} hrs</span></div>`).join('')}
+      </div>
+    </div>`;
+  }).join('') : '<p class="m-0 text-xs" style="color:var(--muted)">Nothing pending.</p>';
   $('apExp').innerHTML = (ex.data||[]).length ? ex.data.map(x =>
     item(`${esc(nameOf(x.employee_code))} — ${esc(x.category)} ${fmtINR(x.amount)}`, `${fmtDate(x.expense_date)}${x.note ? ' • ' + esc(x.note) : ''}`, 'ex-appr', 'ex-rej', x.id)).join('')
     : '<p class="m-0 text-xs" style="color:var(--muted)">Nothing pending.</p>';
