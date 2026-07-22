@@ -863,6 +863,7 @@ setTimeout(nxHideSplash, 7000); // failsafe
                         if (faceRatio < LIVE_MIN_FACE_RATIO) {
                             // screen shown from a distance -> quietly ignore, keep scanning
                         } else if (matchConfidence >= CONFIDENCE_THRESHOLD) {
+                            window.lastFaceBox = detection.detection.box; // for the cropped snapshot
                             if (antiSpoofSession) {
                                 isDetecting = false; // pause scanning while the model decides (~250ms)
                                 const liveProb = await antiSpoofVerdict(detection.detection.box);
@@ -1047,21 +1048,35 @@ setTimeout(nxHideSplash, 7000); // failsafe
             let imageBase64 = offlineProcessData ? offlineProcessData.imageBase64 : null;
 
             if(!offlineProcessData) {
-                // Generate professional snapshot
+                // Bandwidth-optimized snapshot: crop around the face (with context
+                // margin), downscale to max 480px and compress — ~15-25KB instead of
+                // ~100KB+. Same audit value, 4-6x less storage and bandwidth.
                 const snapCanvas = document.createElement('canvas');
-                snapCanvas.width = video.videoWidth;
-                snapCanvas.height = video.videoHeight;
+                const fb = window.lastFaceBox;
+                const vw = video.videoWidth, vh = video.videoHeight;
+                let sx = 0, sy = 0, sw = vw, sh = vh;
+                if (fb && fb.width > 0) {
+                    const L = Math.max(fb.width, fb.height) * 1.9; // face + surroundings
+                    sx = Math.max(0, fb.x + fb.width / 2 - L / 2);
+                    sy = Math.max(0, fb.y + fb.height / 2 - L / 2);
+                    sw = Math.min(vw - sx, L);
+                    sh = Math.min(vh - sy, L);
+                }
+                const SNAP_MAX = 480;
+                const snapScale = Math.min(1, SNAP_MAX / Math.max(sw, sh));
+                snapCanvas.width = Math.round(sw * snapScale);
+                snapCanvas.height = Math.round(sh * snapScale);
                 const ctx = snapCanvas.getContext('2d');
                 ctx.translate(snapCanvas.width, 0);
                 ctx.scale(-1, 1);
-                ctx.drawImage(video, 0, 0);
+                ctx.drawImage(video, sx, sy, sw, sh, 0, 0, snapCanvas.width, snapCanvas.height);
                 ctx.setTransform(1, 0, 0, 1, 0, 0);
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-                ctx.fillRect(0, snapCanvas.height - 40, snapCanvas.width, 40);
+                ctx.fillRect(0, snapCanvas.height - 26, snapCanvas.width, 26);
                 ctx.fillStyle = '#ffffff';
-                ctx.font = '500 12px Inter, sans-serif';
-                ctx.fillText(`${empCode} • ${new Date().toLocaleTimeString()} • Loc: ${currentLocation}`, 10, snapCanvas.height - 15);
-                imageBase64 = snapCanvas.toDataURL('image/jpeg', 0.6); // Slightly compressed for local storage
+                ctx.font = '500 10px Inter, sans-serif';
+                ctx.fillText(`${empCode} • ${new Date().toLocaleTimeString()} • Loc: ${currentLocation}`, 6, snapCanvas.height - 9);
+                imageBase64 = snapCanvas.toDataURL('image/jpeg', 0.55);
             }
 
             const saveOfflineTask = () => {
@@ -1088,7 +1103,7 @@ setTimeout(nxHideSplash, 7000); // failsafe
                 try {
                     const fileName = `corp_photos/${empCode}_${Date.now()}.jpg`;
                     const blob = dataURItoBlob(imageBase64);
-                    const { error } = await supabaseClient.storage.from('attendance-photos').upload(fileName, blob, { contentType: 'image/jpeg' });
+                    const { error } = await supabaseClient.storage.from('attendance-photos').upload(fileName, blob, { contentType: 'image/jpeg', cacheControl: '86400' });
                     if (!error) photoUrl = supabaseUrl + '/storage/v1/object/public/attendance-photos/' + fileName;
                 } catch(e) {
                     console.warn("Photo upload warning:", e);
